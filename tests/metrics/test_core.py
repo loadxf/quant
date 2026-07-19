@@ -56,4 +56,13 @@ class TestComputeMetrics:
         m = compute_metrics(log)
         assert m.trade_count == 1
         assert m.profit_factor == float("inf")
+        assert m.payoff_ratio == float("inf")  # no losses -> inf, matching profit_factor
+        assert m.expectancy_r == float("inf")
         assert m.sharpe == 0.0  # <2 daily points -> no ratio
+
+    def test_rejects_nonpositive_equity(self) -> None:
+        from quantlab.errors import QuantLabError
+
+        log = trades_from_daily([[50]])
+        with pytest.raises(QuantLabError, match="starting_equity"):
+            compute_metrics(log, starting_equity=0)

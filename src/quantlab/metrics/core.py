@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from quantlab.errors import QuantLabError
 from quantlab.schema.trade import FUTURES_DAY, DayBoundary, TradeLog
 
 TRADING_DAYS_PER_YEAR = 252
@@ -72,6 +73,8 @@ def compute_metrics(
     bootstrap_samples: int = 2_000,
     seed: int = 7,
 ) -> Metrics:
+    if starting_equity <= 0:
+        raise QuantLabError(f"starting_equity must be positive (got {starting_equity})")
     pnls = np.array([t.pnl for t in log.trades], dtype=float)
     n = pnls.size
     wins = pnls[pnls > 0]
@@ -117,9 +120,15 @@ def compute_metrics(
         win_rate=float(wins.size / n) if n else 0.0,
         avg_win=avg_win,
         avg_loss=avg_loss,
-        payoff_ratio=avg_win / abs(avg_loss) if avg_loss != 0 else 0.0,
+        # No losing trades: report inf (consistent with profit_factor) rather
+        # than 0, which would make an all-winner log look edge-less.
+        payoff_ratio=avg_win / abs(avg_loss)
+        if avg_loss != 0
+        else (float("inf") if wins.size else 0.0),
         expectancy=expectancy,
-        expectancy_r=expectancy / abs(avg_loss) if avg_loss != 0 else 0.0,
+        expectancy_r=(
+            expectancy / abs(avg_loss) if avg_loss != 0 else (float("inf") if wins.size else 0.0)
+        ),
         expectancy_tstat=tstat,
         expectancy_ci95=ci,
         profit_factor=gross_profit / gross_loss if gross_loss > 0 else float("inf"),

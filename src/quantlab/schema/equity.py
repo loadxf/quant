@@ -49,7 +49,12 @@ class EquityCurve:
         )
 
     def daily(self) -> pd.Series:
-        """End-of-day equity series (last observation per UTC calendar day)."""
+        """End-of-day equity series: last observation per calendar day in the
+        series' own timezone (UTC for curves built from canonical trades).
+
+        Used for Sharpe/Sortino context only — prop-firm rules use the
+        firm-specific `DayBoundary` session grouping instead.
+        """
         series = self.to_series()
         if series.empty:
             return series

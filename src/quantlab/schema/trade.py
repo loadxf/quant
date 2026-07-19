@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import datetime as dt
 from collections.abc import Iterable
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import StrEnum
 from zoneinfo import ZoneInfo
 
@@ -38,13 +38,14 @@ class Trade:
     fees: float = 0.0  # informational; pnl is already net
     mae: float | None = None  # max adverse excursion in $, <= 0
     mfe: float | None = None  # max favorable excursion in $, >= 0
-    tags: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         for name in ("entry_time", "exit_time"):
             value: dt.datetime = getattr(self, name)
             if value.tzinfo is None:
                 raise QuantLabError(f"Trade.{name} must be tz-aware (got naive {value!r})")
+            # Normalize to UTC so the "UTC internally" contract actually holds.
+            object.__setattr__(self, name, value.astimezone(UTC))
         if self.exit_time < self.entry_time:
             raise QuantLabError(
                 f"Trade exit_time {self.exit_time} precedes entry_time {self.entry_time}"

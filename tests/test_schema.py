@@ -38,6 +38,13 @@ class TestTradeValidation:
         with pytest.raises(QuantLabError, match="precedes"):
             Trade(t0, t0 - dt.timedelta(minutes=1), "MNQ", Side.LONG, 1, 0.0)
 
+    def test_normalizes_to_utc(self) -> None:
+        local = dt.datetime(2026, 1, 5, 9, 0, tzinfo=CT)  # 15:00 UTC in January
+        trade = _trade(local)
+        assert trade.exit_time.tzinfo == dt.UTC
+        assert trade.exit_time.hour == 15
+        assert trade.exit_time == local  # same instant
+
     def test_rejects_bad_quantity_and_excursions(self) -> None:
         t0 = dt.datetime(2026, 1, 5, 10, 0, tzinfo=UTC)
         with pytest.raises(QuantLabError, match="quantity"):
@@ -107,3 +114,14 @@ class TestParquetRoundTrip:
     def test_missing_file_raises(self, tmp_path) -> None:
         with pytest.raises(QuantLabError, match="not found"):
             read_trade_log(tmp_path / "nope.parquet")
+
+    def test_future_schema_version_rejected(self, tmp_path, monkeypatch) -> None:
+        import quantlab.schema.io as io_mod
+
+        log = trades_from_daily([[10.0]])
+        path = tmp_path / "trades.parquet"
+        monkeypatch.setattr(io_mod, "SCHEMA_VERSION", 99)
+        write_trade_log(log, path)
+        monkeypatch.undo()
+        with pytest.raises(QuantLabError, match="schema v99"):
+            read_trade_log(path)

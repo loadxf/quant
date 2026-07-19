@@ -52,7 +52,9 @@ select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF"]
 ignore = ["SIM108", "B008"]  # ternary preference; typer uses function-call defaults
 
 [tool.mypy]
-python_version = "3.11"
+# 3.12 target so numpy's PEP-695 `type`-statement stubs parse; 3.11 runtime
+# compatibility is enforced by ruff (target py311) and the 3.11 CI test job.
+python_version = "3.12"
 strict = false
 check_untyped_defs = true
 warn_unused_ignores = true
