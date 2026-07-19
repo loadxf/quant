@@ -1,15 +1,15 @@
-"""Combinatorially purged cross-validation (Lopez de Prado 2018, ch. 12).
+"""Combinatorially purged cross-validation, adapted (Lopez de Prado 2018, ch. 12).
 
-The train+validation date range is cut into ``n_blocks`` contiguous blocks;
-every combination of ``n_test`` blocks forms one path's test set. Around each
-test block, ``purge_days`` are removed from the train side of the boundary and
-``embargo_days`` after the test block are excluded from training, so signals
-with lookback windows cannot leak across the boundary.
-
-The evaluator re-runs the full backtest per path with the signal computed on
-all data but scored only inside/outside the test blocks — signals here are
-functions of past data only (enforced by the engine's t+2 alignment), so
-purging guards the residual overlap from rolling lookbacks.
+The date range is cut into ``n_blocks`` contiguous blocks; every combination
+of ``n_test`` blocks forms one path's test set. This adaptation SCORES an
+already-computed self-financing return series inside each path's test blocks —
+no model is re-fit per path (signals are pure functions of past data, enforced
+by the engine's t+2 alignment), so the train/test estimation split of full
+CPCV does not apply. What remains of purging/embargo in this setting is
+boundary decontamination: ``purge_days`` observations are dropped on BOTH
+sides of every test-block edge, which removes the rolling-lookback overlap an
+embargo would otherwise handle. The output is the distribution of
+out-of-sample Sharpe across the C(n_blocks, n_test) paths.
 """
 
 from __future__ import annotations

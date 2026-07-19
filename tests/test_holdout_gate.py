@@ -24,6 +24,21 @@ def test_load_panel_refuses_post_validation_without_token(monkeypatch, tmp_path)
         qdata.load_panel(end="2026-07-01")
 
 
+def test_g1_token_grants_only_post_cutoff_slice(monkeypatch, tmp_path):
+    monkeypatch.setattr(qdata, "CACHE_DIR", tmp_path)
+    monkeypatch.setattr(gate, "CANDIDATES_DIR", tmp_path)
+    df = pd.DataFrame(
+        {"adjclose": [1.0, 2.0, 3.0, 4.0]},
+        index=pd.to_datetime(["2023-06-01", "2024-06-03", "2026-01-05", "2026-03-02"]),
+    )
+    df.to_parquet(tmp_path / "AAA.parquet")
+    token = gate.authorize_g1_generation()
+    panel = qdata.load_panel(end="2026-07-01", _holdout_token=token)
+    # the 2024..2026-01 holdout rows must NOT be visible through a G1 token
+    assert panel.index.min() >= pd.Timestamp("2026-02-01")
+    assert len(panel) == 1
+
+
 def test_gate_refuses_unregistered(monkeypatch, tmp_path):
     monkeypatch.setattr(gate, "REGISTRY_PATH", tmp_path / "registry.json")
     (tmp_path / "registry.json").write_text(json.dumps({"C001": {"spec_sha256": "ab"}}))
@@ -58,12 +73,15 @@ def test_gate_single_shot(monkeypatch, tmp_path):
         json.dumps({"C001": {"spec_sha256": gate.spec_sha256(spec_dir / "spec.md")}})
     )
     token = gate.authorize("C001")
-    assert token
+    assert gate.verify_token(token) == "holdout:C001"
     gate.record_results("C001", {"sr": 0.1})
     with pytest.raises(RuntimeError, match="already consumed"):
         gate.authorize("C001")
     with pytest.raises(RuntimeError, match="immutable"):
         gate.record_results("C001", {"sr": 0.2})
+    # the issued token must be revoked once the shot is consumed
+    with pytest.raises(RuntimeError, match="token"):
+        gate.verify_token(token)
 
 
 def test_gate_requires_committed_registry(monkeypatch, tmp_path):

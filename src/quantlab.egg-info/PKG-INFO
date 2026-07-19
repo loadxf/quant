@@ -1,5 +1,0 @@
-Metadata-Version: 2.4
-Name: quantlab
-Version: 0.1.0
-Summary: Empirical harness for the LLM-novelty trading-edge experiment
-Requires-Python: >=3.11

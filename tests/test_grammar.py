@@ -4,6 +4,7 @@ import pandas as pd
 from quantlab.grammar import (
     MAX_DEPTH,
     MAX_NODES,
+    TERMINALS,
     build_terminals,
     count_nodes,
     crossover,
@@ -64,7 +65,9 @@ def test_mutation_crossover_respect_bounds():
         for e in (m, c):
             assert depth(e) <= MAX_DEPTH
             assert count_nodes(e) <= MAX_NODES
-            assert not isinstance(c, str) or c in ("",) or True
+            # crossover/mutation must return a well-formed expression: either a
+            # terminal string from the grammar or an operator tuple
+            assert isinstance(e, tuple) or e in TERMINALS
 
 
 def test_no_future_leak_in_operators():

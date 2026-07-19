@@ -104,7 +104,9 @@ def run_backtest(
     raw_weights = quantile_weights(signal, quantile=quantile, min_names=min_names)
     if holding_days > 1:
         raw_weights = raw_weights.rolling(holding_days, min_periods=1).mean()
-    held = raw_weights.shift(2)
+    # fillna(0): the book is flat before the first formed position, so the
+    # first live day's entry is charged full turnover (NaN diffs would charge 0).
+    held = raw_weights.shift(2).fillna(0.0)
 
     gross = (held * returns).sum(axis=1)
     turnover = held.diff().abs().sum(axis=1)

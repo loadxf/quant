@@ -52,6 +52,15 @@ def evaluate_holdout(candidate_id: str) -> dict:
     holdout_net = net[net.index >= pd.Timestamp(HOLDOUT_START)]
     pooled_net = net  # train + validation + holdout, same engine and params
 
+    if len(holdout_net) == 0:
+        out = {
+            "candidate_id": candidate_id,
+            "error": "no live holdout returns (signal produced no positions in holdout window)",
+            "gate3": {"pass": False},
+        }
+        record_results(candidate_id, out)
+        return out
+
     n_trials, var_sr = ledger_trial_stats()
     dsr = deflated_sharpe_ratio(holdout_net, n_trials, var_sr)
 

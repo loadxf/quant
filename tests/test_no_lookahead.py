@@ -76,6 +76,20 @@ def test_costs_charged_on_turnover():
     assert paid.returns_net.mean() < free.returns_gross.mean()
 
 
+def test_first_day_entry_charges_turnover():
+    """Entering the book from flat must be charged full turnover, not zero."""
+    prices = make_prices(n_days=60)
+    rng = np.random.default_rng(8)
+    signal = pd.DataFrame(
+        rng.normal(size=prices.shape), index=prices.index, columns=prices.columns
+    )
+    result = run_backtest(signal, prices, "test_entry", "unit", cost_bps=10.0, ledger=False)
+    first_live = result.turnover.index[0]
+    gross_book = result.weights.loc[first_live].abs().sum()
+    assert gross_book > 0
+    assert result.turnover.loc[first_live] == pytest.approx(gross_book)
+
+
 def test_ledger_row_written(tmp_path, monkeypatch):
     import quantlab.backtest as bt
 

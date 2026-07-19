@@ -5,3 +5,4 @@ data/cache/*.parquet
 data/cache/*.json
 report/figures/*.pdf
 .ipynb_checkpoints/
+src/quantlab.egg-info/

@@ -125,10 +125,11 @@ def load_panel(
     if field not in FIELDS:
         raise ValueError(f"field must be one of {FIELDS}")
     end_ts = pd.Timestamp(end) if end is not None else pd.Timestamp(VALIDATION_END)
+    token_scope = None
     if end_ts > pd.Timestamp(VALIDATION_END):
         from .holdout_gate import verify_token
 
-        verify_token(_holdout_token)
+        token_scope = verify_token(_holdout_token)
     if tickers is None:
         tickers = sorted(p.stem for p in CACHE_DIR.glob("*.parquet"))
     cols = {}
@@ -139,6 +140,12 @@ def load_panel(
         cols[ticker] = pd.read_parquet(path, columns=[field])[field]
     panel = pd.DataFrame(cols)
     panel = panel.loc[panel.index <= end_ts]
+    if token_scope == "g1_generation":
+        # G1 tokens grant ONLY the post-cutoff generation slice (deviation D1),
+        # never the 2024..2026-01 holdout window.
+        from . import POST_CUTOFF_START
+
+        panel = panel.loc[panel.index >= pd.Timestamp(POST_CUTOFF_START)]
     panel.index.name = "date"
     return panel
 

@@ -21,7 +21,7 @@ from pathlib import Path
 from . import CANDIDATES_DIR, REGISTRY_PATH, REPO_ROOT
 
 _HOLDOUT_SECRET = "quantlab-holdout-gate-v1"
-_ISSUED: set[str] = set()
+_ISSUED: dict[str, str] = {}  # token -> scope: "holdout:<candidate_id>" | "g1_generation"
 
 
 def spec_sha256(spec_path: Path) -> str:
@@ -71,16 +71,20 @@ def authorize(candidate_id: str) -> str:
     if results_path.exists():
         raise RuntimeError(f"{candidate_id} already consumed its holdout shot — refusing re-run")
     token = hashlib.sha256(f"{_HOLDOUT_SECRET}:{candidate_id}:{expected}".encode()).hexdigest()
-    _ISSUED.add(token)
+    _ISSUED[token] = f"holdout:{candidate_id}"
     return token
 
 
-def verify_token(token: str | None) -> None:
+def verify_token(token: str | None) -> str:
+    """Validate a token and return its scope. Tokens are revoked once their
+    candidate's holdout result is recorded, so a stale token cannot reopen
+    the holdout after the single shot is consumed."""
     if token is None or token not in _ISSUED:
         raise RuntimeError(
-            "post-validation data requested without a holdout token — "
+            "post-validation data requested without a valid holdout token — "
             "use holdout_gate.authorize(candidate_id) (requires committed registration)"
         )
+    return _ISSUED[token]
 
 
 def authorize_g1_generation() -> str:
@@ -103,7 +107,7 @@ def authorize_g1_generation() -> str:
     CANDIDATES_DIR.mkdir(parents=True, exist_ok=True)
     log_path.write_text(json.dumps(log, indent=1))
     token = hashlib.sha256(f"{_HOLDOUT_SECRET}:g1_generation".encode()).hexdigest()
-    _ISSUED.add(token)
+    _ISSUED[token] = "g1_generation"
     return token
 
 
@@ -114,4 +118,8 @@ def record_results(candidate_id: str, results: dict) -> Path:
         raise RuntimeError(f"{candidate_id} holdout results already recorded — immutable")
     results_path.parent.mkdir(parents=True, exist_ok=True)
     results_path.write_text(json.dumps(results, indent=1, sort_keys=True))
+    # Revoke every token for this candidate: the single shot is consumed.
+    for token, scope in list(_ISSUED.items()):
+        if scope == f"holdout:{candidate_id}":
+            del _ISSUED[token]
     return results_path
