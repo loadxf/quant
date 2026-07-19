@@ -252,8 +252,13 @@ def _reality_context(rc: Any) -> dict:
         )
     regime_rows = []
     regime_note = None
+    market_rows = []
     if getattr(rc, "regime", None) is not None and rc.regime.tested:
         rg = rc.regime
+        if rg.market:
+            market_rows = [
+                (m.regime, str(m.n_days), money(m.net), money(m.day_expectancy)) for m in rg.market
+            ]
         regime_rows = [
             (
                 r.regime,
@@ -299,6 +304,7 @@ def _reality_context(rc: Any) -> dict:
         "voltarget_note": voltarget_note,
         "regime_rows": regime_rows,
         "regime_note": regime_note,
+        "market_rows": market_rows,
         "sampling_rows": sampling_rows,
         "sampling_note": sampling_note,
         "warnings": rc.warnings,

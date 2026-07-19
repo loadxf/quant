@@ -50,7 +50,7 @@ def register_report_commands(app: typer.Typer) -> None:
         metrics = compute_metrics(log, starting_equity=equity)
         verdict = compute_scorecard(log, metrics)
         if as_json:
-            typer.echo(json.dumps(combined_json(metrics, verdict), indent=2, default=str))
+            typer.echo(json.dumps(combined_json(metrics, verdict, log=log), indent=2, default=str))
         else:
             _render_verdict(verdict)
         if html is not None:
@@ -78,11 +78,27 @@ def register_report_commands(app: typer.Typer) -> None:
             100, "--outer", help="Outer resamples for the sampling band (0 to skip)."
         ),
         inner_paths: int = typer.Option(500, "--inner-paths", help="MC paths per outer resample."),
+        extra_monthly: float = typer.Option(
+            0.0, "--extra-monthly", help="Recurring $/mo overhead (data feed, platform) in the EV."
+        ),
+        per_payout_fee: float = typer.Option(
+            0.0, "--per-payout-fee", help="Processing cost deducted from each payout."
+        ),
+        ohlcv: Path | None = typer.Option(
+            None, "--ohlcv", help="Market bars CSV — adds the trend x vol market-regime table."
+        ),
         json_out: Path | None = typer.Option(None, "--json"),
     ) -> None:
         """The full experience: metrics + verdict + prop Monte Carlo + reality check -> HTML."""
+        from quantlab.prop.config import with_fee_overrides
+
         log = read_trade_log(trades)
-        firm = load_firm(firm_name)
+        firm = with_fee_overrides(load_firm(firm_name), extra_monthly, per_payout_fee)
+        bars = None
+        if ohlcv is not None:
+            from quantlab.ingest.ohlcv import load_ohlcv
+
+            bars, _ = load_ohlcv(ohlcv)
         metrics = compute_metrics(
             log, starting_equity=equity if equity is not None else firm.account_size
         )
@@ -97,6 +113,7 @@ def register_report_commands(app: typer.Typer) -> None:
                 baseline_mc=mc,
                 outer=outer,
                 inner_paths=inner_paths,
+                ohlcv=bars,
             )
             if reality
             else None
@@ -129,6 +146,10 @@ def register_report_commands(app: typer.Typer) -> None:
         console.print(f"\n[bold green]HTML report written to {output}[/bold green]")
         if json_out is not None:
             json_out.write_text(
-                json.dumps(combined_json(metrics, verdict, mc, reality=rc), indent=2, default=str)
+                json.dumps(
+                    combined_json(metrics, verdict, mc, reality=rc, log=log),
+                    indent=2,
+                    default=str,
+                )
             )
             console.print(f"JSON summary written to {json_out}")

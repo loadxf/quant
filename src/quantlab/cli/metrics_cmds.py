@@ -80,22 +80,14 @@ def register_metrics_commands(app: typer.Typer) -> None:
         as_json: bool = typer.Option(False, "--json", help="Emit JSON instead of a table."),
     ) -> None:
         """Compute standard strategy statistics from a canonical trade log."""
-        from quantlab.metrics.costs import gross_pnl_warning
+        from quantlab.metrics.costs import log_caveats
 
         log = read_trade_log(trades)
         result = compute_metrics(log, starting_equity=equity)
         # Same caveats on every surface: a JSON consumer must see the
         # fidelity/gross-PnL warnings the table prints, or the honesty
         # layer silently disappears in pipelines.
-        warnings: list[str] = []
-        if not log.has_excursions:
-            warnings.append(
-                "log has no MAE/MFE columns — intraday-sensitive prop-firm "
-                "checks will run at trade-close fidelity."
-            )
-        gross = gross_pnl_warning(log)
-        if gross:
-            warnings.append(gross)
+        warnings = log_caveats(log)
         if as_json:
             from quantlab.report.jsonout import sanitize
 

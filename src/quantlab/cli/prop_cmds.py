@@ -295,7 +295,12 @@ def frontier_cmd(
     render_frontier(fr, console)
     payload = fr.to_json_dict()
     if accounts is not None:
-        base = run_monte_carlo(log, firm, cfg)
+        # Reuse the frontier's own x1.0 run when the grid contains it;
+        # only rerun when the user's --scales excluded 1.0.
+        base = fr.base_report
+        if base is None:
+            base = run_monte_carlo(log, firm, cfg)
+            console.print("[dim]multi-account table anchored at x1.0 (not in --scales)[/dim]")
         ma = compute_multiaccount(base, k_list=_parse_int_list(accounts, "--accounts"))
         render_multiaccount(ma, console)
         payload["multi_account"] = ma.to_json_dict()

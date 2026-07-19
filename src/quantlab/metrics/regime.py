@@ -198,12 +198,14 @@ def compute_regimes(
             )
         )
 
+    # ONE definition of "worst regime" (lowest per-day expectancy) shared
+    # by the dependence flag AND the persistence stress, so the overfit
+    # flag never points the reader at a stress row for a different regime.
     worst = min(result.regimes, key=lambda r: r.day_expectancy)
     result.worst_regime = worst.regime
     total_net = float(day_pnl[classified].sum())
     if total_net > 0:
-        worst_net = min(r.net for r in result.regimes)
-        result.regime_dependent = worst_net < 0 and -worst_net >= 0.2 * total_net
+        result.regime_dependent = worst.net < 0 and -worst.net >= 0.2 * total_net
 
     if firm is not None:
         result.stress, stress_warnings = _worst_regime_stress(log, firm, mc_cfg, days, codes, worst)

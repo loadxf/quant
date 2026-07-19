@@ -38,13 +38,19 @@ def combined_json(
     verdict: Verdict | None = None,
     mc: MonteCarloReport | None = None,
     reality: Any | None = None,
+    log: Any | None = None,
 ) -> dict[str, Any]:
+    # The metrics block carries its own version marker AND the same
+    # caveats list as the standalone `quant metrics --json`, so consumers
+    # of the embedded and standalone forms parse one identical shape.
+    metrics_block: dict[str, Any] = {"schema_version": 1, **dataclasses.asdict(metrics)}
+    if log is not None:
+        from quantlab.metrics.costs import log_caveats
+
+        metrics_block["warnings"] = log_caveats(log)
     payload: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
-        # The metrics block carries its own version marker so consumers of
-        # the embedded and standalone (`quant metrics --json`) forms parse
-        # one identical shape.
-        "metrics": {"schema_version": 1, **dataclasses.asdict(metrics)},
+        "metrics": metrics_block,
     }
     if verdict is not None:
         payload["verdict"] = verdict.to_json_dict()

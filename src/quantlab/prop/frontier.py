@@ -61,9 +61,19 @@ class ScaleFrontier:
     best_scale_within_ruin: float | None  # largest grid scale with ruin <= cap
     assumption: str = SAME_FILL_CAVEAT
     warnings: list[str] = field(default_factory=list)
+    # The x1.0 grid run, kept so a follow-up multi-account table reuses it
+    # instead of re-simulating the identical config. Never serialized.
+    base_report: MonteCarloReport | None = None
 
     def to_json_dict(self) -> dict:
-        return dataclasses.asdict(self)
+        return {
+            "points": [dataclasses.asdict(p) for p in self.points],
+            "best_ev_scale": self.best_ev_scale,
+            "ruin_cap": self.ruin_cap,
+            "best_scale_within_ruin": self.best_scale_within_ruin,
+            "assumption": self.assumption,
+            "warnings": self.warnings,
+        }
 
 
 def compute_scale_frontier(
@@ -81,6 +91,7 @@ def compute_scale_frontier(
         raise QuantLabError(f"--scales must be positive (got {list(scales)})")
     cfg = mc_cfg or MCConfig()
     points = []
+    base_report = None
     for s in sorted(scales):
         run = run_monte_carlo(
             log,
@@ -89,6 +100,8 @@ def compute_scale_frontier(
             # scales would silently multiply with it.
             dataclasses.replace(cfg, scale=s, challenge_scale=None, funded_scale=None),
         )
+        if s == 1.0:
+            base_report = run
         eco = run.economics
         points.append(
             FrontierPoint(
@@ -123,6 +136,7 @@ def compute_scale_frontier(
         ruin_cap=ruin_cap,
         best_scale_within_ruin=best_within,
         warnings=warnings,
+        base_report=base_report,
     )
 
 

@@ -81,6 +81,22 @@ def gross_pnl_warning(log: TradeLog) -> str | None:
     )
 
 
+def log_caveats(log: TradeLog) -> list[str]:
+    """The metrics-surface caveats, ONE implementation for every output
+    (`quant metrics` table + JSON, combined_json) so the honesty layer can
+    never disappear from one surface while showing on another."""
+    caveats: list[str] = []
+    if not log.has_excursions:
+        caveats.append(
+            "log has no MAE/MFE columns — intraday-sensitive prop-firm "
+            "checks will run at trade-close fidelity."
+        )
+    gross = gross_pnl_warning(log)
+    if gross:
+        caveats.append(gross)
+    return caveats
+
+
 @dataclass(frozen=True, slots=True)
 class CostPoint:
     label: str

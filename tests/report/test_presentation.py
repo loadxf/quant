@@ -237,3 +237,122 @@ class TestCliEndToEnd:
         )
         assert result.exit_code == 0, result.output
         assert "Multi-account" in result.output
+
+
+class TestReviewLoopFixes:
+    """Regressions from the M10 adversarial review (cross-file pass)."""
+
+    def test_combined_json_metrics_warnings_parity(self, bundle) -> None:
+        # Was: the embedded metrics block lacked the warnings key the
+        # standalone `quant metrics --json` carries.
+        payload = combined_json(
+            bundle["metrics"], bundle["verdict"], bundle["mc"], log=bundle["log"]
+        )
+        from quantlab.metrics.costs import log_caveats
+
+        assert payload["metrics"]["warnings"] == log_caveats(bundle["log"])
+
+    def test_report_accepts_overhead_and_ohlcv_flags(self, tmp_path) -> None:
+        # Was: quant report silently reverted to zero overhead while
+        # simulate/stress honored the knobs — the deliverable disagreed
+        # with the CLI numbers.
+        import pandas as pd
+        from typer.testing import CliRunner
+
+        from quantlab.cli.app import app
+
+        parquet = tmp_path / "t.parquet"
+        write_trade_log(random_log(n_days=60, mean=40.0, std=300.0, seed=7), parquet)
+        dates = pd.bdate_range("2026-01-05", periods=60, tz="UTC")
+        bars = tmp_path / "bars.csv"
+        pd.DataFrame(
+            {
+                "datetime": dates.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "open": 5000.0,
+                "high": 5015.0,
+                "low": 4990.0,
+                "close": 5005.0,
+                "volume": 1,
+            }
+        ).to_csv(bars, index=False)
+        json_out = tmp_path / "r.json"
+        result = CliRunner().invoke(
+            app,
+            [
+                "report",
+                str(parquet),
+                "--firm",
+                "topstep_50k",
+                "--paths",
+                "100",
+                "--outer",
+                "0",
+                "--extra-monthly",
+                "100",
+                "--per-payout-fee",
+                "30",
+                "--ohlcv",
+                str(bars),
+                "-o",
+                str(tmp_path / "r.html"),
+                "--json",
+                str(json_out),
+            ],
+        )
+        assert result.exit_code == 0, result.output
+        payload = json.loads(json_out.read_text())
+        overhead = payload["prop_simulation"]["economics"]["overhead"]
+        assert overhead["extra_monthly"] == 100.0 and overhead["per_payout"] == 30.0
+
+    def test_market_regimes_render_in_html(self, tmp_path) -> None:
+        # Was: the --ohlcv market table existed on terminal + JSON but had
+        # no HTML rendering path at all.
+        import pandas as pd
+
+        from quantlab.report.html import _reality_context
+
+        log = random_log(n_days=60, mean=40.0, std=300.0, seed=7)
+        dates = pd.bdate_range("2026-01-05", periods=60, tz="UTC")
+        bars = tmp_path / "bars.csv"
+        pd.DataFrame(
+            {
+                "datetime": dates.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "open": 5000.0,
+                "high": 5015.0,
+                "low": 4990.0,
+                "close": 5005.0,
+                "volume": 1,
+            }
+        ).to_csv(bars, index=False)
+        from quantlab.ingest.ohlcv import load_ohlcv
+
+        frame, _ = load_ohlcv(bars)
+        rc = compute_reality_check(log, mc_paths=50, seed=1, outer=0, ohlcv=frame)
+        assert rc.regime is not None and rc.regime.market
+        ctx = _reality_context(rc)
+        assert ctx["market_rows"]
+
+    def test_frontier_reuses_its_base_report(self) -> None:
+        # Was: --accounts re-simulated the identical x1.0 config the
+        # frontier had just run and discarded.
+        from quantlab.prop.frontier import compute_scale_frontier
+
+        log = random_log(n_days=50, mean=40.0, std=250.0, seed=2)
+        firm = load_firm("topstep_50k")
+        fr = compute_scale_frontier(log, firm, MCConfig(n_paths=80, seed=1), scales=(0.5, 1.0))
+        assert fr.base_report is not None
+        point = next(p for p in fr.points if p.scale == 1.0)
+        assert fr.base_report.economics.pass_prob == point.pass_prob
+        assert "base_report" not in fr.to_json_dict()
+
+    def test_flag_names_same_regime_as_stress(self) -> None:
+        # Was: the flag named the net-worst regime while the stress row
+        # conditioned on the day-expectancy-worst regime.
+        from quantlab.metrics.overfit import _regime_dependence
+        from quantlab.metrics.regime import compute_regimes
+        from tests.metrics.test_regime import _two_regime_log
+
+        rg = compute_regimes(_two_regime_log())
+        flag = _regime_dependence(rg)
+        assert flag.triggered
+        assert rg.worst_regime is not None and rg.worst_regime in flag.explanation

@@ -187,6 +187,15 @@
     {% endfor %}
   </table>
   {% if reality.regime_note %}<div class="meta">{{ reality.regime_note }}</div>{% endif %}
+  {% if reality.market_rows %}
+  <h3>Market regimes (descriptive, from --ohlcv)</h3>
+  <table>
+    <tr><th>Regime</th><th class="num">Days</th><th class="num">Net</th><th class="num">Day exp.</th></tr>
+    {% for name, days, net, exp in reality.market_rows %}
+    <tr><td>{{ name }}</td><td class="num">{{ days }}</td><td class="num">{{ net }}</td><td class="num">{{ exp }}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
   {% endif %}
   {% if reality.sampling_rows %}
   <h3>Source-log sampling uncertainty</h3>
