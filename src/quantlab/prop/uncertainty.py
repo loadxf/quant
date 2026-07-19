@@ -1,0 +1,151 @@
+"""Source-log sampling uncertainty via an outer (nested) bootstrap.
+
+The headline pass-probability's Wilson CI measures SIMULATION noise only
+— how many Monte Carlo paths were run — and shrinks with `--paths`
+regardless of how little data the paths were resampled from. A 60-day
+log and a 250-day log can both report ±0.5pp, which is dishonest: the
+dominant uncertainty is that the source log itself is one sample of the
+strategy's process.
+
+The outer bootstrap makes that visible (nested/double bootstrap; see
+Chang & Hall 2015 and Efron & Tibshirani 1993 §12): resample the SOURCE
+DAYS with the same stationary block scheme the engine uses, rerun a
+smaller inner Monte Carlo on each resampled profile, and report the
+spread of the resulting pass probabilities and EVs. The band answers
+"had my log come out slightly differently, what would this tool have
+told me?" — the question the Wilson CI cannot.
+
+Convention: outer resamples have the SAME length as the source log
+(uncertainty at the observed sample size), and each inner run re-derives
+its own Politis-White block length and auto vol-target from the
+resampled profile, exactly as a fresh log would.
+"""
+
+from __future__ import annotations
+
+import dataclasses
+from dataclasses import dataclass, field
+
+import numpy as np
+
+from quantlab.prop.bootstrap import BootstrapName, make_bootstrapper, optimal_block_length
+from quantlab.prop.config import FirmConfig
+from quantlab.prop.dayprofile import DayProfile
+from quantlab.prop.montecarlo import (
+    MIN_DAYS_FOR_BLOCKS,
+    MCConfig,
+    _run_from_profile,
+    observed_sessions_per_week,
+)
+from quantlab.schema.trade import TradeLog
+
+QUANTILES = (5, 25, 50, 75, 95)
+WIDE_BAND_PP = 20.0  # p5-p95 pass-prob spread (in points) that triggers the warning
+
+
+@dataclass(frozen=True, slots=True)
+class SamplingUncertainty:
+    n_outer: int
+    inner_paths: int
+    source_days: int
+    outer_bootstrap: str
+    outer_block_len: int | None
+    pass_prob_quantiles: dict[str, float]
+    expected_net_quantiles: dict[str, float]
+    band_width_pp: float  # p95 - p5 of pass prob, in percentage points
+    warnings: list[str] = field(default_factory=list)
+
+    def to_json_dict(self) -> dict:
+        return dataclasses.asdict(self)
+
+
+def _resampled(profile: DayProfile, idx: np.ndarray) -> DayProfile:
+    """Row-gathered copy of the profile along the day axis."""
+    return DayProfile(
+        low_rel=profile.low_rel[idx],
+        high_rel=profile.high_rel[idx],
+        close_rel=profile.close_rel[idx],
+        n_trades=profile.n_trades[idx],
+        day_pnl=profile.day_pnl[idx],
+        has_excursions=profile.has_excursions,
+    )
+
+
+def source_uncertainty(
+    log: TradeLog,
+    firm: FirmConfig,
+    mc_cfg: MCConfig | None = None,
+    n_outer: int = 100,
+    inner_paths: int = 500,
+) -> SamplingUncertainty:
+    """Distribution of (pass_prob, expected_net) across outer block-bootstrap
+    resamples of the source days. `mc_cfg` carries the headline run's scale,
+    horizons, sizing, and seed; its n_paths is replaced by `inner_paths`."""
+    cfg = mc_cfg or MCConfig()
+    boundary = firm.day_boundary.to_boundary()
+    days = log.daily_groups(boundary)
+    sessions_per_week = observed_sessions_per_week(log, boundary, days=days)
+    profile = DayProfile.from_log(log, boundary, days=days)
+    n_days = profile.n_days
+
+    warnings: list[str] = []
+    outer_name: BootstrapName
+    if n_days >= MIN_DAYS_FOR_BLOCKS:
+        outer_name = "stationary"
+        outer_block = optimal_block_length(profile.day_pnl)
+    else:
+        outer_name = "iid_day"
+        outer_block = None
+        warnings.append(
+            f"only {n_days} source days (<{MIN_DAYS_FOR_BLOCKS}): outer resampling "
+            "fell back to iid days — the band itself is low-confidence"
+        )
+    outer_rng = np.random.default_rng(cfg.seed)
+    outer_idx = make_bootstrapper(outer_name, outer_block).sample(
+        n_days, n_outer, n_days, outer_rng
+    )
+
+    inner_cfg = dataclasses.replace(cfg, n_paths=inner_paths)
+    pass_probs = np.empty(n_outer)
+    nets = np.empty(n_outer)
+    for b in range(n_outer):
+        rp = _resampled(profile, outer_idx[b])
+        # Each inner run treats its resample as a fresh log: own block
+        # length, own auto vol-target (via _run_from_profile), own seed
+        # stream (deterministic in (cfg.seed, b)).
+        inner_block = optimal_block_length(rp.day_pnl) if outer_name == "stationary" else None
+        report = _run_from_profile(
+            rp,
+            firm,
+            inner_cfg,
+            rng=np.random.default_rng((cfg.seed if cfg.seed is not None else 0, b)),
+            sampler=make_bootstrapper(outer_name, inner_block),
+            bootstrap_name=outer_name,
+            block_len_used=inner_block,
+            sessions_per_week=sessions_per_week,
+            source_trades=len(log),
+            warnings=[],
+        )
+        pass_probs[b] = report.economics.pass_prob
+        nets[b] = report.economics.expected_net
+
+    pq = {f"p{q}": float(np.percentile(pass_probs, q)) for q in QUANTILES}
+    nq = {f"p{q}": float(np.percentile(nets, q)) for q in QUANTILES}
+    band = (pq["p95"] - pq["p5"]) * 100.0
+    if band > WIDE_BAND_PP:
+        warnings.append(
+            f"pass probability is deeply uncertain from {n_days} source days alone: "
+            f"resampling the log moves it {pq['p5']:.0%}-{pq['p95']:.0%} — collect "
+            "more history before trusting the point estimate"
+        )
+    return SamplingUncertainty(
+        n_outer=n_outer,
+        inner_paths=inner_paths,
+        source_days=n_days,
+        outer_bootstrap=outer_name,
+        outer_block_len=outer_block,
+        pass_prob_quantiles=pq,
+        expected_net_quantiles=nq,
+        band_width_pp=band,
+        warnings=warnings,
+    )

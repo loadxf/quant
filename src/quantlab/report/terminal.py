@@ -269,5 +269,23 @@ def render_reality(rc: Any, console: Console) -> None:
         console.print(vt_table)
         console.print(f"[dim]{vt.assumption}[/dim]")
 
+    if getattr(rc, "sampling", None) is not None:
+        su = rc.sampling
+        su_table = Table(
+            title=f"Source-log sampling uncertainty "
+            f"({su.n_outer} outer resamples x {su.inner_paths} paths)"
+        )
+        su_table.add_column("Quantile")
+        su_table.add_column("Pass prob", justify="right")
+        su_table.add_column("Expected net", justify="right")
+        for q in ("p5", "p25", "p50", "p75", "p95"):
+            su_table.add_row(q, pct(su.pass_prob_quantiles[q]), money(su.expected_net_quantiles[q]))
+        console.print(su_table)
+        console.print(
+            "[dim]the headline Wilson CI measures simulation noise only; this band "
+            f"is what {su.source_days} source days can actually pin down — "
+            "resampling the LOG, not just the paths[/dim]"
+        )
+
     for warning in rc.warnings:
         console.print(Panel(warning, style="yellow", title="warning"))

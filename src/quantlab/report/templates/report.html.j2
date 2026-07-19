@@ -178,6 +178,16 @@
   </table>
   <div class="meta">{{ reality.voltarget_note }}</div>
   {% endif %}
+  {% if reality.sampling_rows %}
+  <h3>Source-log sampling uncertainty</h3>
+  <table>
+    <tr><th>Quantile</th><th class="num">Pass prob</th><th class="num">Expected net</th></tr>
+    {% for q, p, net in reality.sampling_rows %}
+    <tr><td>{{ q }}</td><td class="num">{{ p }}</td><td class="num">{{ net }}</td></tr>
+    {% endfor %}
+  </table>
+  <div class="meta">{{ reality.sampling_note }}</div>
+  {% endif %}
   {% if reality.haircut_rows %}
   <h3>Literature-anchored decay scenarios</h3>
   <table>

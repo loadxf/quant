@@ -52,6 +52,12 @@ def register_stress_commands(app: typer.Typer) -> None:
             help="ISO date where out-of-sample begins (e.g. strategy went live) — "
             "adds the walk-forward-efficiency row.",
         ),
+        outer: int = typer.Option(
+            100,
+            "--outer",
+            help="Outer bootstrap resamples for the source-log sampling band (0 to skip).",
+        ),
+        inner_paths: int = typer.Option(500, "--inner-paths", help="MC paths per outer resample."),
         extra_monthly: float = typer.Option(
             0.0, "--extra-monthly", help="Recurring $/mo overhead (data feed, platform) in the EV."
         ),
@@ -95,6 +101,8 @@ def register_stress_commands(app: typer.Typer) -> None:
             seed=seed,
             ruin_capital=ruin_capital,
             oos_start=oos_dt,
+            outer=outer,
+            inner_paths=inner_paths,
         )
         if json_out:
             typer.echo(json.dumps(sanitize(rc.to_json_dict()), indent=2, default=str))

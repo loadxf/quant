@@ -27,6 +27,7 @@ from quantlab.metrics.drawdown_mc import DrawdownMC, permutation_drawdown
 from quantlab.metrics.volforecast import ClusteringTests, compute_clustering
 from quantlab.prop.config import FirmConfig
 from quantlab.prop.montecarlo import MCConfig
+from quantlab.prop.uncertainty import SamplingUncertainty, source_uncertainty
 from quantlab.prop.voltarget import VolTargetCounterfactual, compute_voltarget
 from quantlab.schema.trade import FUTURES_DAY, TradeLog
 
@@ -40,11 +41,12 @@ class RealityCheck:
     haircuts: list[HaircutScenario]
     clustering: ClusteringTests | None = None
     voltarget: VolTargetCounterfactual | None = None
+    sampling: SamplingUncertainty | None = None
     warnings: list[str] = field(default_factory=list)
 
     def to_json_dict(self) -> dict:
         return {
-            "schema_version": 2,  # v2: adds clustering + voltarget (M9)
+            "schema_version": 3,  # v3: adds sampling_uncertainty (M10)
             "costs": self.costs.to_json_dict(),
             "decay": dataclasses.asdict(self.decay),
             "deflated": dataclasses.asdict(self.deflated),
@@ -52,6 +54,7 @@ class RealityCheck:
             "haircuts": [dataclasses.asdict(h) for h in self.haircuts],
             "clustering": dataclasses.asdict(self.clustering) if self.clustering else None,
             "voltarget": self.voltarget.to_json_dict() if self.voltarget else None,
+            "sampling_uncertainty": self.sampling.to_json_dict() if self.sampling else None,
             "warnings": self.warnings,
         }
 
@@ -70,6 +73,8 @@ def compute_reality_check(
     ruin_capital: float | None = None,
     oos_start: dt.datetime | None = None,
     baseline_mc=None,
+    outer: int = 100,
+    inner_paths: int = 500,
 ) -> RealityCheck:
     if len(log) < 3:
         raise QuantLabError(f"reality check needs >= 3 trades (got {len(log)})")
@@ -111,9 +116,20 @@ def compute_reality_check(
         else None
     )
 
+    # Source-log sampling band: what would this tool have said had the log
+    # come out slightly differently? Firm-dependent (it reruns the MC), and
+    # skippable with --outer 0.
+    sampling = (
+        source_uncertainty(log, firm, mc_cfg=mc_cfg, n_outer=outer, inner_paths=inner_paths)
+        if firm is not None and outer > 0
+        else None
+    )
+
     warnings = list(costs.warnings)
     if voltarget is not None:
         warnings.extend(voltarget.warnings)
+    if sampling is not None:
+        warnings.extend(sampling.warnings)
     if voltarget is None:
         warnings.append(f"vol-target counterfactual skipped: {len(day_groups)} trading days < 60")
     gross = gross_pnl_warning(log)
@@ -138,5 +154,6 @@ def compute_reality_check(
         haircuts=haircuts,
         clustering=clustering,
         voltarget=voltarget,
+        sampling=sampling,
         warnings=warnings,
     )

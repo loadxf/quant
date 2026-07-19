@@ -250,6 +250,20 @@ def _reality_context(rc: Any) -> dict:
             f"lambda={vt.lam:g}, clip [{vt.clip_lo:g}, {vt.clip_hi:g}], "
             f"avg weight {vt.avg_weight:.2f} — {vt.assumption}"
         )
+    sampling_rows = []
+    sampling_note = None
+    if getattr(rc, "sampling", None) is not None:
+        su = rc.sampling
+        sampling_rows = [
+            (q, pct(su.pass_prob_quantiles[q]), money(su.expected_net_quantiles[q]))
+            for q in ("p5", "p25", "p50", "p75", "p95")
+        ]
+        sampling_note = (
+            f"{su.n_outer} outer block-bootstrap resamples of the {su.source_days} "
+            f"source days x {su.inner_paths} MC paths each. The headline Wilson CI "
+            "measures simulation noise only; this band is the source-log sampling "
+            "uncertainty — what your history can actually pin down."
+        )
     return {
         "cost_rows": cost_rows,
         "survives": survives,
@@ -260,6 +274,8 @@ def _reality_context(rc: Any) -> dict:
         "clustering_rows": clustering_rows,
         "voltarget_rows": voltarget_rows,
         "voltarget_note": voltarget_note,
+        "sampling_rows": sampling_rows,
+        "sampling_note": sampling_note,
         "warnings": rc.warnings,
     }
 

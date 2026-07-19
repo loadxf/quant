@@ -590,6 +590,36 @@ def run_monte_carlo(
             "are OPTIMISTIC"
         )
 
+    return _run_from_profile(
+        profile,
+        firm,
+        cfg,
+        rng=rng,
+        sampler=sampler,
+        bootstrap_name=bootstrap_name,
+        block_len_used=block_len_used,
+        sessions_per_week=sessions_per_week,
+        source_trades=len(log),
+        warnings=warnings,
+    )
+
+
+def _run_from_profile(
+    profile: DayProfile,
+    firm: FirmConfig,
+    cfg: MCConfig,
+    rng: np.random.Generator,
+    sampler,
+    bootstrap_name: str,
+    block_len_used: int | None,
+    sessions_per_week: float,
+    source_trades: int,
+    warnings: list[str],
+) -> MonteCarloReport:
+    """Simulation core once a DayProfile exists — run_monte_carlo's second
+    half, split out so the sampling-uncertainty outer bootstrap can rerun
+    the engine on row-gathered resamples of the profile without rescanning
+    the trade log."""
     challenge_scale = cfg.challenge_scale if cfg.challenge_scale is not None else cfg.scale
     funded_scale = cfg.funded_scale if cfg.funded_scale is not None else cfg.scale
     challenge_profile = profile.scaled(challenge_scale)
@@ -670,7 +700,7 @@ def run_monte_carlo(
         bootstrap_used=bootstrap_name,
         fidelity="mae_mfe" if profile.has_excursions else "trade_close",
         source_days=profile.n_days,
-        source_trades=len(log),
+        source_trades=source_trades,
         scale_challenge=challenge_scale,
         scale_funded=funded_scale,
         warnings=warnings,
