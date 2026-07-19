@@ -185,11 +185,35 @@ def _vol_clustering(tests: ClusteringTests) -> OverfitFlag:
     )
 
 
+def _regime_dependence(regime) -> OverfitFlag:
+    if regime is None or not regime.tested:
+        n = getattr(regime, "n_classified", 0)
+        return OverfitFlag(
+            "regime_dependent_edge",
+            False,
+            f"skipped — {n} classified days is too few for regime analysis"
+            if regime is not None
+            else "skipped — regime analysis not computed",
+        )
+    shares = ", ".join(f"{r.regime} {r.net:+.0f}" for r in regime.regimes)
+    if regime.regime_dependent:
+        worst = min(regime.regimes, key=lambda r: r.net)
+        return OverfitFlag(
+            "regime_dependent_edge",
+            True,
+            f"net by vol regime: {shares} — the {worst.regime} regime erases a "
+            "material share of the profit; if that state persists the strategy "
+            "bleeds (see the worst-regime stress row)",
+        )
+    return OverfitFlag("regime_dependent_edge", False, f"net by vol regime: {shares}")
+
+
 def overfit_flags(
     log: TradeLog,
     m: Metrics,
     decay: DecayPanel | None = None,
     clustering: ClusteringTests | None = None,
+    regime=None,
 ) -> list[OverfitFlag]:
     panel = decay if decay is not None else compute_decay(log)
     flags = [
@@ -211,4 +235,9 @@ def overfit_flags(
         )
         clustering = compute_clustering(day_pnl)
     flags.append(_vol_clustering(clustering))
+    if regime is None:
+        from quantlab.metrics.regime import compute_regimes
+
+        regime = compute_regimes(log)
+    flags.append(_regime_dependence(regime))
     return flags

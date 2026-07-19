@@ -178,6 +178,16 @@
   </table>
   <div class="meta">{{ reality.voltarget_note }}</div>
   {% endif %}
+  {% if reality.regime_rows %}
+  <h3>Volatility regimes</h3>
+  <table>
+    <tr><th>Regime</th><th class="num">Days</th><th class="num">Net</th><th class="num">Day exp.</th><th class="num">Win rate</th><th class="num">Persistence</th></tr>
+    {% for name, days, net, exp, wr, pers in reality.regime_rows %}
+    <tr><td>{{ name }}</td><td class="num">{{ days }}</td><td class="num">{{ net }}</td><td class="num">{{ exp }}</td><td class="num">{{ wr }}</td><td class="num">{{ pers }}</td></tr>
+    {% endfor %}
+  </table>
+  {% if reality.regime_note %}<div class="meta">{{ reality.regime_note }}</div>{% endif %}
+  {% endif %}
   {% if reality.sampling_rows %}
   <h3>Source-log sampling uncertainty</h3>
   <table>

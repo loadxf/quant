@@ -24,6 +24,7 @@ from quantlab.metrics.costs import (
 from quantlab.metrics.decay import DecayPanel, compute_decay
 from quantlab.metrics.deflate import DeflatedStats, compute_deflated
 from quantlab.metrics.drawdown_mc import DrawdownMC, permutation_drawdown
+from quantlab.metrics.regime import RegimeAnalysis, compute_regimes
 from quantlab.metrics.volforecast import ClusteringTests, compute_clustering
 from quantlab.prop.config import FirmConfig
 from quantlab.prop.montecarlo import MCConfig
@@ -42,6 +43,7 @@ class RealityCheck:
     clustering: ClusteringTests | None = None
     voltarget: VolTargetCounterfactual | None = None
     sampling: SamplingUncertainty | None = None
+    regime: RegimeAnalysis | None = None
     warnings: list[str] = field(default_factory=list)
 
     def to_json_dict(self) -> dict:
@@ -55,6 +57,7 @@ class RealityCheck:
             "clustering": dataclasses.asdict(self.clustering) if self.clustering else None,
             "voltarget": self.voltarget.to_json_dict() if self.voltarget else None,
             "sampling_uncertainty": self.sampling.to_json_dict() if self.sampling else None,
+            "regime": self.regime.to_json_dict() if self.regime else None,
             "warnings": self.warnings,
         }
 
@@ -75,6 +78,7 @@ def compute_reality_check(
     baseline_mc=None,
     outer: int = 100,
     inner_paths: int = 500,
+    ohlcv=None,
 ) -> RealityCheck:
     if len(log) < 3:
         raise QuantLabError(f"reality check needs >= 3 trades (got {len(log)})")
@@ -116,6 +120,10 @@ def compute_reality_check(
         else None
     )
 
+    regime = compute_regimes(
+        log, firm=firm, mc_cfg=mc_cfg, ohlcv=ohlcv, precomputed_days=day_groups
+    )
+
     # Source-log sampling band: what would this tool have said had the log
     # come out slightly differently? Firm-dependent (it reruns the MC), and
     # skippable with --outer 0.
@@ -130,6 +138,7 @@ def compute_reality_check(
         warnings.extend(voltarget.warnings)
     if sampling is not None:
         warnings.extend(sampling.warnings)
+    warnings.extend(regime.warnings)
     if voltarget is None:
         warnings.append(f"vol-target counterfactual skipped: {len(day_groups)} trading days < 60")
     gross = gross_pnl_warning(log)
@@ -155,5 +164,6 @@ def compute_reality_check(
         clustering=clustering,
         voltarget=voltarget,
         sampling=sampling,
+        regime=regime,
         warnings=warnings,
     )

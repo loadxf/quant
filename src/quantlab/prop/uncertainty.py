@@ -59,18 +59,6 @@ class SamplingUncertainty:
         return dataclasses.asdict(self)
 
 
-def _resampled(profile: DayProfile, idx: np.ndarray) -> DayProfile:
-    """Row-gathered copy of the profile along the day axis."""
-    return DayProfile(
-        low_rel=profile.low_rel[idx],
-        high_rel=profile.high_rel[idx],
-        close_rel=profile.close_rel[idx],
-        n_trades=profile.n_trades[idx],
-        day_pnl=profile.day_pnl[idx],
-        has_excursions=profile.has_excursions,
-    )
-
-
 def source_uncertainty(
     log: TradeLog,
     firm: FirmConfig,
@@ -109,7 +97,7 @@ def source_uncertainty(
     pass_probs = np.empty(n_outer)
     nets = np.empty(n_outer)
     for b in range(n_outer):
-        rp = _resampled(profile, outer_idx[b])
+        rp = profile.gather(outer_idx[b])
         # Each inner run treats its resample as a fresh log: own block
         # length, own auto vol-target (via _run_from_profile), own seed
         # stream (deterministic in (cfg.seed, b)).

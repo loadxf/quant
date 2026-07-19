@@ -35,7 +35,7 @@ class TestPillars:
         payload = compute_scorecard(log).to_json_dict()
         assert set(payload) == {"overall", "points", "capped_by_sample", "pillars", "flags"}
         assert set(payload["pillars"]) == {"edge", "robustness", "risk", "sample"}
-        assert len(payload["flags"]) == 9
+        assert len(payload["flags"]) == 10  # M10 adds regime_dependent_edge
 
 
 class TestRiskPillar:

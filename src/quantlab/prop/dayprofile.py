@@ -79,6 +79,18 @@ class DayProfile:
     def max_trades(self) -> int:
         return int(self.low_rel.shape[1])
 
+    def gather(self, idx: np.ndarray) -> DayProfile:
+        """Row-gathered copy along the day axis (bootstrap resamples,
+        regime-conditioned subsets)."""
+        return DayProfile(
+            low_rel=self.low_rel[idx],
+            high_rel=self.high_rel[idx],
+            close_rel=self.close_rel[idx],
+            n_trades=self.n_trades[idx],
+            day_pnl=self.day_pnl[idx],
+            has_excursions=self.has_excursions,
+        )
+
     @classmethod
     def from_log(cls, log: TradeLog, boundary: DayBoundary, days: list | None = None) -> DayProfile:
         if days is None:

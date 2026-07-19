@@ -250,6 +250,29 @@ def _reality_context(rc: Any) -> dict:
             f"lambda={vt.lam:g}, clip [{vt.clip_lo:g}, {vt.clip_hi:g}], "
             f"avg weight {vt.avg_weight:.2f} — {vt.assumption}"
         )
+    regime_rows = []
+    regime_note = None
+    if getattr(rc, "regime", None) is not None and rc.regime.tested:
+        rg = rc.regime
+        regime_rows = [
+            (
+                r.regime,
+                str(r.n_days),
+                money(r.net),
+                money(r.day_expectancy),
+                pct(r.trade_win_rate),
+                pct(r.persistence),
+            )
+            for r in rg.regimes
+        ]
+        if rg.stress is not None:
+            s = rg.stress
+            regime_note = (
+                f"worst-regime stress (if the {s['regime']} regime persisted; "
+                f"{s['n_days']} days): pass prob {pct(s['pass_prob'])}, expected net "
+                f"{money(s['expected_net'])}, funded ruin {pct(s['risk_of_ruin_funded'])} "
+                "— a stress scenario, not a forecast."
+            )
     sampling_rows = []
     sampling_note = None
     if getattr(rc, "sampling", None) is not None:
@@ -274,6 +297,8 @@ def _reality_context(rc: Any) -> dict:
         "clustering_rows": clustering_rows,
         "voltarget_rows": voltarget_rows,
         "voltarget_note": voltarget_note,
+        "regime_rows": regime_rows,
+        "regime_note": regime_note,
         "sampling_rows": sampling_rows,
         "sampling_note": sampling_note,
         "warnings": rc.warnings,

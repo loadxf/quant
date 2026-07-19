@@ -323,6 +323,44 @@ def render_reality(rc: Any, console: Console) -> None:
         console.print(vt_table)
         console.print(f"[dim]{vt.assumption}[/dim]")
 
+    if getattr(rc, "regime", None) is not None and rc.regime.tested:
+        rg = rc.regime
+        rg_table = Table(title=f"Vol regimes ({rg.method}, {rg.n_classified} classified days)")
+        rg_table.add_column("Regime")
+        rg_table.add_column("Days", justify="right")
+        rg_table.add_column("Net", justify="right")
+        rg_table.add_column("Day exp.", justify="right")
+        rg_table.add_column("Win rate", justify="right")
+        rg_table.add_column("Persistence", justify="right")
+        for r in rg.regimes:
+            rg_table.add_row(
+                r.regime,
+                str(r.n_days),
+                money(r.net),
+                money(r.day_expectancy),
+                pct(r.trade_win_rate),
+                pct(r.persistence),
+            )
+        console.print(rg_table)
+        if rg.stress is not None:
+            s = rg.stress
+            console.print(
+                f"[bold]worst-regime stress[/bold] (if the {s['regime']} regime "
+                f"persisted; {s['n_days']} days, {s['bootstrap']} bootstrap): "
+                f"pass prob {pct(s['pass_prob'])}, expected net {money(s['expected_net'])}, "
+                f"funded ruin {pct(s['risk_of_ruin_funded'])} — a STRESS scenario, "
+                "not a forecast"
+            )
+        if rg.market:
+            mk_table = Table(title="Market regimes (descriptive, from --ohlcv)")
+            mk_table.add_column("Regime")
+            mk_table.add_column("Days", justify="right")
+            mk_table.add_column("Net", justify="right")
+            mk_table.add_column("Day exp.", justify="right")
+            for mr in rg.market:
+                mk_table.add_row(mr.regime, str(mr.n_days), money(mr.net), money(mr.day_expectancy))
+            console.print(mk_table)
+
     if getattr(rc, "sampling", None) is not None:
         su = rc.sampling
         su_table = Table(

@@ -52,6 +52,12 @@ def register_stress_commands(app: typer.Typer) -> None:
             help="ISO date where out-of-sample begins (e.g. strategy went live) — "
             "adds the walk-forward-efficiency row.",
         ),
+        ohlcv: Path | None = typer.Option(
+            None,
+            "--ohlcv",
+            help="Market bars CSV (any broker export) — adds the descriptive "
+            "trend x vol market-regime table.",
+        ),
         outer: int = typer.Option(
             100,
             "--outer",
@@ -79,6 +85,11 @@ def register_stress_commands(app: typer.Typer) -> None:
         firm_cfg = load_firm(firm) if firm else None
         if firm_cfg is not None:
             firm_cfg = with_fee_overrides(firm_cfg, extra_monthly, per_payout_fee)
+        bars = None
+        if ohlcv is not None:
+            from quantlab.ingest.ohlcv import load_ohlcv
+
+            bars, _ = load_ohlcv(ohlcv)
         oos_dt: dt.datetime | None = None
         if oos_start is not None:
             try:
@@ -103,6 +114,7 @@ def register_stress_commands(app: typer.Typer) -> None:
             oos_start=oos_dt,
             outer=outer,
             inner_paths=inner_paths,
+            ohlcv=bars,
         )
         if json_out:
             typer.echo(json.dumps(sanitize(rc.to_json_dict()), indent=2, default=str))
