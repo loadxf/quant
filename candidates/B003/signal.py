@@ -5,8 +5,8 @@ import pandas as pd
 from quantlab.grammar import build_terminals
 
 HOLD = 10
-MIN_NAMES = 8
-QUANTILE = 0.3333
+MIN_NAMES = 4
+QUANTILE = 0.5
 
 
 def compute_signal(fields: dict[str, pd.DataFrame]) -> pd.DataFrame:

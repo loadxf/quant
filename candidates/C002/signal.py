@@ -9,16 +9,20 @@ HOLD = 5  # applied via holding_days in the driver
 
 
 def tom_mask(index: pd.DatetimeIndex) -> pd.Series:
-    """1 on the last 2 and first 3 trading days of each calendar month."""
-    s = pd.Series(index=index, dtype=float)
-    months = index.to_period("M")
-    flags = np.zeros(len(index))
+    """1 on the last 2 and first 3 trading days of each calendar month.
+
+    Month-end classification must not depend on where the sample stops (the
+    exchange calendar is known in advance), so the index is extended with
+    future business days before locating each month's last trading days.
+    """
+    extended = index.append(pd.bdate_range(index[-1], periods=11, freq="B")[1:])
+    months = extended.to_period("M")
+    flags = np.zeros(len(extended))
     for month in months.unique():
         locs = np.flatnonzero(months == month)
         take = list(locs[:3]) + list(locs[-2:])
         flags[take] = 1.0
-    s[:] = flags
-    return s
+    return pd.Series(flags[: len(index)], index=index)
 
 
 def compute_signal(fields: dict[str, pd.DataFrame]) -> pd.DataFrame:

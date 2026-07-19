@@ -8,8 +8,8 @@ from quantlab.grammar import build_terminals
 EPISODE_Z = 2.0
 LOOKBACK = 10
 HOLD = 10  # applied via holding_days in the driver
-QUANTILE = 0.3333  # tercile: trigger days are cross-sectionally sparse
-MIN_NAMES = 8
+QUANTILE = 0.5  # median split: trigger days are cross-sectionally sparse
+MIN_NAMES = 4
 
 
 def compute_signal(fields: dict[str, pd.DataFrame]) -> pd.DataFrame:
