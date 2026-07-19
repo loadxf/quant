@@ -58,6 +58,12 @@ stress` and `quant report` — see `--help` for the full list):
   row to the decay panel.
 - `quant stress --trials 8` — how many strategy variants you tried before
   this one; enables the Deflated Sharpe Ratio / MinBTL / haircut rows.
+- `quant prop frontier trades.parquet --firm topstep_50k` — sweep
+  position-size multiples and report EV/pass-prob/ruin vs scale, the
+  EV-maximizing scale, and the risk-constrained pick; `--accounts 2,5`
+  adds the multi-account table (copy-trading k accounts is k× leverage,
+  not diversification — the table shows both the real correlated numbers
+  and the independence illusion).
 
 Include MAE/MFE columns in your export if you can — without them,
 intraday-sensitive rules (Apex-style real-time trailing, daily loss limits)

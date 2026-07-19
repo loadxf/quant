@@ -109,6 +109,60 @@ def render_report(report: MonteCarloReport, console: Console) -> None:
             )
 
 
+def render_frontier(fr: Any, console: Console) -> None:
+    """Terminal rendering of a ScaleFrontier (quant prop frontier)."""
+    table = Table(title="Scale frontier (common random numbers across scales)")
+    table.add_column("Scale", justify="right")
+    table.add_column("Pass prob", justify="right")
+    table.add_column("Expected net", justify="right")
+    table.add_column("Funded ruin", justify="right")
+    table.add_column("CVaR 95%", justify="right")
+    table.add_column("P(net>0)", justify="right")
+    for p in fr.points:
+        style = "bold" if p.scale == fr.best_ev_scale else ""
+        table.add_row(
+            f"x{p.scale:g}",
+            pct(p.pass_prob),
+            money(p.expected_net),
+            pct(p.risk_of_ruin_funded),
+            money(p.cvar_95),
+            pct(p.p_net_positive),
+            style=style,
+        )
+    console.print(table)
+    console.print(f"EV-maximizing grid scale: [bold]x{fr.best_ev_scale:g}[/bold]")
+    if fr.best_scale_within_ruin is not None:
+        console.print(
+            f"largest scale with funded ruin <= {fr.ruin_cap:.0%}: "
+            f"[bold]x{fr.best_scale_within_ruin:g}[/bold] (the risk-constrained pick)"
+        )
+    console.print(f"[dim]{fr.assumption}[/dim]")
+    for w in fr.warnings:
+        console.print(Panel(w, style="yellow", title="warning"))
+
+
+def render_multiaccount(ma: Any, console: Console) -> None:
+    """Terminal rendering of a MultiAccountEV comparison."""
+    table = Table(title="Multi-account (copy-trading k accounts)")
+    table.add_column("k", justify="right")
+    table.add_column("EV", justify="right")
+    table.add_column("CVaR 95% (real: correlated)", justify="right")
+    table.add_column("P(all lose) real", justify="right")
+    table.add_column("CVaR 95% if independent", justify="right")
+    table.add_column("P(all lose) if indep.", justify="right")
+    for r in ma.rows:
+        table.add_row(
+            str(r.k),
+            money(r.expected_net),
+            money(r.correlated_cvar_95),
+            pct(r.correlated_p_all_lose),
+            money(r.independent_cvar_95),
+            pct(r.independent_p_all_lose),
+        )
+    console.print(table)
+    console.print(f"[dim]{ma.note}[/dim]")
+
+
 def render_reality(rc: Any, console: Console) -> None:
     """Terminal rendering of a RealityCheck (quant stress)."""
     costs = rc.costs

@@ -251,6 +251,7 @@ def summarize(
         days_to_first_payout_quantiles=days_to_first_payout,
         overhead=overhead,
         reactivation=reactivation,
+        net_per_path=net,
     )
     return MonteCarloReport(
         firm_name=firm.name,

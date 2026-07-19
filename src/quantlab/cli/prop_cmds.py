@@ -144,6 +144,11 @@ def simulate_cmd(
     per_payout_fee: float = typer.Option(
         0.0, "--per-payout-fee", help="Processing cost deducted from each payout."
     ),
+    accounts: str | None = typer.Option(
+        None,
+        "--accounts",
+        help="Comma-separated k values for the multi-account comparison (e.g. 2,3,5).",
+    ),
     json_out: Path | None = typer.Option(None, "--json", help="Write JSON summary here."),
 ) -> None:
     """Monte Carlo the challenge + funded phases from a trade log."""
@@ -168,8 +173,92 @@ def simulate_cmd(
     )
     report = run_monte_carlo(log, firm, cfg)
     render_report(report, console)
+    payload = report.to_json_dict()
+    if accounts is not None:
+        from quantlab.prop.frontier import compute_multiaccount
+        from quantlab.report.terminal import render_multiaccount
+
+        ma = compute_multiaccount(report, k_list=_parse_int_list(accounts, "--accounts"))
+        render_multiaccount(ma, console)
+        payload["multi_account"] = ma.to_json_dict()
     if json_out is not None:
-        json_out.write_text(json.dumps(sanitize(report.to_json_dict()), indent=2))
+        json_out.write_text(json.dumps(sanitize(payload), indent=2))
+        console.print(f"JSON summary written to {json_out}")
+
+
+def _parse_int_list(raw: str, flag: str) -> tuple[int, ...]:
+    from quantlab.errors import QuantLabError
+
+    try:
+        values = tuple(int(part) for part in raw.split(",") if part.strip())
+    except ValueError:
+        raise QuantLabError(f"{flag} expects comma-separated integers (got {raw!r})") from None
+    if not values:
+        raise QuantLabError(f"{flag} expects at least one value (got {raw!r})")
+    return values
+
+
+def _parse_float_list(raw: str, flag: str) -> tuple[float, ...]:
+    from quantlab.errors import QuantLabError
+
+    try:
+        values = tuple(float(part) for part in raw.split(",") if part.strip())
+    except ValueError:
+        raise QuantLabError(f"{flag} expects comma-separated numbers (got {raw!r})") from None
+    if not values:
+        raise QuantLabError(f"{flag} expects at least one value (got {raw!r})")
+    return values
+
+
+@prop_app.command("frontier")
+def frontier_cmd(
+    trades: Path = typer.Argument(..., exists=True, help="trades.parquet"),
+    firm_name: str = typer.Option(..., "--firm", help="Preset name or firm YAML path."),
+    paths: int = typer.Option(2000, "--paths", help="MC paths per grid point."),
+    seed: int = typer.Option(42, "--seed"),
+    scales: str = typer.Option(
+        "0.25,0.5,0.75,1.0,1.25,1.5,2.0", "--scales", help="Comma-separated size multiples."
+    ),
+    ruin_cap: float = typer.Option(
+        0.5, "--ruin-cap", help="Funded risk-of-ruin ceiling for the constrained pick."
+    ),
+    accounts: str | None = typer.Option(
+        None, "--accounts", help="Also show the k-account comparison at scale 1.0 (e.g. 2,3,5)."
+    ),
+    chart: Path | None = typer.Option(
+        None, "--chart", help="Write a self-contained frontier chart HTML here."
+    ),
+    json_out: Path | None = typer.Option(None, "--json", help="Write JSON summary here."),
+) -> None:
+    """Sweep position-size multiples: EV, pass prob, and ruin vs scale.
+
+    From measurement to recommendation: reports the EV-maximizing scale
+    AND the largest scale keeping funded ruin under --ruin-cap (usually
+    smaller — the risk-constrained pick). Same-fill caveat applies.
+    """
+    from quantlab.prop.frontier import compute_multiaccount, compute_scale_frontier
+    from quantlab.report.terminal import render_frontier, render_multiaccount
+
+    log = read_trade_log(trades)
+    firm = load_firm(firm_name)
+    cfg = MCConfig(n_paths=paths, seed=seed)
+    fr = compute_scale_frontier(
+        log, firm, mc_cfg=cfg, scales=_parse_float_list(scales, "--scales"), ruin_cap=ruin_cap
+    )
+    render_frontier(fr, console)
+    payload = fr.to_json_dict()
+    if accounts is not None:
+        base = run_monte_carlo(log, firm, cfg)
+        ma = compute_multiaccount(base, k_list=_parse_int_list(accounts, "--accounts"))
+        render_multiaccount(ma, console)
+        payload["multi_account"] = ma.to_json_dict()
+    if chart is not None:
+        from quantlab.report.charts import fig_scale_frontier
+
+        chart.write_text(fig_scale_frontier(fr).to_html(full_html=True, include_plotlyjs=True))
+        console.print(f"chart written to {chart}")
+    if json_out is not None:
+        json_out.write_text(json.dumps(sanitize(payload), indent=2))
         console.print(f"JSON summary written to {json_out}")
 
 

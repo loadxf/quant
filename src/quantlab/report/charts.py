@@ -273,3 +273,52 @@ def fig_vol_weights(vt: Any) -> go.Figure:
             showlegend=True,
         )
     return fig
+
+
+def fig_scale_frontier(fr: Any) -> go.Figure:
+    """Scale frontier: EV (left axis) + pass prob / funded ruin (right)."""
+    fig = _base("Scale frontier", "position-size multiple", "expected net ($)")
+    scales = [p.scale for p in fr.points]
+    fig.add_trace(
+        go.Scatter(
+            x=scales,
+            y=[p.expected_net for p in fr.points],
+            mode="lines+markers",
+            line=dict(color=BLUE, width=2),
+            name="expected net ($)",
+        )
+    )
+    fig.add_hline(y=0.0, line=dict(color=INK_MUTED, width=1, dash="dot"))
+    fig.add_trace(
+        go.Scatter(
+            x=scales,
+            y=[p.pass_prob for p in fr.points],
+            mode="lines+markers",
+            line=dict(color=INK_MUTED, width=1.5, dash="dash"),
+            name="pass prob",
+            yaxis="y2",
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=scales,
+            y=[p.risk_of_ruin_funded for p in fr.points],
+            mode="lines+markers",
+            line=dict(color=RED, width=1.5, dash="dash"),
+            name="funded ruin",
+            yaxis="y2",
+        )
+    )
+    fig.add_vline(x=fr.best_ev_scale, line=dict(color=BLUE, width=1, dash="dot"))
+    fig.update_layout(
+        yaxis2=dict(
+            title="probability",
+            overlaying="y",
+            side="right",
+            range=[0, 1],
+            color=INK_MUTED,
+            showgrid=False,
+        ),
+        showlegend=True,
+    )
+    return fig

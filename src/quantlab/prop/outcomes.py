@@ -78,6 +78,9 @@ class EconomicsSummary:
     days_to_first_payout_quantiles: dict[str, float]  # trading days incl. eval
     overhead: dict[str, float] | None = None  # extra_monthly / per_payout knobs, when set
     reactivation: dict[str, Any] | None = None  # Back2Funded option value, when firm defines it
+    # (P,) single-attempt net per path — feeds the multi-account analysis;
+    # deliberately NOT serialized (to_json_dict enumerates fields).
+    net_per_path: np.ndarray | None = None
 
 
 @dataclass
