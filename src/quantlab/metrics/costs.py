@@ -30,6 +30,7 @@ import numpy as np
 
 from quantlab.errors import QuantLabError
 from quantlab.metrics.contracts import resolve_contract
+from quantlab.metrics.core import profit_factor
 from quantlab.prop.config import FirmConfig
 from quantlab.prop.montecarlo import MCConfig, run_monte_carlo
 from quantlab.schema.trade import TradeLog
@@ -117,10 +118,7 @@ class CostStress:
 
 
 def _point_metrics(pnls: np.ndarray) -> tuple[float, float]:
-    wins = float(pnls[pnls > 0].sum())
-    losses = float(-pnls[pnls < 0].sum())
-    pf = wins / losses if losses > 0 else (float("inf") if wins > 0 else 0.0)
-    return float(pnls.mean()), pf
+    return float(pnls.mean()), profit_factor(pnls)
 
 
 def _dominant_spec(log: TradeLog):
@@ -169,6 +167,7 @@ def run_cost_sweep(
     commission_rt: float | None = None,
     stop_slip_ticks: float = 1.0,
     mc_cfg: MCConfig | None = None,
+    baseline_report=None,
 ) -> CostStress:
     """Edge-vs-cost sweep. Metrics at every grid point; the prop-firm
     Monte Carlo (when a firm is given) at three anchor points only —
@@ -211,8 +210,16 @@ def run_cost_sweep(
         expectancy, pf = _point_metrics(stressed_pnls)
         mc_pass = mc_net = None
         if firm is not None and label in mc_anchors:
-            stressed_log = apply_cost(log, added) if added else log
-            report = run_monte_carlo(stressed_log, firm, mc_cfg or MCConfig(n_paths=2000, seed=42))
+            if added == 0.0 and baseline_report is not None:
+                # quant report already simulated the unstressed log (at
+                # full path count) — reuse it so one HTML never shows two
+                # different pass probabilities for the same baseline.
+                report = baseline_report
+            else:
+                stressed_log = apply_cost(log, added) if added else log
+                report = run_monte_carlo(
+                    stressed_log, firm, mc_cfg or MCConfig(n_paths=2000, seed=42)
+                )
             mc_pass = report.economics.pass_prob
             mc_net = report.economics.expected_net
         grid.append(
@@ -228,7 +235,10 @@ def run_cost_sweep(
             )
         )
 
-    baseline_expectancy = float(pnls.mean())
+    # Headline numbers share the grid's fee stance: a fee-less (gross)
+    # log's baseline already deducts 1x commission, so breakeven/survives
+    # start from that net figure — not the gross mean the grid contradicts.
+    baseline_expectancy = float(pnls.mean()) - commission_offset * commission_rt * mean_qty
     survives = (
         baseline_expectancy / (mean_qty * tick_value)
         if baseline_expectancy > 0 and mean_qty > 0 and tick_value > 0
@@ -255,20 +265,22 @@ def run_haircut_scenarios(
     pnls = np.array([t.pnl for t in log.trades], dtype=float)
     if float(pnls.mean()) <= 0:
         return []
+    mean = float(pnls.mean())
     out: list[HaircutScenario] = []
     for haircut, label in HAIRCUT_SCENARIOS:
-        cut = haircut_log(log, haircut)
-        cut_pnls = np.array([t.pnl for t in cut.trades])
         mc_pass = mc_net = None
         if firm is not None:
-            report = run_monte_carlo(cut, firm, mc_cfg or MCConfig(n_paths=2000, seed=42))
+            # The shifted log is only needed to feed the simulator.
+            report = run_monte_carlo(
+                haircut_log(log, haircut), firm, mc_cfg or MCConfig(n_paths=2000, seed=42)
+            )
             mc_pass = report.economics.pass_prob
             mc_net = report.economics.expected_net
         out.append(
             HaircutScenario(
                 haircut=haircut,
                 label=label,
-                expectancy=float(cut_pnls.mean()),
+                expectancy=mean * (1.0 - haircut),  # uniform shift: exact
                 mc_pass_prob=mc_pass,
                 mc_expected_net=mc_net,
             )

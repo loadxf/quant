@@ -260,7 +260,7 @@ def build_html_report(
             [
                 _fig_html(charts.fig_cost_sweep(reality.costs), include_js=False),
                 _fig_html(charts.fig_rolling_expectancy(reality.decay), include_js=False),
-                _fig_html(charts.fig_drawdown_compare(reality.drawdown, mc), include_js=False),
+                _fig_html(charts.fig_drawdown_permutation(reality.drawdown), include_js=False),
             ]
             if reality is not None
             else []

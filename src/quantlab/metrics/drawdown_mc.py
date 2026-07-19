@@ -42,14 +42,26 @@ def permutation_drawdown(
     if n < 2:
         return DrawdownMC(0, 0.0, 0.0, ruin_capital, None if ruin_capital is None else 0.0)
     rng = np.random.default_rng(seed)
-    # Vectorized permutations: argsort of random keys, one row per path.
-    order = np.argsort(rng.random((n_iter, n)), axis=1)
-    equity = np.cumsum(pnls[order], axis=1)
-    peaks = np.maximum.accumulate(np.maximum(equity, 0.0), axis=1)  # peak incl. start=0
-    max_dd = np.max(peaks - equity, axis=1)
+    # Vectorized permutations (argsort of random keys), CHUNKED: one big
+    # (n_iter, n) batch holds ~5 simultaneous arrays — ~2.5 GB for a
+    # 10k-trade log — where 512-path chunks bound peak memory and, because
+    # the generator stream is consumed in the same order, produce
+    # bit-identical results for a given seed.
+    chunk = 512
+    max_dd_parts: list[np.ndarray] = []
+    ruin_hits = 0
+    for start in range(0, n_iter, chunk):
+        rows = min(chunk, n_iter - start)
+        order = np.argsort(rng.random((rows, n)), axis=1)
+        equity = np.cumsum(pnls[order], axis=1)
+        peaks = np.maximum.accumulate(np.maximum(equity, 0.0), axis=1)  # peak incl. start=0
+        max_dd_parts.append(np.max(peaks - equity, axis=1))
+        if ruin_capital is not None:
+            ruin_hits += int(np.sum(np.min(equity, axis=1) <= -abs(ruin_capital)))
+    max_dd = np.concatenate(max_dd_parts)
     p_ruin: float | None = None
     if ruin_capital is not None:
-        p_ruin = float(np.mean(np.min(equity, axis=1) <= -abs(ruin_capital)))
+        p_ruin = ruin_hits / n_iter
     return DrawdownMC(
         n_iter=n_iter,
         median_max_dd=float(np.median(max_dd)),

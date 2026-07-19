@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import datetime as dt
 import json
 from pathlib import Path
 
@@ -44,6 +45,12 @@ def register_stress_commands(app: typer.Typer) -> None:
         ruin_capital: float | None = typer.Option(
             None, "--ruin-capital", help="Capital for P(ruin) in the permutation drawdown."
         ),
+        oos_start: str | None = typer.Option(
+            None,
+            "--oos-start",
+            help="ISO date where out-of-sample begins (e.g. strategy went live) — "
+            "adds the walk-forward-efficiency row.",
+        ),
         json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
     ) -> None:
         """Cost stress, edge decay, and deflated statistics for a trade log.
@@ -55,6 +62,11 @@ def register_stress_commands(app: typer.Typer) -> None:
         """
         log = read_trade_log(trades)
         firm_cfg = load_firm(firm) if firm else None
+        oos_dt: dt.datetime | None = None
+        if oos_start is not None:
+            oos_dt = dt.datetime.fromisoformat(oos_start)
+            if oos_dt.tzinfo is None:
+                oos_dt = oos_dt.replace(tzinfo=dt.UTC)
         rc = compute_reality_check(
             log,
             firm=firm_cfg,
@@ -66,6 +78,7 @@ def register_stress_commands(app: typer.Typer) -> None:
             mc_paths=paths,
             seed=seed,
             ruin_capital=ruin_capital,
+            oos_start=oos_dt,
         )
         if json_out:
             typer.echo(json.dumps(sanitize(rc.to_json_dict()), indent=2, default=str))

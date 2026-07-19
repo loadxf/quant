@@ -58,6 +58,16 @@ def _max_drawdown(equity: np.ndarray) -> float:
     return float(np.max(peaks - equity)) if equity.size else 0.0
 
 
+def profit_factor(pnls: np.ndarray) -> float:
+    """Gross wins / gross losses; inf for a no-loss winner, 0.0 for a
+    no-win log — the single convention every surface shares."""
+    wins = float(pnls[pnls > 0].sum())
+    losses = float(-pnls[pnls < 0].sum())
+    if losses > 0:
+        return wins / losses
+    return float("inf") if wins > 0 else 0.0
+
+
 def bootstrap_means(pnls: np.ndarray, n_samples: int = 4000, seed: int = 7) -> np.ndarray:
     """Bootstrap distribution of the mean per-trade PnL.
 
@@ -106,7 +116,6 @@ def compute_metrics(
     losses = pnls[pnls < 0]
 
     gross_profit = float(wins.sum())
-    gross_loss = float(-losses.sum())
     avg_win = float(wins.mean()) if wins.size else 0.0
     avg_loss = float(losses.mean()) if losses.size else 0.0
     expectancy = float(pnls.mean()) if n else 0.0
@@ -156,7 +165,7 @@ def compute_metrics(
         ),
         expectancy_tstat=tstat,
         expectancy_ci95=ci,
-        profit_factor=gross_profit / gross_loss if gross_loss > 0 else float("inf"),
+        profit_factor=profit_factor(pnls),
         max_drawdown=max_dd,
         max_drawdown_pct=max_dd / starting_equity if starting_equity else 0.0,
         sharpe=_annualized_ratio(daily_returns, downside_only=False),

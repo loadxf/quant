@@ -228,16 +228,15 @@ def fig_rolling_expectancy(panel: Any) -> go.Figure:
     return fig
 
 
-def fig_drawdown_compare(dd: Any, mc: Any | None = None) -> go.Figure:
-    """Permutation (independence-assuming) vs block-bootstrap drawdowns."""
-    fig = _base("Max-drawdown estimates", "", "max drawdown ($)")
-    labels = ["permutation p50", "permutation p95"]
+def fig_drawdown_permutation(dd: Any) -> go.Figure:
+    """Permutation max-DD estimates. Deliberately NOT overlaid with the
+    prop MC's funded drawdowns: those cover a different horizon (252
+    simulated days vs the log's n trades) and possibly different sizing,
+    so a side-by-side would misread as pure streak risk."""
+    fig = _base(
+        "Permutation max drawdown (order-shuffle of the log's trades)", "", "max drawdown ($)"
+    )
+    labels = ["p50", "p95"]
     values = [dd.median_max_dd, dd.p95_max_dd]
-    colors = [BLUE_RAMP[2], BLUE_RAMP[4]]
-    if mc is not None:
-        quantiles = {f"p{q}": float(np.percentile(mc.funded.max_drawdown, q)) for q in (50, 95)}
-        labels += ["block bootstrap p50", "block bootstrap p95"]
-        values += [quantiles["p50"], quantiles["p95"]]
-        colors += [BLUE_RAMP[3], BLUE_RAMP[5]]
-    fig.add_trace(go.Bar(x=labels, y=values, marker_color=colors))
+    fig.add_trace(go.Bar(x=labels, y=values, marker_color=[BLUE_RAMP[2], BLUE_RAMP[4]]))
     return fig

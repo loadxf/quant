@@ -28,8 +28,9 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from quantlab.metrics.core import profit_factor
 from quantlab.metrics.deflate import norm_cdf
-from quantlab.schema.trade import FUTURES_DAY, DayBoundary, TradeLog
+from quantlab.schema.trade import TradeLog
 
 
 @dataclass(frozen=True, slots=True)
@@ -114,13 +115,44 @@ def hac_slope(pnls: np.ndarray) -> HacResult:
     return HacResult(slope, se, t, p, lag)
 
 
+def _kendall_s(pnls: np.ndarray) -> int:
+    """S = sum_{i<j} sign(x_j - x_i) in O(n log n) via a Fenwick tree
+    over dense value ranks — the naive n x n sign matrix needs ~24 GB
+    for a 50k-trade log and OOMs inside every report."""
+    n = pnls.size
+    if n <= 2000:  # small logs: the vectorized matrix is faster and simple
+        signs = np.sign(pnls[None, :] - pnls[:, None])
+        return int(np.triu(signs, k=1).sum())
+    ranks = np.searchsorted(np.unique(pnls), pnls) + 1  # dense 1-based ranks
+    size = int(ranks.max()) + 1
+    tree = np.zeros(size + 1, dtype=np.int64)
+    s = 0
+    for seen, r in enumerate(ranks):
+        idx = int(r) - 1  # prefix count of ranks strictly below r
+        less = 0
+        while idx > 0:
+            less += int(tree[idx])
+            idx -= idx & (-idx)
+        idx = int(r)
+        equal_or_less = 0
+        while idx > 0:
+            equal_or_less += int(tree[idx])
+            idx -= idx & (-idx)
+        greater = seen - equal_or_less
+        s += less - greater
+        idx = int(r)
+        while idx <= size:
+            tree[idx] += 1
+            idx += idx & (-idx)
+    return s
+
+
 def mann_kendall(pnls: np.ndarray) -> MKResult:
     """Mann-Kendall monotonic trend test, tie-corrected normal approx."""
     n = pnls.size
     if n < 8:
         return MKResult(0, 0.0, 1.0)
-    signs = np.sign(pnls[None, :] - pnls[:, None])
-    s = int(np.triu(signs, k=1).sum())
+    s = _kendall_s(pnls)
     _, counts = np.unique(pnls, return_counts=True)
     tie_term = float(np.sum(counts * (counts - 1) * (2 * counts + 5)))
     var_s = (n * (n - 1) * (2 * n + 5) - tie_term) / 18.0
@@ -162,11 +194,10 @@ def runs_test(pnls: np.ndarray) -> RunsResult:
 
 
 def _half_stats(pnls: np.ndarray) -> HalfStats:
-    wins = float(pnls[pnls > 0].sum())
-    losses = float(-pnls[pnls < 0].sum())
-    pf = wins / losses if losses > 0 else (float("inf") if wins > 0 else 0.0)
     return HalfStats(
-        n=int(pnls.size), expectancy=float(pnls.mean()) if pnls.size else 0.0, profit_factor=pf
+        n=int(pnls.size),
+        expectancy=float(pnls.mean()) if pnls.size else 0.0,
+        profit_factor=profit_factor(pnls),
     )
 
 
@@ -174,7 +205,6 @@ def compute_decay(
     log: TradeLog,
     window: int = 30,
     oos_start: dt.datetime | None = None,
-    boundary: DayBoundary = FUTURES_DAY,
 ) -> DecayPanel:
     """Full decay panel for one trade log.
 

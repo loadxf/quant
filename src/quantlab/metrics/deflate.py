@@ -208,13 +208,16 @@ def compute_deflated(pnls: np.ndarray, n_trials: int = 1) -> DeflatedStats:
         # ANNUALIZED Sharpe of 1.0 stops being explainable as the
         # expected maximum over n_trials random tries.
         minbtl_years = emax**2
-        # Harvey-Liu Bonferroni haircut on the per-trade SR.
-        t_stat = sr * math.sqrt(n)
-        p_single = 2.0 * (1.0 - norm_cdf(abs(t_stat)))
-        p_adj = min(p_single * n_trials, 1.0)
-        z_adj = norm_ppf(1.0 - p_adj / 2.0)
-        haircut_sharpe = max(z_adj, 0.0) / math.sqrt(n)
-        haircut_pct = 1.0 - haircut_sharpe / sr if sr > 0 else None
+        # Harvey-Liu Bonferroni haircut on the per-trade SR. Defined for a
+        # POSITIVE candidate Sharpe only — abs(t) on a losing strategy would
+        # sign-flip its "adjusted" edge to significantly positive.
+        if sr > 0:
+            t_stat = sr * math.sqrt(n)
+            p_single = 2.0 * (1.0 - norm_cdf(t_stat))
+            p_adj = min(p_single * n_trials, 1.0)
+            z_adj = norm_ppf(1.0 - p_adj / 2.0)
+            haircut_sharpe = max(z_adj, 0.0) / math.sqrt(n)
+            haircut_pct = 1.0 - haircut_sharpe / sr
 
     return DeflatedStats(
         n=n,

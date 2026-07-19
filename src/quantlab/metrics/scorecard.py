@@ -29,7 +29,8 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from quantlab.metrics.core import Metrics, bootstrap_means, compute_metrics
-from quantlab.metrics.deflate import compute_deflated
+from quantlab.metrics.decay import DecayPanel
+from quantlab.metrics.deflate import DeflatedStats, compute_deflated
 from quantlab.metrics.overfit import OverfitFlag, overfit_flags
 from quantlab.schema.trade import TradeLog
 
@@ -102,10 +103,13 @@ def _grade_edge(m: Metrics) -> PillarScore:
     )
 
 
-def _grade_robustness(log: TradeLog, m: Metrics, trials: int = 1) -> PillarScore:
+def _grade_robustness(
+    log: TradeLog, m: Metrics, trials: int = 1, deflated: DeflatedStats | None = None
+) -> PillarScore:
     pnls = np.array([t.pnl for t in log.trades])
     n = pnls.size
-    deflated = compute_deflated(pnls, n_trials=trials) if n >= 3 else None
+    if deflated is None and n >= 3:
+        deflated = compute_deflated(pnls, n_trials=trials)
     psr = deflated.psr if deflated is not None else 0.0
     dsr = deflated.dsr if deflated is not None else None
     # Computed inside compute_metrics from the SAME bootstrap run as the
@@ -193,10 +197,19 @@ def _grade_sample(m: Metrics) -> PillarScore:
     )
 
 
-def compute_scorecard(log: TradeLog, metrics: Metrics | None = None, trials: int = 1) -> Verdict:
+def compute_scorecard(
+    log: TradeLog,
+    metrics: Metrics | None = None,
+    trials: int = 1,
+    decay: DecayPanel | None = None,
+    deflated: DeflatedStats | None = None,
+) -> Verdict:
+    """decay/deflated: precomputed panels (e.g. from a RealityCheck) so a
+    combined report never computes them twice; both derived internally
+    when omitted. A supplied `deflated` must match `trials`."""
     m = metrics or compute_metrics(log)
     edge = _grade_edge(m)
-    robustness = _grade_robustness(log, m, trials=trials)
+    robustness = _grade_robustness(log, m, trials=trials, deflated=deflated)
     risk = _grade_risk(log, m)
     sample = _grade_sample(m)
 
@@ -224,5 +237,5 @@ def compute_scorecard(log: TradeLog, metrics: Metrics | None = None, trials: int
         overall=overall,
         points=points,
         capped_by_sample=capped,
-        flags=overfit_flags(log, m),
+        flags=overfit_flags(log, m, decay=decay),
     )

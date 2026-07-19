@@ -8,10 +8,12 @@ scenarios — into a single JSON-serializable result.
 from __future__ import annotations
 
 import dataclasses
+import datetime as dt
 from dataclasses import dataclass, field
 
 import numpy as np
 
+from quantlab.errors import QuantLabError
 from quantlab.metrics.costs import (
     CostStress,
     HaircutScenario,
@@ -58,10 +60,21 @@ def compute_reality_check(
     decay_window: int = 30,
     mc_paths: int = 2000,
     seed: int = 42,
+    scale: float = 1.0,
     ruin_capital: float | None = None,
+    oos_start: dt.datetime | None = None,
+    baseline_mc=None,
 ) -> RealityCheck:
+    if len(log) < 3:
+        raise QuantLabError(f"reality check needs >= 3 trades (got {len(log)})")
+    if trials < 1:
+        raise QuantLabError(f"--trials must be >= 1 (got {trials})")
+    if decay_window < 2:
+        raise QuantLabError(f"--window must be >= 2 (got {decay_window})")
     pnls = np.array([t.pnl for t in log.trades], dtype=float)
-    mc_cfg = MCConfig(n_paths=mc_paths, seed=seed)
+    # Same scale as the caller's headline simulation, so the sweep's
+    # baseline anchor and the report's headline never disagree.
+    mc_cfg = MCConfig(n_paths=mc_paths, seed=seed, scale=scale)
     costs = run_cost_sweep(
         log,
         firm=firm,
@@ -69,8 +82,9 @@ def compute_reality_check(
         commission_rt=commission_rt,
         stop_slip_ticks=stop_slip_ticks,
         mc_cfg=mc_cfg,
+        baseline_report=baseline_mc,
     )
-    decay = compute_decay(log, window=decay_window)
+    decay = compute_decay(log, window=decay_window, oos_start=oos_start)
     deflated = compute_deflated(pnls, n_trials=trials)
     drawdown = permutation_drawdown(log, seed=seed, ruin_capital=ruin_capital)
     haircuts = run_haircut_scenarios(log, firm=firm, mc_cfg=mc_cfg)

@@ -538,6 +538,7 @@ def run_monte_carlo(
     warnings: list[str] = []
 
     bootstrap_name: BootstrapName = cfg.bootstrap
+    block_len_used = cfg.block_len  # resolved below only for the stationary scheme
     if bootstrap_name == "iid_trade":
         profile = _iid_trade_profile(log, boundary, rng, days=source_day_groups)
         sampler = make_bootstrapper("iid_day")

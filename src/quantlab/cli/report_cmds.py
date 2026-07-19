@@ -82,9 +82,24 @@ def register_report_commands(app: typer.Typer) -> None:
         metrics = compute_metrics(
             log, starting_equity=equity if equity is not None else firm.account_size
         )
-        verdict = compute_scorecard(log, metrics, trials=trials)
         mc = run_monte_carlo(log, firm, MCConfig(n_paths=paths, seed=seed, scale=scale))
-        rc = compute_reality_check(log, firm=firm, trials=trials, seed=seed) if reality else None
+        rc = (
+            compute_reality_check(
+                log, firm=firm, trials=trials, seed=seed, scale=scale, baseline_mc=mc
+            )
+            if reality
+            else None
+        )
+        # Reuse the reality check's decay/deflated panels — same log, same
+        # trials — instead of computing them a second time inside the
+        # scorecard (the Mann-Kendall panel dominates cost on large logs).
+        verdict = compute_scorecard(
+            log,
+            metrics,
+            trials=trials,
+            decay=rc.decay if rc else None,
+            deflated=rc.deflated if rc else None,
+        )
 
         _render_verdict(verdict)
         render_report(mc, console)

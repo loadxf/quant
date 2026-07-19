@@ -62,14 +62,34 @@ class TestHaircut:
 
 
 class TestCostSweep:
-    def test_breakeven_equals_baseline_expectancy(self) -> None:
-        log = _mnq_log()
+    def test_breakeven_shares_the_grid_fee_stance(self) -> None:
+        """For a fee-less (gross) log the headline starts from the SAME
+        commission-deducted baseline as the grid's 1x row (was: gross
+        mean, contradicting the row printed directly above it)."""
+        log = _mnq_log()  # fees all zero -> presumed gross
         stress = run_cost_sweep(log)
-        assert stress.breakeven_added_cost_per_trade == pytest.approx(
-            np.mean([t.pnl for t in log.trades])
-        )
+        mean_qty = np.mean([t.quantity for t in log.trades])
+        expected = np.mean([t.pnl for t in log.trades]) - stress.commission_rt * mean_qty
+        assert stress.breakeven_added_cost_per_trade == pytest.approx(expected)
+        zero_row = next(p for p in stress.grid if p.label == "0 tick/side, 1x commission")
+        assert stress.breakeven_added_cost_per_trade == pytest.approx(zero_row.expectancy)
+        assert stress.survives_ticks_rt == pytest.approx(expected / (mean_qty * 0.50))
         assert stress.tick_source == "resolved:MNQ"
         assert stress.tick_value == 0.50
+
+    def test_breakeven_is_raw_mean_when_fees_recorded(self) -> None:
+        import dataclasses
+
+        base = _mnq_log()
+        logged = type(base)(
+            trades=[dataclasses.replace(t, fees=1.5) for t in base.trades],
+            source=base.source,
+        )
+        stress = run_cost_sweep(logged)
+        assert stress.commission_in_log
+        assert stress.breakeven_added_cost_per_trade == pytest.approx(
+            np.mean([t.pnl for t in logged.trades])
+        )
 
     def test_grid_expectancy_declines_with_cost(self) -> None:
         stress = run_cost_sweep(_mnq_log())
