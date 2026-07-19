@@ -143,6 +143,18 @@ def load_panel(
     return panel
 
 
+def load_g1_window(field: str = "adjclose", tickers: list[str] | None = None) -> pd.DataFrame:
+    """G1 hypothesis-generation data: ONLY the post-knowledge-cutoff slice
+    (POST_CUTOFF_START onward). Access is token-gated and logged; see
+    research/debates/protocol_deviations.md D1."""
+    from . import POST_CUTOFF_START
+    from .holdout_gate import authorize_g1_generation
+
+    token = authorize_g1_generation()
+    panel = load_panel(field=field, tickers=tickers, end="2030-01-01", _holdout_token=token)
+    return panel.loc[panel.index >= pd.Timestamp(POST_CUTOFF_START)]
+
+
 def main() -> None:
     if len(sys.argv) > 1 and sys.argv[1] == "download":
         universe = json.loads((DATA_DIR / "universe.json").read_text())

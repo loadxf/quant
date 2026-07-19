@@ -83,6 +83,30 @@ def verify_token(token: str | None) -> None:
         )
 
 
+def authorize_g1_generation() -> str:
+    """Token for G1 hypothesis-generation access to the post-cutoff slice ONLY
+    (POST_CUTOFF_START onward; see research/debates/protocol_deviations.md D1).
+    Every grant is logged; G1 candidates' holdout ends at 2026-01-31.
+    """
+    from . import POST_CUTOFF_START
+
+    log_path = CANDIDATES_DIR / "g1_access_log.json"
+    log = json.loads(log_path.read_text()) if log_path.exists() else []
+    log.append(
+        {
+            "granted_utc": __import__("datetime").datetime.now(
+                __import__("datetime").timezone.utc
+            ).isoformat(timespec="seconds"),
+            "window_start": POST_CUTOFF_START,
+        }
+    )
+    CANDIDATES_DIR.mkdir(parents=True, exist_ok=True)
+    log_path.write_text(json.dumps(log, indent=1))
+    token = hashlib.sha256(f"{_HOLDOUT_SECRET}:g1_generation".encode()).hexdigest()
+    _ISSUED.add(token)
+    return token
+
+
 def record_results(candidate_id: str, results: dict) -> Path:
     """Write the candidate's single holdout result file. Fails if it exists."""
     results_path = CANDIDATES_DIR / candidate_id / "holdout_results.json"
