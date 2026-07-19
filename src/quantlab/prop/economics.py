@@ -115,9 +115,13 @@ def summarize(
     # ---- funded value per path ----
     assert funded.total_withdrawn is not None and funded.payout_count is not None
     assert funded.first_payout_day is not None
-    received = funded.total_withdrawn * payout.profit_split
+    # received_gross stays E[withdrawn * split] — the documented meaning of
+    # expected_gross_payout; processing costs reduce only the NET figures
+    # (funded_value, payout_quantiles, the reactivation fresh value).
+    received_gross = funded.total_withdrawn * payout.profit_split
+    received = received_gross
     if fees.per_payout > 0:
-        received = received - fees.per_payout * funded.payout_count
+        received = received_gross - fees.per_payout * funded.payout_count
     refund = (
         float(fees.one_time) * (funded.payout_count >= 1)
         if fees.refundable_on_first_payout and fees.one_time > 0
@@ -128,7 +132,12 @@ def summarize(
         funded_months = np.ceil((funded.end_day + 1) / days_per_month)
         funded_value = funded_value - fees.extra_monthly * funded_months
         assert overhead is not None
-        overhead["expected_funded_overhead"] = float((fees.extra_monthly * funded_months).mean())
+        # Denominator made explicit in the key: this is PER FUNDED ACCOUNT
+        # (the funded sim runs on every path); the per-attempt EV drag is
+        # pass_prob times this, never a straight sum with the eval figure.
+        overhead["expected_funded_overhead_per_funded"] = float(
+            (fees.extra_monthly * funded_months).mean()
+        )
     if fees.extra_monthly > 0 or fees.per_payout > 0:
         overhead = (overhead or {}) | {
             "extra_monthly": fees.extra_monthly,
@@ -238,7 +247,7 @@ def summarize(
         pass_prob_ci=ci,
         expected_fees_per_attempt=float(attempt_fees.mean()),
         expected_cost_to_funded=expected_cost_to_funded,
-        expected_gross_payout=float((received + refund).mean()),
+        expected_gross_payout=float((received_gross + refund).mean()),
         expected_net=expected_net,
         ev_with_resets=ev_with_resets,
         p_net_positive=float(np.mean(net > 0)),

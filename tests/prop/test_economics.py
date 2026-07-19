@@ -151,3 +151,33 @@ class TestReactivationOption:
         log = day_trades([[simple(-500)]] * 20)
         eco = run_monte_carlo(log, firm, MCConfig(n_paths=50, seed=1)).economics
         assert eco.reactivation is None
+
+
+class TestSemanticsReviewFixes:
+    """Regressions from the M10 adversarial review (semantics pass)."""
+
+    def test_gross_payout_stays_gross_under_per_payout_fee(self) -> None:
+        # Was: expected_gross_payout silently became net of processing
+        # fees, contradicting its documented E[withdrawn*split + refund].
+        from quantlab.prop.config import with_fee_overrides
+
+        from ..conftest import random_log
+
+        firm = load_firm("topstep_50k")
+        log = random_log(n_days=100, mean=40.0, std=300.0, seed=7)
+        cfg = MCConfig(n_paths=300, seed=5)
+        base = run_monte_carlo(log, firm, cfg).economics
+        fee = run_monte_carlo(log, with_fee_overrides(firm, per_payout=30.0), cfg).economics
+        assert fee.expected_gross_payout == pytest.approx(base.expected_gross_payout)
+        assert fee.expected_net < base.expected_net  # the fee still bites the net
+
+    def test_funded_overhead_key_names_denominator(self) -> None:
+        from quantlab.prop.config import with_fee_overrides
+
+        from ..conftest import random_log
+
+        firm = with_fee_overrides(load_firm("topstep_50k"), extra_monthly=100.0)
+        log = random_log(n_days=60, mean=40.0, std=300.0, seed=7)
+        eco = run_monte_carlo(log, firm, MCConfig(n_paths=100, seed=5)).economics
+        assert eco.overhead is not None
+        assert "expected_funded_overhead_per_funded" in eco.overhead

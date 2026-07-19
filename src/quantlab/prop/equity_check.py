@@ -126,7 +126,11 @@ def check_equity_curve(
             event = static.check(balance, session, day_index, -1)
             if event is not None:
                 first_breach = _to_breach(event, point.time)
-        if daily is not None and not dll_hit_today and daily.hit(balance):
+        # Guarded on first_breach like the hard rules: a QC equity curve
+        # runs to the end of the backtest, but the account is already
+        # liquidated after a hard breach — later daily-loss crossings
+        # would be phantom activity.
+        if daily is not None and first_breach is None and not dll_hit_today and daily.hit(balance):
             dll_hit_today = True
             hit = EquityBreach(
                 rule="daily_loss_limit",

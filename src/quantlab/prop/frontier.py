@@ -90,6 +90,12 @@ def compute_scale_frontier(
     if not scales or any(s <= 0 for s in scales):
         raise QuantLabError(f"--scales must be positive (got {list(scales)})")
     cfg = mc_cfg or MCConfig()
+    if cfg.seed is None:
+        # The CRN guarantee (identical day draws per grid point) requires a
+        # concrete seed: default_rng(None) pulls fresh OS entropy per call,
+        # which would make the frontier jitter with resampling noise and
+        # break ruin monotonicity. Draw ONE seed for the whole sweep.
+        cfg = dataclasses.replace(cfg, seed=int(np.random.default_rng().integers(0, 2**31 - 1)))
     points = []
     base_report = None
     for s in sorted(scales):

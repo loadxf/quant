@@ -108,3 +108,22 @@ class TestCsvRoundTrip:
         path.write_text("a,b\n1,2\n")
         with pytest.raises(QuantLabError, match="datetime,equity"):
             load_equity_csv(path)
+
+
+class TestPostLiquidationGuard:
+    def test_no_daily_loss_hits_after_hard_breach(self) -> None:
+        # Was: daily-loss crossings kept accruing after the trailing rule
+        # had already liquidated the account (a QC curve runs to the end
+        # of the backtest regardless of prop rules).
+        firm = load_firm("topstep_50k")
+        marks = [
+            ("2026-03-02 15:00", 50_000.0),
+            ("2026-03-02 20:00", 50_000.0),
+            ("2026-03-03 15:00", 47_500.0),  # trailing floor 48,000: hard breach
+            ("2026-03-04 15:00", 47_400.0),
+            ("2026-03-04 18:00", 45_000.0),  # would be a DLL crossing if alive
+        ]
+        check = check_equity_curve(_curve(marks), firm)
+        assert check.first_breach is not None
+        assert check.first_breach.rule.startswith("trailing_drawdown")
+        assert check.daily_loss_hits == []

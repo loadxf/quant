@@ -108,3 +108,20 @@ class TestMultiAccount:
 
         ma = compute_multiaccount(self._report(), k_list=(2,))
         json.dumps(sanitize(ma.to_json_dict()))
+
+
+class TestSemanticsReviewFixes:
+    """Regressions from the M10 adversarial review (semantics pass)."""
+
+    def test_unseeded_frontier_still_gets_common_random_numbers(self) -> None:
+        # Was: seed=None pulled fresh OS entropy per grid point, silently
+        # voiding the CRN guarantee (and ruin monotonicity) for API users.
+        log = random_log(n_days=80, mean=30.0, std=350.0, seed=5)
+        fr = compute_scale_frontier(
+            log,
+            load_firm("topstep_50k"),
+            mc_cfg=MCConfig(n_paths=300, seed=None),
+            scales=(0.5, 1.0, 2.0),
+        )
+        ruins = [p.risk_of_ruin_funded for p in fr.points]
+        assert ruins == sorted(ruins)
