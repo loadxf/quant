@@ -1,0 +1,49 @@
+{
+ "candidate_id": "C007",
+ "params": {
+  "hold": 1,
+  "quantile": 0.1,
+  "min_names": 20
+ },
+ "train": {
+  "sr_net": -3.296156961633267,
+  "nw_t": -13.172860652484212,
+  "n_obs": 3523
+ },
+ "validation": {
+  "sr_net": -2.9266258577752398,
+  "sr_gross": -0.28878705084988704,
+  "nw_t": -6.339717197853061,
+  "n_obs": 1258,
+  "mean_daily_turnover": 2.5015588046604496
+ },
+ "cpcv": {
+  "n_paths": 28,
+  "median_sr": -2.3896722814475657,
+  "q25_sr": -2.927228428637434,
+  "min_sr": -4.069833797141002,
+  "frac_positive": 0.0
+ },
+ "gate1": {
+  "val_sr_gt_0.5": false,
+  "abs_t_gt_2": true,
+  "sign_positive": false,
+  "cpcv_median_gt_0": false,
+  "pass": false
+ },
+ "gate2": {
+  "subhalf1_sr": -2.3515757299142077,
+  "subhalf2_sr": -3.8404591350735875,
+  "hivol_sr": -1.9896863732561076,
+  "lovol_sr": -5.174732391517852,
+  "cost25_sr": -6.8636702492208235,
+  "perturbations": {
+   "BAND_LAGx0.75": -2.581764427321714,
+   "BAND_LAGx1.25": -3.0559222159990513,
+   "BAND_LENx0.75": -3.90075764949443,
+   "BAND_LENx1.25": -2.222049518366707
+  },
+  "pass": false
+ },
+ "strategy_returns_net_train_val": null
+}

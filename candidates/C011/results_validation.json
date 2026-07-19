@@ -1,0 +1,44 @@
+{
+ "candidate_id": "C011",
+ "params": {
+  "hold": 1,
+  "quantile": 0.1,
+  "min_names": 20
+ },
+ "train": {
+  "sr_net": -0.5458384133981649,
+  "nw_t": -2.0323156753191425,
+  "n_obs": 3523
+ },
+ "validation": {
+  "sr_net": -0.23621454941569395,
+  "sr_gross": 0.48081271652664725,
+  "nw_t": -0.5767012757002968,
+  "n_obs": 1258,
+  "mean_daily_turnover": 0.8010375789188591
+ },
+ "cpcv": {
+  "n_paths": 28,
+  "median_sr": 0.4388739932028064,
+  "q25_sr": 0.3054159985539456,
+  "min_sr": -0.49388657882924014,
+  "frac_positive": 0.8928571428571429
+ },
+ "gate1": {
+  "val_sr_gt_0.5": false,
+  "abs_t_gt_2": false,
+  "sign_positive": false,
+  "cpcv_median_gt_0": true,
+  "pass": false
+ },
+ "gate2": {
+  "subhalf1_sr": 0.16871261609133223,
+  "subhalf2_sr": -0.851576090947382,
+  "hivol_sr": 0.28145592207730546,
+  "lovol_sr": -1.3241569236895998,
+  "cost25_sr": -1.3118925275711382,
+  "perturbations": {},
+  "pass": false
+ },
+ "strategy_returns_net_train_val": null
+}

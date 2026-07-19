@@ -1,0 +1,49 @@
+{
+ "candidate_id": "C003",
+ "params": {
+  "hold": 10,
+  "quantile": 0.5,
+  "min_names": 4
+ },
+ "train": {
+  "sr_net": -1.8124566756613911,
+  "nw_t": -7.1573440671447885,
+  "n_obs": 3523
+ },
+ "validation": {
+  "sr_net": -1.1718697933685045,
+  "sr_gross": 0.18353999542509924,
+  "nw_t": -3.009536287990674,
+  "n_obs": 1253,
+  "mean_daily_turnover": 0.3278460354820302
+ },
+ "cpcv": {
+  "n_paths": 28,
+  "median_sr": -1.1973743738411993,
+  "q25_sr": -1.4891950447567952,
+  "min_sr": -1.7850581802862793,
+  "frac_positive": 0.0
+ },
+ "gate1": {
+  "val_sr_gt_0.5": false,
+  "abs_t_gt_2": true,
+  "sign_positive": false,
+  "cpcv_median_gt_0": false,
+  "pass": false
+ },
+ "gate2": {
+  "subhalf1_sr": -1.3063876761873794,
+  "subhalf2_sr": -1.019933606358749,
+  "hivol_sr": -0.42661217829873727,
+  "lovol_sr": -2.115151263474148,
+  "cost25_sr": -3.1967199021172883,
+  "perturbations": {
+   "EPISODE_Zx0.75": -1.4649575149012906,
+   "EPISODE_Zx1.25": -0.7305246729114637,
+   "LOOKBACKx0.75": -1.3184207990898946,
+   "LOOKBACKx1.25": -1.3542335244350707
+  },
+  "pass": false
+ },
+ "strategy_returns_net_train_val": null
+}
