@@ -603,19 +603,20 @@ def run_monte_carlo(
                 )
             return None
         dp = p.day_pnl
-        # Seed with the profile's unconditional second moment (zero-mean
-        # RiskMetrics convention) — an asset-personality prior, legitimate
-        # in-bootstrap because the profile IS the sampling distribution.
-        seed = float(np.mean(dp**2))
         target = (
             cfg.vol_target
             if cfg.vol_target is not None
             else auto_target_vol(dp, lam=cfg.vol_lambda)
         )
+        # Seed at target^2 so every path starts at weight exactly 1 and the
+        # recursion takes over — seeding at the profile's unconditional RMS
+        # would start every path systematically under-weighted whenever the
+        # log is vol-clustered (RMS > median sigma), depressing the first
+        # ~month of each phase below the documented median-weight-1 design.
         return VolSizingParams(
             lam=cfg.vol_lambda,
             target_vol=target,
-            seed_var=seed,
+            seed_var=target**2,
             clip_lo=cfg.vol_clip[0],
             clip_hi=cfg.vol_clip[1],
             burn_in=0,

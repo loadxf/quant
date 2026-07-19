@@ -27,6 +27,7 @@ sizing weights: the safe direction).
 
 from __future__ import annotations
 
+import dataclasses
 import math
 from dataclasses import dataclass
 
@@ -57,13 +58,14 @@ class VolForecastResult:
 @dataclass(frozen=True, slots=True)
 class ClusteringTests:
     n_days: int
+    tested: bool  # False: too few days — a SKIPPED test, not a clean one
     arch_lm_stat: float
     arch_lm_p: float
     arch_lm_lags: int
     mcleod_li_stat: float
     mcleod_li_p: float
     mcleod_li_lags: int
-    clustered: bool  # either test significant at 5%
+    clustered: bool  # either test significant at 5% (False when untested)
 
 
 def ewma_sigma_path(
@@ -161,20 +163,17 @@ def fit_garch11(
     r = np.asarray(day_pnl, dtype=float)
     n = r.size
     if n < min_obs:
-        ewma = ewma_sigma_path(r, burn_in=burn_in)
-        return VolForecastResult(
-            **{
-                **_asdict(ewma),
-                "fallback_reason": f"{n} days < {min_obs} minimum for GARCH MLE "
-                "(Hwang & Valls Pereira 2006)",
-            }
+        return dataclasses.replace(
+            ewma_sigma_path(r, burn_in=burn_in),
+            fallback_reason=f"{n} days < {min_obs} minimum for GARCH MLE "
+            "(Hwang & Valls Pereira 2006)",
         )
     r2 = r**2
     uncond = float(np.mean(r2))
     if uncond <= 0.0:
-        ewma = ewma_sigma_path(r, burn_in=burn_in)
-        return VolForecastResult(
-            **{**_asdict(ewma), "fallback_reason": "degenerate (zero-variance) series"}
+        return dataclasses.replace(
+            ewma_sigma_path(r, burn_in=burn_in),
+            fallback_reason="degenerate (zero-variance) series",
         )
     best, _nll, converged = _nelder_mead(
         lambda x: _garch_nll(r2, uncond, float(x[0]), float(x[1])),
@@ -182,9 +181,8 @@ def fit_garch11(
     )
     alpha, beta = float(best[0]), float(best[1])
     if not converged or alpha < 0 or beta < 0 or alpha + beta >= 1.0:
-        ewma = ewma_sigma_path(r, burn_in=burn_in)
         reason = "optimizer did not converge" if not converged else "alpha+beta >= 1 (IGARCH)"
-        return VolForecastResult(**{**_asdict(ewma), "fallback_reason": reason})
+        return dataclasses.replace(ewma_sigma_path(r, burn_in=burn_in), fallback_reason=reason)
     omega = uncond * (1.0 - alpha - beta)
     # One-step-ahead sigma path: recursion runs from t=1 with the
     # unconditional variance as var[0]; values only surface after the
@@ -213,12 +211,6 @@ def fit_garch11(
         burn_in=burn_in,
         sigma=[float(s) for s in sigma],
     )
-
-
-def _asdict(result: VolForecastResult) -> dict:
-    import dataclasses
-
-    return dataclasses.asdict(result)
 
 
 def arch_lm(day_pnl: np.ndarray, lags: int | None = None) -> tuple[float, float, int]:
@@ -265,15 +257,21 @@ def mcleod_li(day_pnl: np.ndarray, lags: int | None = None) -> tuple[float, floa
 
 
 def compute_clustering(day_pnl: np.ndarray) -> ClusteringTests:
+    n = int(np.asarray(day_pnl).size)
     lm_stat, lm_p, lm_lags = arch_lm(day_pnl)
     ml_stat, ml_p, ml_lags = mcleod_li(day_pnl)
+    # A (0, 1) stub from a too-short series is a SKIPPED test — presenting
+    # it as "no clustering" would steer short-log users away from the one
+    # feature built for them. tested distinguishes the two.
+    tested = n >= max(30, min(lm_lags, ml_lags) + 10)
     return ClusteringTests(
-        n_days=int(np.asarray(day_pnl).size),
+        n_days=n,
+        tested=tested,
         arch_lm_stat=lm_stat,
         arch_lm_p=lm_p,
         arch_lm_lags=lm_lags,
         mcleod_li_stat=ml_stat,
         mcleod_li_p=ml_p,
         mcleod_li_lags=ml_lags,
-        clustered=lm_p < 0.05 or ml_p < 0.05,
+        clustered=tested and (lm_p < 0.05 or ml_p < 0.05),
     )

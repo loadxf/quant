@@ -161,6 +161,13 @@ def _streak_dependence(panel: DecayPanel) -> OverfitFlag:
 
 def _vol_clustering(tests: ClusteringTests) -> OverfitFlag:
     triggered = tests.clustered
+    if not tests.tested:
+        return OverfitFlag(
+            "volatility_clustering",
+            False,
+            f"skipped — {tests.n_days} trading days is too few for the "
+            "ARCH-LM/McLeod-Li tests (no verdict either way)",
+        )
     detail = (
         f"ARCH-LM p={tests.arch_lm_p:.3f} ({tests.arch_lm_lags} lags), "
         f"McLeod-Li p={tests.mcleod_li_p:.3f}"

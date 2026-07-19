@@ -97,9 +97,19 @@ def compute_reality_check(
 
     boundary = firm.day_boundary.to_boundary() if firm is not None else FUTURES_DAY
     day_groups = log.daily_groups(boundary)
-    day_pnl = np.array([sum(t.pnl for t in trades) for _, trades in day_groups], dtype=float)
+    day_pnl = log.daily_pnl(boundary, days=day_groups)
     clustering = compute_clustering(day_pnl)
-    voltarget = compute_voltarget(log, firm=firm, mc_cfg=mc_cfg) if len(day_groups) >= 60 else None
+    voltarget = (
+        compute_voltarget(
+            log,
+            firm=firm,
+            mc_cfg=mc_cfg,
+            baseline_mc=baseline_mc,
+            precomputed_days=day_groups,
+        )
+        if len(day_groups) >= 60
+        else None
+    )
 
     warnings = list(costs.warnings)
     if voltarget is not None:

@@ -52,6 +52,16 @@ class VolSizingParams:
     burn_in: int = 0  # days at weight 1 before sizing activates
     band: float = 0.0  # no-trade band on |delta weight| (counterfactual only)
 
+    def __post_init__(self) -> None:
+        # np.clip with lo > hi silently returns hi everywhere — "vol
+        # targeting" would degrade to a constant relabeled scale.
+        if not 0.0 < self.clip_lo <= self.clip_hi:
+            raise ValueError(
+                f"vol clip bounds must satisfy 0 < lo <= hi (got {self.clip_lo}, {self.clip_hi})"
+            )
+        if not 0.0 < self.lam < 1.0:
+            raise ValueError(f"lam must be in (0, 1) (got {self.lam})")
+
 
 class EwmaSizer:
     """Broadcast-polymorphic EWMA sizing state: `var` is a float in the
@@ -78,11 +88,18 @@ class EwmaSizer:
 
     def update(self, day_pnl_unscaled: float | np.ndarray) -> None:
         """Advance one day using the day's UNSCALED (per-unit-size) PnL —
-        the strategy's own volatility, independent of the applied weight."""
+        the strategy's own volatility, independent of the applied weight.
+
+        During burn-in the variance stays FROZEN at the seed: the seed was
+        computed from those very days, and updating through them would
+        count each burn-in observation twice (once in the seed, once in
+        the recursion) — the ewma_sigma_path convention, shared here so
+        every consumer produces identical weights."""
         p = self.params
-        self.var = p.lam * self.var + (1.0 - p.lam) * np.square(day_pnl_unscaled)
-        if isinstance(day_pnl_unscaled, float | int):
-            self.var = float(self.var)
+        if self.day_index >= p.burn_in:
+            self.var = p.lam * self.var + (1.0 - p.lam) * np.square(day_pnl_unscaled)
+            if isinstance(day_pnl_unscaled, float | int):
+                self.var = float(self.var)
         self.day_index += 1
 
 
@@ -97,7 +114,10 @@ def auto_target_vol(day_pnl: np.ndarray, lam: float = DEFAULT_LAMBDA, burn_in: i
 
 
 def resize_log(
-    log: TradeLog, boundary: DayBoundary, params: VolSizingParams
+    log: TradeLog,
+    boundary: DayBoundary,
+    params: VolSizingParams,
+    precomputed_days: list | None = None,
 ) -> tuple[TradeLog, np.ndarray, np.ndarray]:
     """Chronological vol-targeted counterfactual of the source log.
 
@@ -106,21 +126,24 @@ def resize_log(
     no-trade band keeps the prior applied weight unless the target
     weight moved by more than `band`.
     """
-    days = log.daily_groups(boundary)
-    day_pnl = np.array([sum(t.pnl for t in trades) for _, trades in days], dtype=float)
-    forecast = ewma_sigma_path(day_pnl, lam=params.lam, burn_in=params.burn_in)
-    sigma = np.array(forecast.sigma)
+    days = log.daily_groups(boundary) if precomputed_days is None else precomputed_days
+    day_pnl = log.daily_pnl(boundary, days=days)
 
+    # ONE recursion for every consumer: the same EwmaSizer the evaluator
+    # and Monte Carlo run (scalar mode), honoring params.seed_var; the
+    # no-trade band is applied on top (counterfactual-only concern).
+    sizer = EwmaSizer(params)
+    sigma = np.full(len(days), np.nan)
     weights = np.ones(len(days))
     applied = 1.0
     for d in range(len(days)):
-        if d < params.burn_in or np.isnan(sigma[d]) or sigma[d] <= 0:
-            target_w = 1.0
-        else:
-            target_w = float(np.clip(params.target_vol / sigma[d], params.clip_lo, params.clip_hi))
+        if d >= params.burn_in:
+            sigma[d] = float(np.sqrt(max(float(sizer.var), 0.0)))
+        target_w = float(sizer.weight())
         if abs(target_w - applied) > params.band:
             applied = target_w
         weights[d] = applied
+        sizer.update(float(day_pnl[d]))
 
     trades = []
     for d, (_, day_trades) in enumerate(days):
@@ -162,13 +185,17 @@ class VolTargetCounterfactual:
 
 
 def _log_stats(log: TradeLog, boundary: DayBoundary) -> dict[str, float]:
+    # Sharpe and max-DD reuse the metrics/core kernels so the comparison
+    # table can never drift from the headline metrics' conventions
+    # (annualization constant, ddof, peak-from-zero drawdown).
+    from quantlab.metrics.core import _annualized_ratio, _max_drawdown
+
     days = log.daily_groups(boundary)
-    day_pnl = np.array([sum(t.pnl for t in trades) for _, trades in days], dtype=float)
+    day_pnl = log.daily_pnl(boundary, days=days)
     equity = np.cumsum(day_pnl)
-    peaks = np.maximum.accumulate(np.maximum(equity, 0.0))
-    max_dd = float(np.max(peaks - equity)) if equity.size else 0.0
-    std = float(day_pnl.std(ddof=1)) if day_pnl.size > 1 else 0.0
-    sharpe = float(day_pnl.mean() / std * np.sqrt(252)) if std > 0 else 0.0
+    max_dd = _max_drawdown(np.concatenate(([0.0], equity))) if equity.size else 0.0
+    # Any positive constant divisor cancels in the mean/std ratio.
+    sharpe = _annualized_ratio(day_pnl / 1.0, downside_only=False) if day_pnl.size > 1 else 0.0
     months: dict[str, float] = {}
     for date, trades in days:
         key = f"{date.year}-{date.month:02d}"
@@ -190,15 +217,23 @@ def compute_voltarget(
     clip: tuple[float, float] = (0.5, 1.5),
     band: float = 0.15,
     burn_in: int = 20,
+    baseline_mc=None,
+    precomputed_days: list | None = None,
 ) -> VolTargetCounterfactual:
     """Fixed-vs-vol-targeted comparison of the source log, with the full
-    prop-firm Monte Carlo on both when a firm is given."""
+    prop-firm Monte Carlo on both when a firm is given.
+
+    `baseline_mc`: an existing run_monte_carlo report of the UNRESIZED
+    log (e.g. quant report's headline) reused verbatim for the fixed arm
+    so one output never shows two different baseline numbers."""
+    import dataclasses as _dc
+
     from quantlab.prop.montecarlo import MCConfig, run_monte_carlo
     from quantlab.schema.trade import FUTURES_DAY
 
     boundary = firm.day_boundary.to_boundary() if firm is not None else FUTURES_DAY
-    days = log.daily_groups(boundary)
-    day_pnl = np.array([sum(t.pnl for t in trades) for _, trades in days], dtype=float)
+    days = log.daily_groups(boundary) if precomputed_days is None else precomputed_days
+    day_pnl = log.daily_pnl(boundary, days=days)
     target = auto_target_vol(day_pnl, lam=lam, burn_in=burn_in)
     seed_var = float(np.mean(day_pnl[: min(burn_in, day_pnl.size)] ** 2))
     params = VolSizingParams(
@@ -210,7 +245,7 @@ def compute_voltarget(
         burn_in=min(burn_in, len(days)),
         band=band,
     )
-    resized, weights, sigma = resize_log(log, boundary, params)
+    resized, weights, sigma = resize_log(log, boundary, params, precomputed_days=days)
 
     warnings: list[str] = []
     if len(days) < 60:
@@ -222,7 +257,13 @@ def compute_voltarget(
     mc_fixed = mc_targeted = None
     if firm is not None:
         cfg = mc_cfg or MCConfig(n_paths=2000, seed=42)
-        rep_fixed = run_monte_carlo(log, firm, cfg)
+        # Both arms MUST run at fixed engine sizing: a cfg carrying
+        # sizing="vol_target" would mislabel the fixed arm and apply the
+        # treatment twice to the targeted arm (resized log + per-path
+        # dynamic weights).
+        if getattr(cfg, "sizing", "fixed") != "fixed":
+            cfg = _dc.replace(cfg, sizing="fixed")
+        rep_fixed = baseline_mc if baseline_mc is not None else run_monte_carlo(log, firm, cfg)
         rep_targeted = run_monte_carlo(resized, firm, cfg)
         mc_fixed = {
             "pass_prob": rep_fixed.economics.pass_prob,

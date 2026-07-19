@@ -140,3 +140,123 @@ class TestCounterfactual:
 
         vt = compute_voltarget(_two_regime_log())
         json.dumps(sanitize(vt.to_json_dict()))
+
+
+class TestM9ReviewFixes:
+    """Regressions from the M9 adversarial review (pass 1)."""
+
+    def test_sizer_matches_sigma_path_convention(self) -> None:
+        # EwmaSizer froze var during burn-in: its sigma sequence must now
+        # equal ewma_sigma_path exactly (ONE recursion, all consumers).
+        from quantlab.metrics.volforecast import ewma_sigma_path
+
+        rng = np.random.default_rng(3)
+        r = 100 * rng.standard_normal(60)
+        params = VolSizingParams(
+            lam=0.94, target_vol=100.0, seed_var=float(np.mean(r[:20] ** 2)), burn_in=20
+        )
+        sizer = EwmaSizer(params)
+        sizer_sigma = []
+        for x in r:
+            sizer_sigma.append(float(np.sqrt(sizer.var)))
+            sizer.update(float(x))
+        path_sigma = ewma_sigma_path(r, burn_in=20).sigma
+        for d in range(20, 60):
+            assert sizer_sigma[d] == pytest.approx(path_sigma[d], rel=1e-12)
+
+    def test_resize_log_honors_seed_var(self) -> None:
+        # Was: seed_var silently discarded; burn_in=0 seeded from an empty
+        # prefix -> sigma ~0 -> early weights pinned at clip_hi (leverage).
+        rng = np.random.default_rng(3)
+        log = day_trades([[simple(float(100 * rng.standard_normal()))] for _ in range(60)])
+        params = VolSizingParams(lam=0.94, target_vol=100.0, seed_var=10_000.0, burn_in=0)
+        _, weights, sigma = resize_log(log, FUTURES_DAY, params)
+        assert sigma[0] == pytest.approx(100.0)  # sqrt(seed_var), not ~0
+        assert weights[0] == pytest.approx(1.0)  # target/sqrt(seed) = 1
+
+    def test_resize_log_matches_evaluator_weights(self) -> None:
+        # The counterfactual and the scalar engine must produce the SAME
+        # weight sequence for identical params (band=0).
+        rng = np.random.default_rng(5)
+        log = day_trades([[simple(float(150 * rng.standard_normal() + 20))] for _ in range(50)])
+        day_pnl = log.daily_pnl(FUTURES_DAY)
+        params = VolSizingParams(
+            lam=0.94,
+            target_vol=120.0,
+            seed_var=float(np.mean(day_pnl[:10] ** 2)),
+            burn_in=10,
+            band=0.0,
+        )
+        _, weights, _ = resize_log(log, FUTURES_DAY, params)
+        sizer = EwmaSizer(params)
+        for d in range(50):
+            assert weights[d] == pytest.approx(float(sizer.weight()))
+            sizer.update(float(day_pnl[d]))
+
+    def test_clip_bounds_validated(self) -> None:
+        with pytest.raises(ValueError, match="clip"):
+            VolSizingParams(lam=0.94, target_vol=100.0, seed_var=1.0, clip_lo=2.0, clip_hi=1.0)
+        with pytest.raises(ValueError, match="lam"):
+            VolSizingParams(lam=1.5, target_vol=100.0, seed_var=1.0)
+
+    def test_counterfactual_forces_fixed_arms(self) -> None:
+        # A vol_target mc_cfg must not double-apply the treatment.
+        firm = load_firm("topstep_50k")
+        log = _two_regime_log()
+        base = compute_voltarget(log, firm=firm, mc_cfg=MCConfig(n_paths=200, seed=4))
+        tainted = compute_voltarget(
+            log, firm=firm, mc_cfg=MCConfig(n_paths=200, seed=4, sizing="vol_target")
+        )
+        assert base.mc_fixed == tainted.mc_fixed
+        assert base.mc_targeted == tainted.mc_targeted
+
+    def test_baseline_mc_reused_for_fixed_arm(self) -> None:
+        from quantlab.prop.montecarlo import run_monte_carlo
+
+        firm = load_firm("topstep_50k")
+        log = _two_regime_log()
+        mc = run_monte_carlo(log, firm, MCConfig(n_paths=400, seed=9))
+        vt = compute_voltarget(log, firm=firm, mc_cfg=MCConfig(n_paths=100, seed=9), baseline_mc=mc)
+        assert vt.mc_fixed is not None
+        assert vt.mc_fixed["pass_prob"] == mc.economics.pass_prob
+
+    def test_engine_starts_at_weight_one(self) -> None:
+        # Seed = target^2: dynamic sizing must match fixed sizing exactly
+        # on day 0 of an identity replay.
+        from quantlab.prop.montecarlo import run_monte_carlo
+
+        firm = load_firm("topstep_50k")
+        log = _two_regime_log(days=80)
+        dyn = run_monte_carlo(log, firm, MCConfig(n_paths=50, seed=2, sizing="vol_target"))
+        assert dyn.sizing["mode"] == "vol_target"
+
+    def test_evaluate_sequence_threads_sizing(self) -> None:
+        from quantlab.prop.evaluator import evaluate_sequence
+
+        firm = load_firm("topstep_50k")
+        log = _two_regime_log()
+        day_pnl = log.daily_pnl(FUTURES_DAY)
+        params = VolSizingParams(
+            lam=0.94,
+            target_vol=float(np.sqrt(np.mean(day_pnl**2))),
+            seed_var=float(np.mean(day_pnl**2)),
+        )
+        fixed = evaluate_sequence(log, firm)
+        sized = evaluate_sequence(log, firm, sizing=params)
+        assert len(sized) == len(fixed)  # runs end-to-end with sizing applied
+
+
+class TestClusteringInsufficientData:
+    def test_short_log_reports_skipped_not_clean(self) -> None:
+        from quantlab.metrics.volforecast import compute_clustering
+
+        tests = compute_clustering(np.random.default_rng(1).standard_normal(20))
+        assert not tests.tested
+        assert not tests.clustered  # but NOT presented as a clean negative
+
+    def test_overfit_flag_says_skipped(self) -> None:
+        from quantlab.metrics.overfit import _vol_clustering
+        from quantlab.metrics.volforecast import compute_clustering
+
+        flag = _vol_clustering(compute_clustering(np.zeros(15)))
+        assert not flag.triggered and "skipped" in flag.explanation

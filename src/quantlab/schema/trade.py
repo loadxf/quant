@@ -7,6 +7,11 @@ consumes `Trade` / `TradeLog`. All datetimes are tz-aware UTC internally.
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import numpy as np
+
 import datetime as dt
 from collections.abc import Iterable
 from dataclasses import dataclass
@@ -135,3 +140,18 @@ class TradeLog:
         for trade in self.trades:
             groups.setdefault(boundary.session_date(trade.exit_time), []).append(trade)
         return sorted(groups.items())
+
+    def daily_pnl(
+        self,
+        boundary: DayBoundary = FUTURES_DAY,
+        days: list[tuple[dt.date, list[Trade]]] | None = None,
+    ) -> np.ndarray:
+        """Per-trading-day net PnL, chronological — THE single definition
+        of "a day's PnL" (clustering tests, sizing weights, and headline
+        metrics must never disagree about this series). Pass `days` to
+        reuse an existing daily_groups result."""
+        import numpy as np
+
+        if days is None:
+            days = self.daily_groups(boundary)
+        return np.array([sum(t.pnl for t in trades) for _, trades in days], dtype=float)

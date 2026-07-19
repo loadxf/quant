@@ -84,20 +84,25 @@ def evaluate(
     return _evaluate_days(days, firm, phase_cfg, fidelity_from(log), sizing=sizing)
 
 
-def evaluate_sequence(log: TradeLog, firm: FirmConfig) -> list[EvaluationResult]:
+def evaluate_sequence(
+    log: TradeLog, firm: FirmConfig, sizing: VolSizingParams | None = None
+) -> list[EvaluationResult]:
     """Chain phases over the log: each eval phase consumes trading days until
-    it resolves; the funded phase replays whatever remains."""
+    it resolves; the funded phase replays whatever remains.
+
+    `sizing` applies per phase with FRESH EWMA state (matching the Monte
+    Carlo, which re-seeds each simulated phase)."""
     all_days = log.daily_groups(firm.day_boundary.to_boundary())
     fidelity = fidelity_from(log)
     results: list[EvaluationResult] = []
     cursor = 0
     for phase_cfg in firm.phases:
-        result = _evaluate_days(all_days[cursor:], firm, phase_cfg, fidelity)
+        result = _evaluate_days(all_days[cursor:], firm, phase_cfg, fidelity, sizing=sizing)
         results.append(result)
         cursor += result.days_consumed
         if not result.passed:
             return results
-    results.append(_evaluate_days(all_days[cursor:], firm, firm.funded, fidelity))
+    results.append(_evaluate_days(all_days[cursor:], firm, firm.funded, fidelity, sizing=sizing))
     return results
 
 
@@ -195,20 +200,23 @@ def _evaluate_days(
         day_resolved = False
 
         for trade_index, trade in enumerate(trades):
-            max_qty = max(max_qty, trade.quantity)
             # Linear same-fill scaling: w constant within the day, so
             # scaling each trade's pnl/mae/mfe equals the vector engine's
-            # w * {high,low,close}_rel row multiply exactly.
+            # w * {high,low,close}_rel row multiply exactly. Quantity
+            # scales too so the contract-limit advisory sees the EFFECTIVE
+            # position (matching resize_log's counterfactual).
             eff = (
                 trade
                 if w == 1.0
                 else dataclasses.replace(
                     trade,
                     pnl=trade.pnl * w,
+                    quantity=trade.quantity * w,
                     mae=trade.mae * w if trade.mae is not None else None,
                     mfe=trade.mfe * w if trade.mfe is not None else None,
                 )
             )
+            max_qty = max(max_qty, eff.quantity)
             high, low, close = trade_points(eff, day_open + day_cum)
 
             for tr_rule in trailing:

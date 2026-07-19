@@ -213,7 +213,15 @@ def _reality_context(rc: Any) -> dict:
                 f"{cl.mcleod_li_stat:.2f}",
                 f"{cl.mcleod_li_p:.4f}",
             ),
-            ("Verdict", "CLUSTERED" if cl.clustered else "no clustering", ""),
+            (
+                "Verdict",
+                (
+                    f"insufficient data ({cl.n_days} days)"
+                    if not cl.tested
+                    else ("CLUSTERED" if cl.clustered else "no clustering")
+                ),
+                "",
+            ),
         ]
     voltarget_rows = []
     voltarget_note = None

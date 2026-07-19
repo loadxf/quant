@@ -199,11 +199,13 @@ def render_reality(rc: Any, console: Console) -> None:
             f"{cl.mcleod_li_stat:.2f}",
             f"{cl.mcleod_li_p:.4f}",
         )
-        cl_table.add_row(
-            "Verdict",
-            "[red]CLUSTERED[/red]" if cl.clustered else "[green]no clustering[/green]",
-            "",
-        )
+        if not cl.tested:
+            verdict = f"[yellow]insufficient data ({cl.n_days} days)[/yellow]"
+        elif cl.clustered:
+            verdict = "[red]CLUSTERED[/red]"
+        else:
+            verdict = "[green]no clustering[/green]"
+        cl_table.add_row("Verdict", verdict, "")
         console.print(cl_table)
 
     if rc.voltarget is not None:
