@@ -36,7 +36,7 @@ def register_pbo_commands(app: typer.Typer) -> None:
         in-sample winner is a coin flip out-of-sample; near 0 means the
         winner genuinely dominates. The measured complement to --trials.
         """
-        matrix, names = load_variant_matrix(variants)
+        matrix, _names = load_variant_matrix(variants)
         result = compute_pbo(matrix, partitions=partitions, seed=seed)
         if json_out:
             typer.echo(json.dumps(sanitize(result.to_json_dict()), indent=2, default=str))
