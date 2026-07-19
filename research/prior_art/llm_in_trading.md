@@ -1,5 +1,5 @@
 ---
-status: draft round 1
+status: agreed round 2
 topic: llm_in_trading
 ---
 

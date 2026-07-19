@@ -44,6 +44,10 @@ def fitness_of(
     adjclose: pd.DataFrame,
     generation: int,
     cache: dict[str, float],
+    holding_days: int = 1,
+    cost_bps: float = 10.0,
+    quantile: float = 0.1,
+    split: str = "train_g2",
 ) -> SearchResult:
     key = to_string(expr)
     n_nodes = count_nodes(expr)
@@ -56,8 +60,10 @@ def fitness_of(
                 signal,
                 adjclose,
                 candidate_id=f"g2_gen{generation}",
-                split="train_g2",
-                cost_bps=10.0,
+                split=split,
+                cost_bps=cost_bps,
+                holding_days=holding_days,
+                quantile=quantile,
             )
             sr = result.sharpe_net
             if result.meta["n_obs"] < 500:
@@ -77,6 +83,10 @@ def evolve(
     seed: int = 20260719,
     elite_frac: float = 0.15,
     log_path: str | None = None,
+    holding_days: int = 1,
+    cost_bps: float = 10.0,
+    quantile: float = 0.1,
+    split: str = "train_g2",
 ) -> list[SearchResult]:
     """Run the evolutionary search; returns all evaluated results sorted by
     fitness. Deterministic under the fixed seed."""
@@ -87,7 +97,14 @@ def evolve(
     history = []
 
     for gen in range(generations):
-        scored = [fitness_of(e, terminals, adjclose, gen, cache) for e in pop]
+        scored = [
+            fitness_of(
+                e, terminals, adjclose, gen, cache,
+                holding_days=holding_days, cost_bps=cost_bps,
+                quantile=quantile, split=split,
+            )
+            for e in pop
+        ]
         for s in scored:
             if s.expr_str not in all_results or s.fitness > all_results[s.expr_str].fitness:
                 all_results[s.expr_str] = s

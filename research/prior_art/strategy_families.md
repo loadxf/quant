@@ -1,5 +1,5 @@
 ---
-status: draft round 1
+status: draft round 2
 topic: strategy_families
 ---
 
@@ -14,12 +14,12 @@ and documented magnitude where a source was verified online.
 ## Claims
 
 **C1. Cross-sectional momentum (Jegadeesh–Titman 1993): buying 3–12-month winners and selling losers in US equities earned roughly 1% per month over 3–12-month holding periods.**
-Evidence: "Strategies which buy stocks that have performed well in the past and sell stocks that have performed poorly in the past generate significant positive returns over 3- to 12-month holding periods". Table I (verified from full text, sample Jan 1965–Dec 1989): across the 16 formation/holding combinations, zero-cost buy-sell returns range from 0.32% per month (3-month/3-month no-skip, the only statistically insignificant strategy) to 1.31% (12-month/3-month no-skip; 1.49% with a 1-week skip); "The 6-month formation period produces returns of about 1% per month regardless of the holding period," and the 6- and 12-month formation strategies cluster around 0.9%–1.3%. Part of the first-year abnormal return dissipates in the following two years. Journal of Finance 48(1), 65–91.
+Evidence: "Strategies which buy stocks that have performed well in the past and sell stocks that have performed poorly in the past generate significant positive returns over 3- to 12-month holding periods". Table I (verified from full text, sample Jan 1965–Dec 1989): across the 16 formation/holding combinations, zero-cost buy-sell returns range from 0.32% per month (3-month/3-month no-skip, the only statistically insignificant strategy) to 1.31% (12-month/3-month no-skip; 1.49% with a 1-week skip); "The 6-month formation period produces returns of about 1% per month regardless of the holding period"; in Panel A the 6-month formation strategies run 0.84%–1.02% and the 12-month formation strategies 0.68%–1.31% across holding periods. Part of the first-year abnormal return dissipates in the following two years. Journal of Finance 48(1), 65–91.
 Source: https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1540-6261.1993.tb04702.x and https://www.bauer.uh.edu/rsusmel/phd/jegadeesh-titman93.pdf (Table I numbers extracted directly from the full-text PDF)
 Confidence: high
 
 **C2. Time-series momentum (Moskowitz–Ooi–Pedersen 2012): an instrument's own past 12-month excess return predicts its future return across 58 futures/forward contracts spanning equity indices, currencies, commodities, and government bonds.**
-Evidence: "Significant 'time series momentum' in equity index, currency, commodity, and bond futures for each of the 58 liquid instruments considered... persistence in returns for 1 to 12 months that partially reverses over longer horizons"; a diversified TSMOM portfolio "delivers substantial abnormal returns with little exposure to standard asset pricing factors and performs best during extreme markets." Journal of Financial Economics 104, 228–250; sample 1985–2009.
+Evidence: "Significant 'time series momentum' in equity index, currency, commodity, and bond futures for each of the 58 liquid instruments considered... persistence in returns for 1 to 12 months that partially reverses over longer horizons"; a diversified TSMOM portfolio "delivers substantial abnormal returns with little exposure to standard asset pricing factors and performs best during extreme markets." Journal of Financial Economics 104, 228–250; TSMOM strategy evaluation sample 1985–2009 (underlying futures data begin January 1965).
 Source: https://www.aqr.com/Insights/Research/Journal-Article/Time-Series-Momentum
 Confidence: high
 
@@ -29,8 +29,8 @@ Source: https://quantpedia.com/strategies/time-series-momentum-effect
 Confidence: medium (practitioner-database backtest, not peer-reviewed; verified by direct fetch of the page)
 
 **C4. Short-term reversal (Jegadeesh 1990; Lehmann 1990): last month's (or week's) losers beat winners; the monthly extreme-decile spread was about 2.5% per month in 1934–1987, and weekly contrarian profits exceeded 2% per month.**
-Evidence: Jegadeesh (JF 45, 881–898) found "negative first-order serial correlation in monthly stock returns"; "the difference between abnormal returns on the extreme decile portfolios over 1934–1987 was 2.49 percent per month." Lehmann (QJE 105, 1–28): winners/losers one week "experience sizeable return reversals the next week" with contrarian abnormal returns "of over 2% per month" surviving bid-ask and plausible cost corrections.
-Source: https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1540-6261.1990.tb05110.x ; https://ideas.repec.org/a/bla/jfinan/v45y1990i3p881-98.html (Jegadeesh 2.49%/month verbatim) ; https://academic.oup.com/qje/article-abstract/105/1/1/1928416 ; https://finance.martinsewell.com/stylized-facts/dependence/Lehmann1990.pdf (Table II, 1962–1986: winner portfolios −0.55%/week vs loser portfolios +1.24%/week)
+Evidence: Jegadeesh (JF 45, 881–898) found "negative first-order serial correlation in monthly stock returns"; "the difference between abnormal returns on the extreme decile portfolios over 1934–1987 was 2.49 percent per month." Lehmann (QJE 105, 1–28): winners/losers one week "experience sizeable return reversals the next week" with contrarian abnormal returns of over 2% per month (the standard literature characterization, not a verbatim abstract quote) surviving bid-ask and plausible cost corrections.
+Source: https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1540-6261.1990.tb05110.x ; https://ideas.repec.org/a/bla/jfinan/v45y1990i3p881-98.html (Jegadeesh 2.49%/month verbatim) ; https://academic.oup.com/qje/article-abstract/105/1/1/1928416 ; https://finance.martinsewell.com/stylized-facts/dependence/Lehmann1990.pdf (NYSE/AMEX, July 1962–Dec 1986: winner portfolios averaged −0.35 to −0.55%/week the next week, loser portfolios +0.86 to +1.24%/week)
 Confidence: high (both magnitudes verified against primary/abstract sources in adversarial round 1)
 
 **C5. Long-term reversal (De Bondt–Thaler 1985): 3–5-year loser portfolios beat winner portfolios by roughly 25% over the subsequent 36 months (NYSE, 1926–1982), with the effect concentrated in January.**
@@ -68,9 +68,9 @@ Evidence: JFE 8(1), 55–69: "mean Monday returns were negative for the full per
 Source: https://www.sciencedirect.com/science/article/abs/pii/0304405X80900215
 Confidence: high
 
-**C12. Pre-holiday effect (Ariel 1990): the trading day before holidays showed mean returns nine to fourteen times the average of remaining days (NYSE/AMEX, 1963–1982); a 2021 out-of-sample study finds the premium has largely become a small-firm effect.**
-Evidence: JF 45(5), 1611–1626 abstract: "stocks advance with disproportionate frequency and show high mean returns averaging nine to fourteen times the mean return for the remaining days of the year." Ko (Critical Finance Review, "The Pre-Holiday Premium of Ariel (1990) Has Largely Become A Small-Firm Effect Out of Sample") documents decay.
-Source: https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1540-6261.1990.tb03731.x and https://cfr.ivo-welch.info/published/papers/ko2021pre.pdf
+**C12. Pre-holiday effect (Ariel 1990): the trading day before holidays showed mean returns nine to fourteen times the average of remaining days (NYSE/AMEX, 1963–1982); a 2024 out-of-sample study (Ko–Yang; accepted 2021) finds the premium has largely become a small-firm effect.**
+Evidence: JF 45(5), 1611–1626 abstract: "stocks advance with disproportionate frequency and show high mean returns averaging nine to fourteen times the mean return for the remaining days of the year." Ko and Yang, "The Pre-Holiday Premium of Ariel (1990) Has Largely Become A Small-Firm Effect Out of Sample," Critical Finance Review 13(3-4), 531–538, published 2024 (the CFR hosting filename ko2021pre.pdf reflects the acceptance vintage, not the publication year): extending the sample to 1983–2019, the pre-holiday effect now exists only among small firms, with large-firm pre-holiday returns statistically indistinguishable from regular days.
+Source: https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1540-6261.1990.tb03731.x ; https://www.emerald.com/cfr/article-abstract/13/3-4/531/1326451/ (verified: authors Ko and Yang, CFR 13(3-4), 531–538, 2024) ; https://cfr.ivo-welch.info/published/papers/ko2021pre.pdf
 Confidence: high
 
 **C13. Same-calendar-month seasonal momentum (Heston–Sadka 2008): stocks that historically did well in a given calendar month keep doing well in that month, with the pattern persisting up to 20 annual lags and seasonal strategies averaging over 50 bp per month.**
@@ -89,7 +89,7 @@ Source: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1004081
 Confidence: high
 
 **C16. "Tug of war" (Lou–Polk–Skouras 2019): overnight and intraday return components each persist for years but offset each other, and across 14 strategies profits accrue either entirely overnight (momentum and short-term reversal) or entirely intraday (value-type and most other anomalies), typically with opposite signs in the other session.**
-Evidence: JFE 134(1), 192–213 (verified from the published PDF): "strong overnight and intraday firm-level return continuation along with an offsetting cross-period reversal effect... profits are either earned entirely overnight (for reversal and a variety of momentum strategies) or entirely intraday, typically with profits of opposite signs across these components"; conclusion: "essentially all of the abnormal returns on momentum and short-term reversal strategies occur overnight while the abnormal returns on other strategies occur intraday." E.g., the short-term reversal strategy's overnight CAPM alpha is +0.93% per month (t=4.28) versus −1.05% intraday (t=−3.25); the smoothed overnight-minus-intraday spread forecasts a strategy's close-to-close performance.
+Evidence: JFE 134(1), 192–213 (verified from the published PDF): "strong overnight and intraday firm-level return continuation along with an offsetting cross-period reversal effect... profits are either earned entirely overnight (for reversal and a variety of momentum strategies) or entirely intraday, typically with profits of opposite signs across these components"; conclusion: "essentially all of the abnormal returns on momentum and short-term reversal strategies occur overnight while the abnormal returns on other strategies occur intraday." E.g., the short-term reversal strategy's overnight alpha is +0.93% per month (t=4.28) versus a −1.05% intraday CAPM alpha (t=−3.25); the smoothed overnight-minus-intraday spread forecasts a strategy's close-to-close performance.
 Source: https://ideas.repec.org/a/eee/jfinec/v134y2019i1p192-213.html and https://personal.lse.ac.uk/polk/research/TugOfWar.pdf
 Confidence: high
 
@@ -236,4 +236,40 @@ Audit nitpicks (not objections) also applied:
   upgraded medium → high with the journal-PDF source added.
 
 No claims were renumbered or removed. Status advanced to "draft round 1"; not marked agreed
+(adversary/judge decision).
+
+## Revision log round 2
+
+Response to adversarial audit round 2 (research/debates/strategy_families_round2.md,
+2026-07-19). One objection (C12 WRONG on the study year); fix re-verified during this
+revision by direct fetch of the Emerald/CFR article page, not merely copied from the audit.
+
+- **C12 (WRONG — fixed).** "a 2021 out-of-sample study" corrected to "a 2024 out-of-sample
+  study (Ko–Yang; accepted 2021)". Verified by direct fetch of
+  https://www.emerald.com/cfr/article-abstract/13/3-4/531/1326451/ : Kuan-Cheng Ko and
+  Nien-Tzu Yang, "The Pre-Holiday Premium of Ariel (1990) Has Largely Become A Small-Firm
+  Effect Out of Sample," Critical Finance Review 13(3-4), 531–538, published 2024. The
+  prior "2021" came only from the CFR hosting filename ko2021pre.pdf (acceptance vintage),
+  and the evidence line had credited "Ko" alone, omitting co-author Nien-Tzu Yang — both
+  fixed. Evidence line now also states the paper's finding precisely (sample extended to
+  1983–2019; effect survives only among small firms) and the Emerald source URL was added.
+  The Ariel 9–14x figure and the substance of the decay finding were confirmed by the
+  audit and are unchanged.
+
+Audit nitpicks (not objections) also applied:
+- **C1.** "6- and 12-month formation strategies cluster around 0.9%–1.3%" tightened to the
+  actual Panel A envelopes: 0.84%–1.02% (6-month formation) and 0.68%–1.31% (12-month
+  formation).
+- **C2.** Clarified that 1985–2009 is the TSMOM strategy-evaluation sample; underlying
+  futures data begin January 1965.
+- **C4.** Dropped quotation marks around "of over 2% per month" (a standard literature
+  characterization, not a verbatim QJE-abstract quote, now flagged as such inline); the
+  Lehmann weekly figures restated as the ranges reported in the text (winners −0.35 to
+  −0.55%/week, losers +0.86 to +1.24%/week, July 1962–Dec 1986) instead of the bare
+  endpoints attributed to Table II.
+- **C16.** STR overnight +0.93% (t=4.28) relabeled "overnight alpha" (the paper's prose
+  calls it a three-factor alpha) while the intraday −1.05% (t=−3.25) keeps the CAPM-alpha
+  label; numbers unchanged.
+
+No claims were renumbered or removed. Status advanced to "draft round 2"; not marked agreed
 (adversary/judge decision).
