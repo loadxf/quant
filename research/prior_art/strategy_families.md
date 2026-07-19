@@ -1,5 +1,5 @@
 ---
-status: draft round 0
+status: draft round 1
 topic: strategy_families
 ---
 
@@ -14,8 +14,8 @@ and documented magnitude where a source was verified online.
 ## Claims
 
 **C1. Cross-sectional momentum (Jegadeesh–Titman 1993): buying 3–12-month winners and selling losers in US equities earned roughly 1% per month over 3–12-month holding periods.**
-Evidence: "Strategies which buy stocks that have performed well in the past and sell stocks that have performed poorly in the past generate significant positive returns over 3- to 12-month holding periods"; across the 16 formation/holding combinations average monthly returns ran about 0.9%–1.3%, with part of the first-year abnormal return dissipating in the following two years. Journal of Finance 48(1), 65–91.
-Source: https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1540-6261.1993.tb04702.x
+Evidence: "Strategies which buy stocks that have performed well in the past and sell stocks that have performed poorly in the past generate significant positive returns over 3- to 12-month holding periods". Table I (verified from full text, sample Jan 1965–Dec 1989): across the 16 formation/holding combinations, zero-cost buy-sell returns range from 0.32% per month (3-month/3-month no-skip, the only statistically insignificant strategy) to 1.31% (12-month/3-month no-skip; 1.49% with a 1-week skip); "The 6-month formation period produces returns of about 1% per month regardless of the holding period," and the 6- and 12-month formation strategies cluster around 0.9%–1.3%. Part of the first-year abnormal return dissipates in the following two years. Journal of Finance 48(1), 65–91.
+Source: https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1540-6261.1993.tb04702.x and https://www.bauer.uh.edu/rsusmel/phd/jegadeesh-titman93.pdf (Table I numbers extracted directly from the full-text PDF)
 Confidence: high
 
 **C2. Time-series momentum (Moskowitz–Ooi–Pedersen 2012): an instrument's own past 12-month excess return predicts its future return across 58 futures/forward contracts spanning equity indices, currencies, commodities, and government bonds.**
@@ -23,15 +23,15 @@ Evidence: "Significant 'time series momentum' in equity index, currency, commodi
 Source: https://www.aqr.com/Insights/Research/Journal-Article/Time-Series-Momentum
 Confidence: high
 
-**C3. Quantpedia's independent backtest of time-series momentum (1965–2009 variant) reports a Sharpe ratio of 1.31 with 20.7% annual return and 15.74% volatility.**
-Evidence: Quantpedia strategy page lists "Sharpe Ratio 1.31", "20.7%" per annum, "estimated volatility 15.74%", max drawdown −33.87% (third-party replication figures, not the original paper's).
+**C3. Quantpedia's independent backtest of time-series momentum (1965–2009 variant) reports a Sharpe ratio of 1.31 with a 20.7% per-annum performance figure (labeled by Quantpedia as estimated Fama–French alpha) and 15.74% volatility.**
+Evidence: Quantpedia strategy page lists "Sharpe Ratio 1.31", "20.7%" per annum (Quantpedia's footnote describes this as estimated alpha using Fama–French factors, not raw annual return), "estimated volatility 15.74%", max drawdown −33.87% (third-party replication figures sourced from MOP Table 3 Panel A, not the original paper's text).
 Source: https://quantpedia.com/strategies/time-series-momentum-effect
 Confidence: medium (practitioner-database backtest, not peer-reviewed; verified by direct fetch of the page)
 
 **C4. Short-term reversal (Jegadeesh 1990; Lehmann 1990): last month's (or week's) losers beat winners; the monthly extreme-decile spread was about 2.5% per month in 1934–1987, and weekly contrarian profits exceeded 2% per month.**
 Evidence: Jegadeesh (JF 45, 881–898) found "negative first-order serial correlation in monthly stock returns"; "the difference between abnormal returns on the extreme decile portfolios over 1934–1987 was 2.49 percent per month." Lehmann (QJE 105, 1–28): winners/losers one week "experience sizeable return reversals the next week" with contrarian abnormal returns "of over 2% per month" surviving bid-ask and plausible cost corrections.
-Source: https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1540-6261.1990.tb05110.x and https://academic.oup.com/qje/article-abstract/105/1/1/1928416
-Confidence: medium (magnitudes taken from secondary summaries surfaced in search, not the primary PDFs)
+Source: https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1540-6261.1990.tb05110.x ; https://ideas.repec.org/a/bla/jfinan/v45y1990i3p881-98.html (Jegadeesh 2.49%/month verbatim) ; https://academic.oup.com/qje/article-abstract/105/1/1/1928416 ; https://finance.martinsewell.com/stylized-facts/dependence/Lehmann1990.pdf (Table II, 1962–1986: winner portfolios −0.55%/week vs loser portfolios +1.24%/week)
+Confidence: high (both magnitudes verified against primary/abstract sources in adversarial round 1)
 
 **C5. Long-term reversal (De Bondt–Thaler 1985): 3–5-year loser portfolios beat winner portfolios by roughly 25% over the subsequent 36 months (NYSE, 1926–1982), with the effect concentrated in January.**
 Evidence: Loser portfolios outperformed the market by 19.6% and winners underperformed by about 5%, a cumulative winner–loser spread of ~24.6% over 36 months; overreaction effect "asymmetric... much larger for losers"; January returns notably higher for losers. Journal of Finance, July 1985.
@@ -43,10 +43,10 @@ Evidence: From the paper: "The U.S. BAB factor realizes a Sharpe ratio of 0.78 b
 Source: https://pages.stern.nyu.edu/~lpederse/papers/BettingAgainstBeta.pdf (numbers extracted directly from the PDF)
 Confidence: high
 
-**C7. Carry (Koijen–Moskowitz–Pedersen–Vrugt 2018): a security's model-free "carry" predicts returns cross-sectionally and in time series in global equities, global bonds, commodities, US Treasuries, credit, and options; a carry factor diversified across asset classes attains an annualized Sharpe ratio near 1.1.**
-Evidence: JFE 127(2), 197–225: "Carry predicts returns cross-sectionally and in time series for a host of different asset classes... not explained by known predictors"; working-paper versions report the diversified global carry factor's annualized Sharpe around 1.1 (individual asset-class carry averages ~0.7).
-Source: https://www.sciencedirect.com/science/article/abs/pii/S0304405X17302908 and https://pages.stern.nyu.edu/~lpederse/papers/Carry.pdf
-Confidence: medium (Sharpe figures from search snippets of working-paper text, not verified in the published version)
+**C7. Carry (Koijen–Moskowitz–Pedersen–Vrugt 2018): a security's model-free "carry" predicts returns cross-sectionally and in time series in global equities, global bonds, commodities, US Treasuries, credit, and options; a carry factor diversified across asset classes attains an annualized Sharpe ratio of about 1.2 in the published version.**
+Evidence: JFE 127(2), 197–225 (published version, verified from the journal PDF): "Carry predicts returns cross-sectionally and in time series for a host of different asset classes... not explained by known predictors"; individual asset-class carry strategies achieve "an annualized Sharpe ratio of 0.8 on average. Further, a diversified portfolio of carry strategies across all asset classes earns a Sharpe ratio of 1.2." (The earlier NBER WP 19325 reported 1.1 diversified and ~0.74 average — version matters.)
+Source: https://www.sciencedirect.com/science/article/abs/pii/S0304405X17302908 ; https://spinup-000d1a-wp-offload-media.s3.amazonaws.com/faculty/wp-content/uploads/sites/3/2019/04/Carry.pdf (published-version Sharpes) ; https://www.nber.org/system/files/working_papers/w19325/w19325.pdf (WP figures)
+Confidence: high (published-version numbers verified in adversarial round 1)
 
 **C8. Turn-of-the-month (Lakonishok–Smidt 1988; Xu–McConnell 2008): essentially all of the US equity excess return over 1897–2005 accrued in the four-day window from the last trading day of the month through the next three days.**
 Evidence: Xu–McConnell abstract: turn-of-month identified by Lakonishok and Smidt (1988) in DJIA 1897–1986 "persists over the recent interval of 1987–2005: in essence, over this 19-year period (and over the 109-year period of 1897–2005) all of the excess market return occurred during the four-day turn-of-the-month interval... during the other 16 trading days of the month, on average, investors received no reward for bearing market risk"; not confined to small/low-priced stocks, quarter-ends, or the US.
@@ -88,8 +88,8 @@ Evidence: "The US equity premium over the last decade is solely due to overnight
 Source: https://papers.ssrn.com/sol3/papers.cfm?abstract_id=1004081
 Confidence: high
 
-**C16. "Tug of war" (Lou–Polk–Skouras 2019): overnight and intraday return components each persist for years but offset each other, and across 14 strategies profits accrue either entirely overnight (momentum-type) or entirely intraday (reversal/value-type), typically with opposite signs in the other session.**
-Evidence: JFE 134(1), 192–213: "strong overnight and intraday firm-level return continuation along with an offsetting cross-period reversal effect... profits are either earned entirely overnight (for reversal and momentum strategies) or entirely intraday, typically with profits of opposite signs across these components"; the smoothed overnight-minus-intraday spread forecasts a strategy's close-to-close performance.
+**C16. "Tug of war" (Lou–Polk–Skouras 2019): overnight and intraday return components each persist for years but offset each other, and across 14 strategies profits accrue either entirely overnight (momentum and short-term reversal) or entirely intraday (value-type and most other anomalies), typically with opposite signs in the other session.**
+Evidence: JFE 134(1), 192–213 (verified from the published PDF): "strong overnight and intraday firm-level return continuation along with an offsetting cross-period reversal effect... profits are either earned entirely overnight (for reversal and a variety of momentum strategies) or entirely intraday, typically with profits of opposite signs across these components"; conclusion: "essentially all of the abnormal returns on momentum and short-term reversal strategies occur overnight while the abnormal returns on other strategies occur intraday." E.g., the short-term reversal strategy's overnight CAPM alpha is +0.93% per month (t=4.28) versus −1.05% intraday (t=−3.25); the smoothed overnight-minus-intraday spread forecasts a strategy's close-to-close performance.
 Source: https://ideas.repec.org/a/eee/jfinec/v134y2019i1p192-213.html and https://personal.lse.ac.uk/polk/research/TugOfWar.pdf
 Confidence: high
 
@@ -129,8 +129,8 @@ Source: https://onlinelibrary.wiley.com/doi/abs/10.1111/0022-1082.00349
 Confidence: high
 
 **C24. Amihud illiquidity (2002): the ILLIQ measure — average daily |return| / dollar volume — prices stocks both cross-sectionally and in time series, with expected market illiquidity raising ex-ante excess returns.**
-Evidence: Journal of Financial Markets 5, 31–56: ILLIQ is "the daily ratio of absolute stock return to its dollar volume, averaged over some period," a rough price-impact proxy; "over time, the ex ante stock excess return is increasing in the expected illiquidity of the stock market," and the cross-sectional effect survives size, book-to-market, and beta controls.
-Source: https://ideas.repec.org/a/eee/finmar/v5y2002i1p31-56.html
+Evidence: Journal of Financial Markets 5, 31–56 (verified from full text): ILLIQ is "the daily ratio of absolute stock return to its dollar volume, averaged over some period," a rough price-impact proxy; "over time, the ex ante stock excess return is increasing in the expected illiquidity of the stock market," and the cross-sectional effect survives beta, size, volatility (SDRET), dividend-yield, and past-return (R100, R100YR) controls. Note: the model does NOT control for book-to-market — "The model does not include the ratio of book-to-market equity, BE/ME," on the grounds that BE/ME has no significant effect in the NYSE-only sample used.
+Source: https://ideas.repec.org/a/eee/finmar/v5y2002i1p31-56.html and https://www.cis.upenn.edu/~mkearns/finread/amihud.pdf (control list extracted directly from the full-text PDF)
 Confidence: high
 
 **C25. 52-week-high momentum (George–Hwang 2004): nearness of the current price to the 52-week high explains a large share of momentum profits, dominates past-return measures, and — unlike conventional momentum — does not reverse long-run.**
@@ -200,3 +200,40 @@ became a small-firm effect (C12), and the 2–3 a.m. overnight drift went to zer
 recombinations, not T2. For the factor database, each claim above should become an entry
 keyed on (mechanism, asset class, conditioning variable, horizon), so the Phase D
 adversarial search can match candidates on structure rather than on name.
+
+## Revision log round 1
+
+Response to adversarial audit (research/debates/strategy_families_round1.md, 2026-07-19).
+All three objections fixed; corrected facts re-verified directly from primary full-text PDFs
+during this revision (Jegadeesh–Titman 1993 Table I, Lou–Polk–Skouras 2019 published JFE PDF,
+Amihud 2002 full text), not merely copied from the audit.
+
+- **C1 (OVERSTATED — fixed).** Replaced the wrong "across the 16 formation/holding
+  combinations average monthly returns ran about 0.9%–1.3%" with the actual Table I range:
+  0.32%/month (3/3 no-skip, the only insignificant strategy) to 1.31% (12/3 no-skip; 1.49%
+  with 1-week skip); 0.9%–1.3% now correctly attributed to the 6- and 12-month formation
+  strategies only. Header ("roughly 1% per month") unchanged, per audit. Added full-text PDF
+  source (bauer.uh.edu).
+- **C16 (WRONG — fixed).** Header re-sorted the strategy groups to match the paper: profits
+  accrue entirely overnight for momentum AND short-term reversal; the intraday group is
+  value-type and most other anomalies (size, profitability, investment, etc.). Evidence quote
+  corrected to the verbatim abstract ("for reversal and a variety of momentum strategies"),
+  added the conclusion sentence and the STR overnight alpha +0.93% (t=4.28) vs intraday
+  −1.05% (t=−3.25).
+- **C24 (OVERSTATED — fixed).** Removed the nonexistent book-to-market control; control list
+  corrected to beta, size, volatility (SDRET), dividend yield, and past returns (R100,
+  R100YR), with an explicit note quoting the paper that BE/ME is NOT included. Added
+  full-text PDF source (cis.upenn.edu).
+
+Audit nitpicks (not objections) also applied:
+- **C3.** 20.7% p.a. now labeled as Quantpedia's estimated Fama–French alpha, not raw annual
+  return; noted figures trace to MOP Table 3 Panel A.
+- **C4.** Confidence upgraded medium → high: Jegadeesh's 2.49%/month verified verbatim via
+  the IDEAS abstract and Lehmann's magnitudes via the primary scan (Table II, 1962–1986:
+  winners −0.55%/week vs losers +1.24%/week); sources added.
+- **C7.** Sharpe figures updated to the published JFE 2018 version (diversified 1.2, average
+  0.8) with the NBER WP 19325 figures (1.1, ~0.74) retained as a version note; confidence
+  upgraded medium → high with the journal-PDF source added.
+
+No claims were renumbered or removed. Status advanced to "draft round 1"; not marked agreed
+(adversary/judge decision).
