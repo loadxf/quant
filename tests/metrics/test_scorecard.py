@@ -63,3 +63,20 @@ class TestRobustnessSharesBootstrapRun:
         assert verdict.robustness.inputs["p_expectancy_positive"] == pytest.approx(
             metrics.bootstrap_p_positive
         )
+
+
+class TestHandBuiltMetricsRecomputes:
+    """Pass-3 regression: a Metrics without bootstrap_p_positive (hand-built
+    or deserialized from a pre-upgrade report) must not silently grade
+    robustness F — None means unknown, and the scorecard recomputes."""
+
+    def test_none_sentinel_recomputes_instead_of_f(self) -> None:
+        import dataclasses
+
+        log = random_log(n_days=150, trades_per_day=4, mean=60.0, std=140.0, seed=21)
+        metrics = compute_metrics(log)
+        stripped = dataclasses.replace(metrics, bootstrap_p_positive=None)
+        full = compute_scorecard(log, metrics)
+        rebuilt = compute_scorecard(log, stripped)
+        assert rebuilt.robustness.grade == full.robustness.grade
+        assert rebuilt.robustness.inputs["p_expectancy_positive"] > 0.5

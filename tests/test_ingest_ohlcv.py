@@ -78,3 +78,41 @@ class TestDstFallBack:
         assert report.duplicate_timestamps == 0
         stamps = sorted(frame["datetime"])
         assert len(set(stamps)) == 3  # distinct UTC instants
+
+
+class TestNewestFirstExport:
+    """Pass-3 regression: DST inference on a reverse-chronological export
+    silently swapped the fall-back hour's UTC offsets (no error raised)."""
+
+    def test_reversed_file_localizes_correctly(self, tmp_path: Path) -> None:
+        csv = _write(
+            tmp_path,
+            "Date,Open,High,Low,Close,Volume\n"
+            "2025-11-02 02:15,102,103,101,102.5,10\n"
+            "2025-11-02 01:15,101,102,100,101.5,10\n"  # CST pass (second)
+            "2025-11-02 01:15,100,101,99,100.5,10\n"  # CDT pass (first)
+            "2025-11-02 00:15,99,100,98,99.5,10\n",
+        )
+        frame, report = load_ohlcv(csv, tz="America/Chicago")
+        assert report.bars_kept == 4
+        assert report.duplicate_timestamps == 0
+        # Chronological output: opens must ascend 99 -> 100 (CDT) -> 101 (CST) -> 102
+        assert list(frame["open"]) == [99.0, 100.0, 101.0, 102.0]
+
+
+class TestLoneFoldBar:
+    """Pass-3 regression: with a feed that records the fall-back hour once,
+    "infer" raises — the fallback must keep the bar (labeled DST), not NaT
+    every ambiguous stamp in the file (or crash on pandas 2.x)."""
+
+    def test_single_ambiguous_bar_is_kept(self, tmp_path: Path) -> None:
+        csv = _write(
+            tmp_path,
+            "Date,Open,High,Low,Close,Volume\n"
+            "2025-11-02 00:15,99,100,98,99.5,10\n"
+            "2025-11-02 01:15,100,101,99,100.5,10\n"  # recorded once
+            "2025-11-02 02:15,102,103,101,102.5,10\n",
+        )
+        _frame, report = load_ohlcv(csv, tz="America/Chicago")
+        assert report.bars_kept == 3
+        assert not report.dropped

@@ -16,6 +16,18 @@ import pandas as pd
 
 from quantlab.errors import MappingError
 
+# pandas 3 raises ValueError from ambiguous="infer" failures; pandas 2.x
+# (allowed by our >=2.1 pin) raises pytz.AmbiguousTimeError, which is NOT
+# a ValueError subclass — and pytz may be absent from a pandas-3 install.
+try:
+    from pytz.exceptions import (  # type: ignore[import-untyped]
+        AmbiguousTimeError as _PytzAmbiguousTimeError,
+    )
+
+    _AMBIGUOUS_ERRORS: tuple[type[Exception], ...] = (ValueError, _PytzAmbiguousTimeError)
+except ImportError:  # pragma: no cover - depends on installed pandas stack
+    _AMBIGUOUS_ERRORS = (ValueError,)
+
 _SYNONYMS = {
     "datetime": ("datetime", "date", "time", "timestamp", "dt", "bartime"),
     "open": ("open", "o"),
@@ -63,6 +75,15 @@ def load_ohlcv(path: Path | str, tz: str = "UTC") -> tuple[pd.DataFrame, OhlcvRe
     tzinfo = ZoneInfo(tz)
     out = pd.DataFrame()
     stamps = pd.to_datetime(frame[columns["datetime"]], errors="coerce")
+    valid = stamps.dropna()
+    if valid.is_monotonic_decreasing and not valid.is_monotonic_increasing:
+        # Newest-first export (common broker format): DST inference below
+        # needs chronological order — with reversed input it does NOT fail,
+        # it silently assigns the fall-back hour's two passes swapped UTC
+        # offsets. Reverse while keeping the original index so drop-report
+        # row numbers still match the file.
+        frame = frame.iloc[::-1]
+        stamps = stamps.iloc[::-1]
     if getattr(stamps.dt, "tz", None) is None:
         # DST edges: fall-back-hour bars are real data — "infer" uses bar
         # ordering to label the first pass daylight time and the second
@@ -72,11 +93,15 @@ def load_ohlcv(path: Path | str, tz: str = "UTC") -> tuple[pd.DataFrame, OhlcvRe
         # forward instead of deleting an hour every transition.
         try:
             stamps = stamps.dt.tz_localize(tzinfo, nonexistent="shift_forward", ambiguous="infer")
-        except ValueError:
-            # Ordering gives no answer (unsorted export or a lone ambiguous
-            # stamp): NaT those bars so they land in the drop report as
-            # unparseable instead of masquerading as clean data.
-            stamps = stamps.dt.tz_localize(tzinfo, nonexistent="shift_forward", ambiguous="NaT")
+        except _AMBIGUOUS_ERRORS:
+            # Ordering gives no answer — usually a feed that records the
+            # folded hour ONCE (nothing to infer from). Fall back to
+            # labeling those stamps daylight time: it keeps every bar (an
+            # ambiguous="NaT" fallback would drop the fold-hour bars of
+            # EVERY transition in the file over one bad one), at the cost
+            # of a 1-hour offset error on any bar that was really the
+            # standard-time pass.
+            stamps = stamps.dt.tz_localize(tzinfo, nonexistent="shift_forward", ambiguous=True)
     out["datetime"] = stamps.dt.tz_convert("UTC")
     for name in ("open", "high", "low", "close"):
         out[name] = pd.to_numeric(frame[columns[name]], errors="coerce")

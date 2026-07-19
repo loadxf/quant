@@ -133,3 +133,34 @@ class TestMixedFormatColumns:
         assert report.rows_dropped == 0
         assert len(log) == 3
         assert sorted(t.exit_time.day for t in log.trades) == [5, 6, 7]
+
+
+class TestFallbackUnitMismatch:
+    """Pass-3 regression: a finer-precision straggler (9-digit fractional
+    seconds) crashed the per-row fallback with TypeError instead of loading
+    (or at worst dropping) the row."""
+
+    def test_nanosecond_straggler_loads(self, tmp_path: Path) -> None:
+        csv = tmp_path / "ns.csv"
+        csv.write_text(
+            "Exit DateTime,Symbol,Net P/L\n"
+            "2026-01-05 09:31:00,MNQ,100\n"
+            "2026-01-06 10:15:00.123456789,MNQ,-50\n"
+        )
+        log, report = load_trade_log(csv)
+        assert report.rows_dropped == 0
+        assert len(log) == 2
+
+
+class TestFirstRowMinorityFormat:
+    """Pass-3 regression: rescue rounds must stay vectorized — a first row
+    in the minority format made the old per-row fallback re-parse the
+    entire rest of the file one scalar call at a time."""
+
+    def test_minority_first_row_loads_everything(self, tmp_path: Path) -> None:
+        rows = "\n".join(f"2026-01-05 09:{i:02d}:00,MNQ,10" for i in range(30, 59))
+        csv = tmp_path / "minority_first.csv"
+        csv.write_text("Exit DateTime,Symbol,Net P/L\n01/06/2026 10:15,MNQ,-50\n" + rows + "\n")
+        log, report = load_trade_log(csv)
+        assert report.rows_dropped == 0
+        assert len(log) == 30

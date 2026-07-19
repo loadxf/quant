@@ -8,6 +8,7 @@ reason, reported — never silently).
 
 from __future__ import annotations
 
+import contextlib
 import datetime as dt
 import math
 import re
@@ -16,6 +17,7 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
+import numpy as np
 import pandas as pd
 
 from quantlab.errors import MappingError
@@ -59,6 +61,16 @@ def parse_money(value: object) -> float:
         raise ValueError(f"empty money value {value!r}")
     number = float(text)
     return -abs(number) if negative else number
+
+
+def _to_ns(series: pd.Series) -> pd.Series:
+    """Normalize a datetime64 series to nanoseconds. The vectorized parse
+    picks the coarsest unit that fits its rows (e.g. datetime64[us]); a
+    finer-grained value assigned later would raise instead of loading.
+    Nanoseconds cover 1677-2262 — plenty for trade logs."""
+    if isinstance(series.dtype, np.dtype) and series.dtype.kind == "M":
+        return series.astype("datetime64[ns]")
+    return series
 
 
 def _attach_tz(stamp: Any, tzinfo: ZoneInfo) -> dt.datetime:
@@ -112,11 +124,26 @@ def _parse_time_column(frame: pd.DataFrame, column: str, mapping: ColumnMapping)
     # A user-declared format describes the ORIGINAL (time-only) column; it
     # cannot match once a Date column has been merged in front.
     fmt = mapping.datetime_format if combined == column else None
-    parsed = pd.to_datetime(frame[combined], format=fmt, errors="coerce")
+    parsed = _to_ns(pd.to_datetime(frame[combined], format=fmt, errors="coerce"))
+    # Rescue rounds stay VECTORIZED: each pass re-infers a format from the
+    # remaining stragglers' first row, so a two-format file costs two array
+    # passes — not one scalar parse per row, which would silently reintroduce
+    # the per-row cost when row 0 happens to hold the minority format.
     missing = parsed.isna() & frame[combined].notna()
-    for idx in frame.index[missing]:
-        # dtype=str at read time, and the mask excludes nulls
-        parsed.at[idx] = pd.to_datetime(str(frame.at[idx, combined]), format=fmt, errors="coerce")
+    while missing.any():
+        rescued = _to_ns(pd.to_datetime(frame[combined][missing], format=fmt, errors="coerce"))
+        try:
+            parsed[missing] = rescued
+        except (TypeError, ValueError):
+            # Unit/tz clash on assignment: place values one by one; failures
+            # stay NaT -> dropped downstream WITH a reason, never a crash.
+            for idx in frame.index[missing]:
+                with contextlib.suppress(TypeError, ValueError):
+                    parsed.at[idx] = rescued.at[idx]
+        new_missing = parsed.isna() & frame[combined].notna()
+        if int(new_missing.sum()) >= int(missing.sum()):
+            break  # no progress: the rest are genuinely unparseable
+        missing = new_missing
     return parsed
 
 

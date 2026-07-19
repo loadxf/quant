@@ -18,6 +18,7 @@ days at that baseline, scaled by the same density (see economics.py).
 
 from __future__ import annotations
 
+import datetime as dt
 import math
 from dataclasses import dataclass
 
@@ -67,20 +68,35 @@ def calendar_to_trading_days(
 def observed_sessions_per_week(log: TradeLog, boundary, days: list | None = None) -> float:
     """Trading density of the source log (sessions/week), capped at 7.
 
-    The span is padded to whole calendar weeks: a Mon-Fri log spans 5
-    days but represents a 5-sessions-per-7-day cadence, and the raw
-    endpoint ratio (5*7/5 = 7.0) would silently grant weekend sessions
-    to every calendar-quoted time limit. Logs spanning under two weeks
-    carry too little cadence evidence either way and use the default.
+    Counts sessions over COMPLETE Mon-Sun weeks only (weeks whose full
+    range lies inside the log's span). Partial edge weeks bias every
+    simpler estimator: the raw endpoint ratio rates a Mon-Fri week at
+    7.0/week (span excludes the weekend), while padding the span to
+    whole weeks rates a full 22-session month at 4.4/week (a barely
+    started final week fully counts in the denominator). Fewer than two
+    complete weeks is too little cadence evidence — use the default.
     """
     if days is None:
         days = log.daily_groups(boundary)
     if len(days) < 2:
         return DEFAULT_SESSIONS_PER_WEEK
-    span_days = (days[-1][0] - days[0][0]).days + 1
-    if span_days < 14:
+    first, last = days[0][0], days[-1][0]
+    week_of_first = first - dt.timedelta(days=first.weekday())
+    start = week_of_first if week_of_first == first else week_of_first + dt.timedelta(days=7)
+    counts: dict[dt.date, int] = {}
+    for session_date, _ in days:
+        monday = session_date - dt.timedelta(days=session_date.weekday())
+        counts[monday] = counts.get(monday, 0) + 1
+    n_weeks = 0
+    n_sessions = 0
+    monday = start
+    while monday + dt.timedelta(days=6) <= last:
+        n_weeks += 1
+        n_sessions += counts.get(monday, 0)  # vacation weeks count as 0
+        monday += dt.timedelta(days=7)
+    if n_weeks < 2 or n_sessions == 0:
         return DEFAULT_SESSIONS_PER_WEEK
-    return min(7.0, len(days) / math.ceil(span_days / 7))
+    return min(7.0, n_sessions / n_weeks)
 
 
 @dataclass

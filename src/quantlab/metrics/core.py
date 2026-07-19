@@ -46,8 +46,10 @@ class Metrics:
     starting_equity: float
     # P(mean pnl > 0) from the SAME bootstrap run as expectancy_ci95 —
     # the scorecard's robustness pillar consumes this instead of
-    # re-resampling with its own (possibly different) count/seed.
-    bootstrap_p_positive: float = 0.0
+    # re-resampling with its own (possibly different) count/seed. None
+    # (a hand-built or deserialized pre-upgrade Metrics) means "unknown":
+    # the scorecard recomputes rather than silently grading F on 0.0.
+    bootstrap_p_positive: float | None = None
     extras: dict[str, float] = field(default_factory=dict)
 
 

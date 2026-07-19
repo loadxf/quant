@@ -135,13 +135,24 @@ def summarize(
     retry_fail = max(cost_fail - retry_discount, 0.0)
     retry_pass = max(cost_pass - retry_discount, 0.0)
     value_funded = float(funded_value.mean())
+    # The refund models "fee returned with the first payout" — it returns
+    # what the PASSING attempt actually cost. A pass on a discounted retry
+    # must refund the reset price, not the full first-attempt fee, or every
+    # retried pass injects phantom EV worth the discount.
+    p_refund = (
+        float(np.mean(funded.payout_count >= 1))
+        if fees.refundable_on_first_payout and fees.one_time > 0
+        else 0.0
+    )
+    retry_value_funded = value_funded - retry_discount * p_refund
     ev_with_resets: dict[int, float] = {}
     for k in range(1, 6):
         ev = 0.0
         fail_costs_before = 0.0
         for j in range(1, k + 1):
             attempt_pass_cost = cost_pass if j == 1 else retry_pass
-            ev += (1 - p) ** (j - 1) * p * (value_funded - attempt_pass_cost - fail_costs_before)
+            attempt_value = value_funded if j == 1 else retry_value_funded
+            ev += (1 - p) ** (j - 1) * p * (attempt_value - attempt_pass_cost - fail_costs_before)
             fail_costs_before += cost_fail if j == 1 else retry_fail
         ev -= (1 - p) ** k * fail_costs_before
         ev_with_resets[k] = ev

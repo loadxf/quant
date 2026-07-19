@@ -30,7 +30,7 @@ from quantlab.prop.registry import load_firm
 from quantlab.prop.synthetic import resolve_geometry, synthetic_geometry_log
 from quantlab.schema.trade import Side, Trade, TradeLog
 
-from .conftest import day_trades, simple
+from .conftest import day_trades, make_firm, simple
 
 
 class TestPayoutTrailingInteraction:
@@ -296,3 +296,93 @@ class TestSyntheticResidualWarning:
         with _warnings.catch_warnings():
             _warnings.simplefilter("error")
             synthetic_geometry_log(0.5, 1.0, 3, 100.0, 0.0, 30, 1)
+
+
+class TestDensityCompleteWeeks:
+    """Pass-3 finding: ceil-week span padding UNDERestimated density for any
+    log not ending on a week boundary (a full 22-session month rated
+    4.4/week -> Apex expiry 19 trading days instead of 22)."""
+
+    def test_month_not_ending_on_friday_rates_five(self) -> None:
+        firm = load_firm("apex40_50k_intraday")
+        boundary = firm.day_boundary.to_boundary()
+        log = day_trades([[simple(100)]] * 22)  # Mon Jan 5 .. Tue Feb 3
+        density = observed_sessions_per_week(log, boundary)
+        assert density == pytest.approx(5.0)
+        assert calendar_to_trading_days(30, density) == 22
+
+    def test_log_ending_monday_rates_five(self) -> None:
+        firm = load_firm("apex40_50k_intraday")
+        boundary = firm.day_boundary.to_boundary()
+        log = day_trades([[simple(100)]] * 11)  # Mon .. Mon, 2 complete weeks
+        assert observed_sessions_per_week(log, boundary) == pytest.approx(5.0)
+
+
+class TestRefundOnDiscountedRetry:
+    """Pass-3 finding: a pass on a discounted retry must refund the reset
+    price, not the full first-attempt fee (phantom EV worth the discount)."""
+
+    def test_retry_pass_refunds_reset_not_full_fee(self) -> None:
+        from quantlab.prop.config import FeeSchedule
+        from quantlab.prop.economics import summarize
+        from quantlab.prop.outcomes import OUTCOME_ACTIVE, PhaseOutcome
+
+        firm = make_firm(
+            [{"type": "static_max_loss", "amount": 2000}],
+            target=1000,
+            size=10_000,
+            funded_rules=[{"type": "static_max_loss", "amount": 2000}],
+        ).model_copy(
+            update={"fees": FeeSchedule(one_time=499, reset=99, refundable_on_first_payout=True)}
+        )
+        n = 4
+        eval_phase = PhaseOutcome(
+            phase="challenge",
+            initial_balance=10_000,
+            horizon=10,
+            outcome=np.array([OUTCOME_PASSED, OUTCOME_PASSED, OUTCOME_BREACHED, OUTCOME_BREACHED]),
+            end_day=np.zeros(n, dtype=int),
+            fail_rule=np.full(n, -1, dtype=np.int16),
+            rule_names=["static_max_loss"],
+            final_balance=np.full(n, 11_000.0),
+            max_drawdown=np.zeros(n),
+            equity_samples=np.full((2, 10), np.nan),
+            lockout_days=np.zeros(n, dtype=int),
+        )
+        funded = PhaseOutcome(
+            phase="funded",
+            initial_balance=10_000,
+            horizon=10,
+            outcome=np.full(n, OUTCOME_ACTIVE, dtype=np.int8),
+            end_day=np.full(n, 9, dtype=int),
+            fail_rule=np.full(n, -1, dtype=np.int16),
+            rule_names=["static_max_loss"],
+            final_balance=np.full(n, 10_000.0),
+            max_drawdown=np.zeros(n),
+            equity_samples=np.full((2, 10), np.nan),
+            lockout_days=np.zeros(n, dtype=int),
+            total_withdrawn=np.full(n, 1000.0),
+            payout_count=np.ones(n, dtype=int),
+            first_payout_day=np.zeros(n, dtype=int),
+        )
+
+        report = summarize(
+            firm=firm,
+            phases=[eval_phase],
+            funded=funded,
+            cfg=MCConfig(n_paths=n),
+            bootstrap_used="iid_day",
+            fidelity="trade_close",
+            source_days=10,
+            source_trades=10,
+            scale_challenge=1.0,
+            scale_funded=1.0,
+            warnings=[],
+        )
+        # p=0.5; value_funded = 1000*split(1.0) + 499 refund = 1499 wait —
+        # firm.payout.profit_split defaults to 1.0 in make_firm, so:
+        # value_funded = 1000 + 499 = 1499; retry_discount = 400, p_refund=1
+        # retry value = 1099; retry fees = 99.
+        # k=2: 0.5*(1499-499) + 0.25*(1099-99-499) - 0.25*(499+99) = 475.75
+        # (old full-refund math gave 575.75)
+        assert report.economics.ev_with_resets[2] == pytest.approx(475.75)
