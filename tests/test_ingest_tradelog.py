@@ -164,3 +164,38 @@ class TestFirstRowMinorityFormat:
         log, report = load_trade_log(csv)
         assert report.rows_dropped == 0
         assert len(log) == 30
+
+
+class TestOutOfRangeSentinel:
+    """Pass-4 regression: a year-9999 open-position sentinel crashed the
+    load with OutOfBoundsDatetime; it must drop with a reason instead."""
+
+    def test_sentinel_drops_instead_of_crashing(self, tmp_path: Path) -> None:
+        csv = tmp_path / "sentinel.csv"
+        csv.write_text(
+            "Exit DateTime,Symbol,Net P/L\n"
+            "2026-01-05 09:31:00,MNQ,100\n"
+            "9999-12-31 00:00:00,MNQ,-50\n"
+        )
+        log, report = load_trade_log(csv)
+        assert len(log) == 1
+        assert report.rows_dropped == 1
+        assert "timestamp" in report.dropped[0][1]
+
+
+class TestMixedUtcOffsets:
+    """Pass-4 regression: stragglers carrying different UTC offsets made
+    pandas 3 raise 'Mixed timezones' from the rescue parse (despite
+    errors='coerce'), crashing the load; they must all load."""
+
+    def test_offset_rows_load(self, tmp_path: Path) -> None:
+        csv = tmp_path / "mixedtz.csv"
+        csv.write_text(
+            "Exit DateTime,Symbol,Net P/L\n"
+            "2026-01-05 09:31:00,MNQ,100\n"
+            "2026-03-06 10:15:00-06:00,MNQ,-50\n"
+            "2026-03-09 11:00:00-05:00,MNQ,25\n"
+        )
+        log, report = load_trade_log(csv)
+        assert report.rows_dropped == 0
+        assert len(log) == 3

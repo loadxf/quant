@@ -67,10 +67,24 @@ def _to_ns(series: pd.Series) -> pd.Series:
     """Normalize a datetime64 series to nanoseconds. The vectorized parse
     picks the coarsest unit that fits its rows (e.g. datetime64[us]); a
     finer-grained value assigned later would raise instead of loading.
-    Nanoseconds cover 1677-2262 — plenty for trade logs."""
+    Values outside the ns range 1677-2262 (year-9999 open-position
+    sentinels) become NaT and drop downstream with a reason — astype
+    would raise OutOfBoundsDatetime and kill the whole load."""
     if isinstance(series.dtype, np.dtype) and series.dtype.kind == "M":
+        out_of_range = (series < pd.Timestamp.min.ceil("us")) | (
+            series > pd.Timestamp.max.floor("us")
+        )
+        if out_of_range.any():
+            series = series.where(~out_of_range)
         return series.astype("datetime64[ns]")
     return series
+
+
+def _scalar_stamp(value: object, fmt: str | None) -> pd.Timestamp:
+    try:
+        return pd.to_datetime(str(value), format=fmt)
+    except (ValueError, TypeError):
+        return pd.NaT  # type: ignore[return-value]
 
 
 def _attach_tz(stamp: Any, tzinfo: ZoneInfo) -> dt.datetime:
@@ -131,12 +145,22 @@ def _parse_time_column(frame: pd.DataFrame, column: str, mapping: ColumnMapping)
     # the per-row cost when row 0 happens to hold the minority format.
     missing = parsed.isna() & frame[combined].notna()
     while missing.any():
-        rescued = _to_ns(pd.to_datetime(frame[combined][missing], format=fmt, errors="coerce"))
+        subset = frame[combined][missing]
+        try:
+            rescued = _to_ns(pd.to_datetime(subset, format=fmt, errors="coerce"))
+        except (ValueError, TypeError):
+            # pandas can raise on pathological batches even with
+            # errors="coerce" (pandas 3: "Mixed timezones detected" when
+            # stragglers carry different UTC offsets): parse them one by one.
+            rescued = subset.map(lambda v: _scalar_stamp(v, fmt))
         try:
             parsed[missing] = rescued
         except (TypeError, ValueError):
-            # Unit/tz clash on assignment: place values one by one; failures
-            # stay NaT -> dropped downstream WITH a reason, never a crash.
+            # Unit/tz clash on assignment: widen to object so tz-aware rows
+            # still load (_attach_tz handles them), then place one by one;
+            # failures stay NaT -> dropped downstream WITH a reason.
+            if parsed.dtype != object:
+                parsed = parsed.astype(object)
             for idx in frame.index[missing]:
                 with contextlib.suppress(TypeError, ValueError):
                     parsed.at[idx] = rescued.at[idx]

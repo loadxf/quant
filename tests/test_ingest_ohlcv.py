@@ -116,3 +116,26 @@ class TestLoneFoldBar:
         _frame, report = load_ohlcv(csv, tz="America/Chicago")
         assert report.bars_kept == 3
         assert not report.dropped
+
+
+class TestMultiTransitionFolds:
+    """Pass-4 regression: one lone fold stamp anywhere in the file made the
+    fallback relabel EVERY fold blanket-DST, and the dedupe silently
+    deleted the real second-pass bars of properly-recorded transitions."""
+
+    def test_duplicated_and_lone_folds_all_survive(self, tmp_path: Path) -> None:
+        csv = _write(
+            tmp_path,
+            "Date,Open,High,Low,Close,Volume\n"
+            "2024-11-03 00:15,1,2,0,1,1\n"
+            "2024-11-03 01:15,2,3,1,2,1\n"  # CDT pass
+            "2024-11-03 01:15,3,4,2,3,1\n"  # CST pass (real bar)
+            "2024-11-03 02:15,4,5,3,4,1\n"
+            "2025-11-02 00:15,5,6,4,5,1\n"
+            "2025-11-02 01:15,6,7,5,6,1\n"  # lone fold stamp
+            "2025-11-02 02:15,7,8,6,7,1\n",
+        )
+        frame, report = load_ohlcv(csv, tz="America/Chicago")
+        assert report.bars_kept == 7
+        assert report.duplicate_timestamps == 0
+        assert list(frame["open"]) == [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]

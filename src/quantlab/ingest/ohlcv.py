@@ -16,18 +16,6 @@ import pandas as pd
 
 from quantlab.errors import MappingError
 
-# pandas 3 raises ValueError from ambiguous="infer" failures; pandas 2.x
-# (allowed by our >=2.1 pin) raises pytz.AmbiguousTimeError, which is NOT
-# a ValueError subclass — and pytz may be absent from a pandas-3 install.
-try:
-    from pytz.exceptions import (  # type: ignore[import-untyped]
-        AmbiguousTimeError as _PytzAmbiguousTimeError,
-    )
-
-    _AMBIGUOUS_ERRORS: tuple[type[Exception], ...] = (ValueError, _PytzAmbiguousTimeError)
-except ImportError:  # pragma: no cover - depends on installed pandas stack
-    _AMBIGUOUS_ERRORS = (ValueError,)
-
 _SYNONYMS = {
     "datetime": ("datetime", "date", "time", "timestamp", "dt", "bartime"),
     "open": ("open", "o"),
@@ -85,23 +73,23 @@ def load_ohlcv(path: Path | str, tz: str = "UTC") -> tuple[pd.DataFrame, OhlcvRe
         frame = frame.iloc[::-1]
         stamps = stamps.iloc[::-1]
     if getattr(stamps.dt, "tz", None) is None:
-        # DST edges: fall-back-hour bars are real data — "infer" uses bar
-        # ordering to label the first pass daylight time and the second
-        # standard time (a blanket ambiguous=True stamps both passes with
-        # the same UTC offset, and the dedupe below would silently delete
-        # the whole second hour). Nonexistent spring-forward stamps shift
-        # forward instead of deleting an hour every transition.
-        try:
-            stamps = stamps.dt.tz_localize(tzinfo, nonexistent="shift_forward", ambiguous="infer")
-        except _AMBIGUOUS_ERRORS:
-            # Ordering gives no answer — usually a feed that records the
-            # folded hour ONCE (nothing to infer from). Fall back to
-            # labeling those stamps daylight time: it keeps every bar (an
-            # ambiguous="NaT" fallback would drop the fold-hour bars of
-            # EVERY transition in the file over one bad one), at the cost
-            # of a 1-hour offset error on any bar that was really the
-            # standard-time pass.
-            stamps = stamps.dt.tz_localize(tzinfo, nonexistent="shift_forward", ambiguous=True)
+        # DST fall-back folds: bars in the repeated hour are real data, and
+        # a blanket ambiguous=True would stamp both passes with the same
+        # UTC instant (the dedupe below silently deletes the second pass).
+        # Label every fold daylight time, then shift the SECOND occurrence
+        # of each duplicated wall time forward one hour — that pass is the
+        # standard-time replay. This is per-fold inference: lone fold
+        # stamps simply keep the DST label (bar preserved), where pandas'
+        # ambiguous="infer" raises for the whole column. Only the UTC
+        # instants are published, so the offset label itself is moot.
+        # Nonexistent spring-forward stamps shift forward instead of
+        # deleting an hour every transition.
+        localized = stamps.dt.tz_localize(tzinfo, nonexistent="shift_forward", ambiguous=True)
+        probe = stamps.dt.tz_localize(tzinfo, nonexistent="shift_forward", ambiguous="NaT")
+        second_pass = probe.isna() & stamps.notna() & stamps.duplicated(keep="first")
+        if second_pass.any():
+            localized = localized + pd.to_timedelta(second_pass.astype(int), unit="h")
+        stamps = localized
     out["datetime"] = stamps.dt.tz_convert("UTC")
     for name in ("open", "high", "low", "close"):
         out[name] = pd.to_numeric(frame[columns[name]], errors="coerce")
