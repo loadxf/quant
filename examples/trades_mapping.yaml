@@ -1,0 +1,15 @@
+# Column mapping for examples/trades_sample.csv
+# (auto-detection also handles this file; the explicit mapping is for reference)
+entry_time: "Entry DateTime"
+exit_time: "Exit DateTime"
+symbol: "Symbol"
+side:
+  column: "Type"
+  long_values: ["buy", "long", "b"]
+  short_values: ["sell", "short", "s"]
+quantity: "Qty"
+pnl: "Net P/L"
+fees: "Fees"
+mae: "MAE"
+mfe: "MFE"
+tz: "America/Chicago"
