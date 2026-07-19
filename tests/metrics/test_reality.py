@@ -141,3 +141,22 @@ class TestChunkedPermutationStream:
         expected_median = float(np.median(np.max(peaks - equity, axis=1)))
         got = permutation_drawdown(log, n_iter=n_iter, seed=9)
         assert got.median_max_dd == expected_median
+
+
+class TestOosStartCliParse:
+    def test_bad_iso_date_raises_quantlab_error(self, tmp_path) -> None:
+        # Pass-2 finding: --oos-start garbage leaked a ValueError traceback.
+        from quantlab.errors import QuantLabError
+        from quantlab.schema.io import write_trade_log
+
+        parquet = tmp_path / "t.parquet"
+        write_trade_log(_log(), parquet)
+        from typer.testing import CliRunner
+
+        from quantlab.cli.app import app
+
+        result = CliRunner().invoke(
+            app, ["stress", str(parquet), "--oos-start", "junk"], catch_exceptions=True
+        )
+        assert isinstance(result.exception, QuantLabError)
+        assert "not an ISO date" in str(result.exception)

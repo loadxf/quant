@@ -9,6 +9,7 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
+from quantlab.errors import QuantLabError
 from quantlab.metrics.reality import compute_reality_check
 from quantlab.prop.registry import load_firm
 from quantlab.report.jsonout import sanitize
@@ -64,7 +65,12 @@ def register_stress_commands(app: typer.Typer) -> None:
         firm_cfg = load_firm(firm) if firm else None
         oos_dt: dt.datetime | None = None
         if oos_start is not None:
-            oos_dt = dt.datetime.fromisoformat(oos_start)
+            try:
+                oos_dt = dt.datetime.fromisoformat(oos_start)
+            except ValueError:
+                raise QuantLabError(
+                    f"--oos-start {oos_start!r} is not an ISO date (e.g. 2026-03-01)"
+                ) from None
             if oos_dt.tzinfo is None:
                 oos_dt = oos_dt.replace(tzinfo=dt.UTC)
         rc = compute_reality_check(
