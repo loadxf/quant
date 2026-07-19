@@ -135,15 +135,31 @@ def fig_payout_hist(received: np.ndarray) -> go.Figure:
 
 
 def fig_ev_waterfall(eco: EconomicsSummary, activation: float) -> go.Figure:
-    """Expected-value decomposition of a single attempt (diverging pair)."""
-    fees = -eco.expected_fees_per_attempt
-    act = -eco.pass_prob * activation
-    gross = eco.pass_prob * eco.expected_gross_payout
+    """Expected-value decomposition of a single attempt (diverging pair).
+
+    Bars come from economics.ev_decomposition — the path-exact linear
+    pieces of expected_net — so they SUM to the headline number exactly
+    (re-deriving pass_prob * E[...] here would differ by Monte Carlo
+    covariance and the total would not add up on screen)."""
+    dec = eco.ev_decomposition or {
+        # Fallback for pre-M10 report objects: analytic approximation.
+        "eval_fees": -eco.expected_fees_per_attempt,
+        "payout_value": eco.pass_prob * eco.expected_gross_payout,
+        "activation": -eco.pass_prob * activation,
+        "overheads": 0.0,
+    }
+    labels = ["eval fees", "payout value (x pass prob)", "activation (x pass prob)"]
+    values: list[float | None] = [dec["eval_fees"], dec["payout_value"], dec["activation"]]
+    if dec.get("overheads"):
+        labels.append("funded overheads (x pass prob)")
+        values.append(dec["overheads"])
+    labels.append("net EV")
+    values.append(None)
     fig = go.Figure(
         go.Waterfall(
-            x=["eval fees", "activation (x pass prob)", "payout value (x pass prob)", "net EV"],
-            y=[fees, act, gross, None],
-            measure=["relative", "relative", "relative", "total"],
+            x=labels,
+            y=values,
+            measure=["relative"] * (len(labels) - 1) + ["total"],
             decreasing=dict(marker=dict(color=RED)),
             increasing=dict(marker=dict(color=BLUE)),
             totals=dict(marker=dict(color=NEUTRAL, line=dict(color=INK_MUTED, width=1))),

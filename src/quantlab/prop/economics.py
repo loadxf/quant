@@ -138,6 +138,14 @@ def summarize(
         overhead["expected_funded_overhead_per_funded"] = float(
             (fees.extra_monthly * funded_months).mean()
         )
+    if fees.per_payout > 0:
+        # Kept alongside the knob so the EV-waterfall chart can show the
+        # full overhead drag and still sum exactly to expected_net.
+        overhead = (overhead or {}) | {
+            "expected_payout_processing_per_funded": float(
+                (fees.per_payout * funded.payout_count).mean()
+            )
+        }
     if fees.extra_monthly > 0 or fees.per_payout > 0:
         overhead = (overhead or {}) | {
             "extra_monthly": fees.extra_monthly,
@@ -149,6 +157,24 @@ def summarize(
     expected_net = float(net.mean())
     var_95 = float(np.percentile(net, 5))
     cvar_95 = float(net[net <= var_95].mean()) if (net <= var_95).any() else var_95
+
+    # ---- exact EV decomposition (the waterfall's bars) ----
+    # Path-level means of the linear pieces of `net`, so the parts sum to
+    # expected_net EXACTLY (an analytic pass_prob * E[...] decomposition
+    # differs by Monte Carlo covariance and would not add up on screen).
+    overhead_per_path = np.zeros(n)
+    if fees.per_payout > 0:
+        overhead_per_path = overhead_per_path + fees.per_payout * funded.payout_count
+    if fees.extra_monthly > 0:
+        overhead_per_path = overhead_per_path + fees.extra_monthly * np.ceil(
+            (funded.end_day + 1) / days_per_month
+        )
+    ev_decomposition = {
+        "eval_fees": float(-attempt_fees.mean()),
+        "payout_value": float(np.mean(passed_all * (received_gross + refund))),
+        "activation": -pass_prob * float(fees.activation),
+        "overheads": float(-np.mean(passed_all * overhead_per_path)),
+    }
 
     # ---- reset-campaign EV (analytic from MC estimates) ----
     p = pass_prob
@@ -261,6 +287,7 @@ def summarize(
         overhead=overhead,
         reactivation=reactivation,
         net_per_path=net,
+        ev_decomposition=ev_decomposition,
     )
     return MonteCarloReport(
         firm_name=firm.name,

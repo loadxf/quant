@@ -81,6 +81,9 @@ class EconomicsSummary:
     # (P,) single-attempt net per path — feeds the multi-account analysis;
     # deliberately NOT serialized (to_json_dict enumerates fields).
     net_per_path: np.ndarray | None = None
+    # Path-exact linear pieces of expected_net (eval_fees + payout_value +
+    # activation + overheads sum to it EXACTLY) — the EV waterfall's bars.
+    ev_decomposition: dict[str, float] | None = None
 
 
 @dataclass
@@ -159,5 +162,6 @@ class MonteCarloReport:
                 "days_to_first_payout_quantiles": eco.days_to_first_payout_quantiles,
                 "overhead": eco.overhead,
                 "reactivation": eco.reactivation,
+                "ev_decomposition": eco.ev_decomposition,
             },
         }
