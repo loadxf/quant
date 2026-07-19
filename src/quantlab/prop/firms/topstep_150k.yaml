@@ -1,0 +1,55 @@
+# Topstep 150K Trading Combine + Express Funded Account (XFA)
+# Verified 2026-07-19 against help.topstep.com (articles 8284204, 10490293,
+# 8284197, 8284208, 8284215, 8284233, 14289835, 8284128) and topstep.com.
+# - MLL: trails END-OF-DAY balance highs only, enforced in REAL TIME incl.
+#   unrealized P&L, locks permanently at the starting balance.
+# - No Daily Loss Limit by default on TopstepX since Aug 2024 (optional
+#   lockout-only setting; add a daily_loss_limit rule with effect: lockout
+#   if you opt in at purchase).
+# - Combine consistency: best day <= 50% of the PROFIT TARGET; exceeding it
+#   raises the required total to best_day / 0.50 (never a breach).
+# - XFA: starts at $0 balance, MLL -4,500 locking at $0; $149
+#   activation; 90/10 split (joiners on/after 2026-01-12); Standard payout
+#   path: 5 winning days of $150+, request up to 50% of balance, cap
+#   $5,000/payout, min $125. Back2Funded: up to 2 paid reactivations.
+# - No time limit; monthly fee $199 (reset = monthly price; 1 free
+#   reset credit banked per monthly rebill). Prices are promotional/volatile.
+name: topstep_150k
+display_name: "Topstep 150K Combine"
+firm: Topstep
+account_size: 150000
+day_boundary: {tz: America/Chicago, cutoff_hour: 17}
+verified_as_of: "2026-07-19"
+sources:
+  - https://help.topstep.com/en/articles/8284204
+  - https://help.topstep.com/en/articles/10490293
+  - https://help.topstep.com/en/articles/8284208
+  - https://help.topstep.com/en/articles/8284233
+phases:
+  - name: challenge
+    profit_target: 9000
+    rules:
+      - {type: trailing_drawdown, amount: 4500, ratchet: eod, threshold_cap: 150000}
+      - {type: consistency, max_best_day_pct: 50, basis: profit_target, effect: raise_target}
+funded:
+  name: funded
+  initial_balance: 0
+  rules:
+    - {type: trailing_drawdown, amount: 4500, ratchet: eod, threshold_cap: 0}
+fees:
+  monthly: 199
+  reset: 199
+  free_resets_per_cycle: 1
+  activation: 149
+payout:
+  profit_split: 0.9
+  min_payout: 125
+  period_days: 0
+  qualifying_days: {count: 5, min_daily_profit: 150}
+  payout_cap_ladder: [5000]
+  payout_share_of_balance: 0.5
+  reactivations: {max: 2, fees: [829, 829]}
+notes: |
+  Standard payout path encoded (default). The alternative Consistency path
+  (3 days, best day <= 40% of total, higher caps) is not modeled. Live
+  Funded Account call-up beyond the XFA is discretionary and out of scope.

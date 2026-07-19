@@ -1,0 +1,54 @@
+# Apex Trader Funding 4.0 100K — INTRADAY trailing variant
+# (product line sold since 2026-03-01; legacy accounts are NOT modeled).
+# Verified 2026-07-19 against support.apextraderfunding.com help center
+# (articles 45683513113115, 45631563363483, 46724640813083, 46723099925403,
+# 47206370796827, 47205823183003, 47204516592795). Cloudflare blocks direct
+# fetches; official language recovered via search excerpts + convergent
+# 2026 secondaries. Payout ladders: totals firm, steps approximate (+-1).
+# - Trailing DD $3,000: hwm trails INTRADAY incl. unrealized peaks (MFE);
+#   breach enforced in real time either way. Eval threshold freezes only at
+#   initial+target ($106,000); PA freezes at start+$100
+#   once the peak reaches the safety net (start + DD + $100).
+# - No daily loss limit on the intraday variant.
+# - One-time eval fee, HARD 30-calendar-day expiry, no resets, no min days.
+# - PA: one-time activation, 100% payout split, 5 qualifying days of
+#   $250+ per payout, min $500, balance must stay >= safety net,
+#   50% consistency-since-last-payout gate, and a LIFETIME CAP of 6 payouts
+#   after which the PA closes.
+name: apex40_100k_intraday
+display_name: "Apex 4.0 100K (intraday)"
+firm: Apex Trader Funding
+account_size: 100000
+day_boundary: {tz: America/Chicago, cutoff_hour: 17}
+verified_as_of: "2026-07-19"
+sources:
+  - https://support.apextraderfunding.com/hc/en-us/articles/45683513113115
+  - https://support.apextraderfunding.com/hc/en-us/articles/46724640813083
+  - https://support.apextraderfunding.com/hc/en-us/articles/46723099925403
+  - https://support.apextraderfunding.com/hc/en-us/articles/47206370796827
+phases:
+  - name: challenge
+    profit_target: 6000
+    rules:
+      - {type: trailing_drawdown, amount: 3000, ratchet: intraday, threshold_cap: 106000}
+      - {type: time_limit, max_calendar_days: 30}
+funded:
+  name: funded
+  rules:
+    - {type: trailing_drawdown, amount: 3000, ratchet: intraday, threshold_cap: 100100}
+    - {type: consistency, max_best_day_pct: 50, basis: total_profit, effect: gate_payout}
+fees:
+  one_time: 198
+  activation: 99
+payout:
+  profit_split: 1.0
+  min_payout: 500
+  period_days: 8
+  qualifying_days: {count: 5, min_daily_profit: 250}
+  payout_cap_ladder: [2000, 2500, 3000, 3500, 3500, 4500]
+  max_lifetime_payouts: 6
+  safety_net_floor: 103100
+notes: |
+  Sticker prices shown; Apex runs near-constant 80-90% promo codes. PA
+  contract scaling by balance tier and conduct rules (flat by 4:59 PM ET,
+  stop-loss requirement, prohibited activities) are not simulated.
