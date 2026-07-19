@@ -50,6 +50,9 @@ def load_equity_fields(end: str | None = None, token: str | None = None) -> dict
         panel = load_panel(field=f, end=end, _holdout_token=token)
         eq = [t for t in universe["equities"] if t in panel.columns]
         fields[f] = panel[eq]
+        if f == "adjclose":
+            etfs = [t for t in universe["etfs"] if t in panel.columns]
+            fields["etf_adjclose"] = panel[etfs]
     return fields
 
 
