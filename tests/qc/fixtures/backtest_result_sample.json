@@ -1,0 +1,67 @@
+{
+  "backtest": {
+    "backtestId": "8b7c1f2e3d4a5b6c7d8e9f0a1b2c3d4e",
+    "projectId": 12345678,
+    "name": "quantlab sample",
+    "status": "Completed.",
+    "completed": true,
+    "statistics": {
+      "Total Orders": "6",
+      "Net Profit": "1.245%",
+      "Sharpe Ratio": "0.91"
+    },
+    "totalPerformance": {
+      "tradeStatistics": {
+        "totalNumberOfTrades": 3,
+        "numberOfWinningTrades": 2
+      },
+      "closedTrades": [
+        {
+          "symbol": {"value": "ES", "id": "ES YOGVNNAOI1OH", "permtick": "ES"},
+          "entryTime": "2026-01-05T09:31:00",
+          "entryPrice": 5921.25,
+          "direction": 0,
+          "quantity": 1,
+          "exitTime": "2026-01-05T11:14:00",
+          "exitPrice": 5934.75,
+          "profitLoss": 675.0,
+          "totalFees": 4.3,
+          "mae": -212.5,
+          "mfe": 750.0,
+          "duration": "01:43:00",
+          "endTradeDrawdown": -75.0
+        },
+        {
+          "symbol": {"value": "ES", "id": "ES YOGVNNAOI1OH", "permtick": "ES"},
+          "entryTime": "2026-01-06T09:45:00",
+          "entryPrice": 5940.0,
+          "direction": 1,
+          "quantity": 2,
+          "exitTime": "2026-01-06T10:02:00",
+          "exitPrice": 5945.5,
+          "profitLoss": -550.0,
+          "totalFees": 8.6,
+          "mae": -600.0,
+          "mfe": 125.0,
+          "duration": "00:17:00",
+          "endTradeDrawdown": -600.0
+        },
+        {
+          "symbol": "SPY",
+          "entryTime": "2026-01-07T10:00:00Z",
+          "entryPrice": 612.1,
+          "direction": 0,
+          "quantity": 100,
+          "exitTime": "2026-01-07T15:55:00Z",
+          "exitPrice": 614.4,
+          "profitLoss": 230.0,
+          "totalFees": 2.0,
+          "mae": -120.0,
+          "mfe": 260.0,
+          "duration": "05:55:00",
+          "endTradeDrawdown": -30.0
+        }
+      ]
+    }
+  }
+}

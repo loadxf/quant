@@ -9,6 +9,7 @@ from __future__ import annotations
 import typer
 
 from quantlab import __version__
+from quantlab.cli.cloud_cmds import cloud_app
 from quantlab.cli.ingest_cmds import ingest_app
 from quantlab.cli.metrics_cmds import register_metrics_commands
 from quantlab.cli.prop_cmds import prop_app
@@ -23,6 +24,7 @@ app = typer.Typer(
 )
 app.add_typer(ingest_app, name="ingest", help="Convert user CSVs into canonical formats.")
 app.add_typer(prop_app, name="prop", help="Prop-firm evaluation and Monte Carlo simulation.")
+app.add_typer(cloud_app, name="cloud", help="QuantConnect Cloud backtests (needs QC account).")
 register_metrics_commands(app)
 register_report_commands(app)
 
@@ -41,7 +43,7 @@ def main() -> None:
         app()
     except QuantLabError as exc:
         typer.secho(f"error: {exc}", fg=typer.colors.RED, err=True)
-        raise typer.Exit(code=1) from exc
+        raise SystemExit(1) from None
 
 
 if __name__ == "__main__":

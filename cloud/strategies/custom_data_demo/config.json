@@ -1,0 +1,5 @@
+{
+    "algorithm-language": "Python",
+    "parameters": {},
+    "description": "Custom user OHLCV data via the QC Cloud Object Store (PythonData + OBJECT_STORE transport). Upload data first: quant ingest ohlcv bars.csv --symbol demo --upload"
+}
