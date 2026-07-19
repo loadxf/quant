@@ -7,8 +7,6 @@ from dataclasses import dataclass
 
 import pandas as pd
 
-from quantlab.schema.trade import TradeLog
-
 
 @dataclass(frozen=True, slots=True)
 class EquityPoint:
@@ -19,15 +17,6 @@ class EquityPoint:
 @dataclass
 class EquityCurve:
     points: list[EquityPoint]
-
-    @classmethod
-    def from_trades(cls, log: TradeLog, starting_equity: float) -> EquityCurve:
-        equity = starting_equity
-        points: list[EquityPoint] = []
-        for trade in log.trades:
-            equity += trade.pnl
-            points.append(EquityPoint(trade.exit_time, equity))
-        return cls(points)
 
     @classmethod
     def from_series(cls, series: pd.Series) -> EquityCurve:

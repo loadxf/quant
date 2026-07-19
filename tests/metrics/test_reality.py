@@ -39,7 +39,7 @@ class TestRealityCheck:
         verdict = compute_scorecard(log, metrics)
         rc = compute_reality_check(log, seed=5)
         payload = combined_json(metrics, verdict, reality=rc)
-        assert payload["schema_version"] == 2
+        assert payload["schema_version"] == 3
         assert "reality_check" in payload
         json.dumps(payload)
 

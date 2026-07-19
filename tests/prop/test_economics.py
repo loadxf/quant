@@ -76,3 +76,78 @@ class TestFeeAndEvModels:
         assert funded.total_withdrawn is not None
         pure_split = float((funded.total_withdrawn * 0.8).mean())
         assert eco.expected_gross_payout == pytest.approx(pure_split + 540.0)
+
+
+class TestOverheadKnobs:
+    """M10: generic --extra-monthly / --per-payout-fee overheads."""
+
+    def test_overrides_reduce_ev_and_report_block(self) -> None:
+        from quantlab.prop.config import with_fee_overrides
+
+        from ..conftest import random_log
+
+        firm = load_firm("topstep_50k")
+        log = random_log(n_days=100, mean=40.0, std=300.0, seed=7)
+        cfg = MCConfig(n_paths=300, seed=5)
+        base = run_monte_carlo(log, firm, cfg).economics
+        loaded = run_monte_carlo(
+            log, with_fee_overrides(firm, extra_monthly=100.0, per_payout=30.0), cfg
+        ).economics
+        assert base.overhead is None
+        assert loaded.overhead is not None
+        assert loaded.overhead["extra_monthly"] == 100.0
+        assert loaded.overhead["per_payout"] == 30.0
+        assert loaded.expected_net < base.expected_net
+        assert loaded.expected_fees_per_attempt > base.expected_fees_per_attempt
+
+    def test_zero_overrides_return_same_firm(self) -> None:
+        from quantlab.prop.config import with_fee_overrides
+
+        firm = load_firm("topstep_50k")
+        assert with_fee_overrides(firm) is firm
+
+    def test_certain_loser_bills_one_month_of_overhead(self) -> None:
+        from quantlab.prop.config import with_fee_overrides
+
+        firm = with_fee_overrides(load_firm("topstep_50k"), extra_monthly=100.0)
+        log = day_trades([[simple(-500)]] * 20)  # breaches in ~4 days
+        eco = run_monte_carlo(log, firm, MCConfig(n_paths=100, seed=1)).economics
+        assert eco.expected_fees_per_attempt == pytest.approx(49.0 + 100.0)
+        assert eco.expected_net == pytest.approx(-149.0)
+
+
+class TestReactivationOption:
+    """M10: Back2Funded-style analytic option value (topstep presets carry
+    reactivations: {max: 2, fees: [599, 599]})."""
+
+    def test_block_internally_consistent(self) -> None:
+        from ..conftest import random_log
+
+        firm = load_firm("topstep_50k")
+        log = random_log(n_days=100, mean=40.0, std=300.0, seed=7)
+        eco = run_monte_carlo(log, firm, MCConfig(n_paths=400, seed=5)).economics
+        r = eco.reactivation
+        assert r is not None
+        assert r["max"] == 2 and r["fees"] == [599.0, 599.0]
+        assert r["p_ruin_before_payout"] == pytest.approx(eco.risk_of_ruin_funded)
+        ruin = r["p_ruin_before_payout"]
+        expect = sum(
+            ruin**k * max(r["fresh_funded_value"] - fee, 0.0)
+            for k, fee in enumerate(r["fees"], start=1)
+        )
+        assert r["ev_uplift_per_funded"] == pytest.approx(expect)
+        assert r["ev_uplift_single_attempt"] == pytest.approx(eco.pass_prob * expect)
+        assert r["worth_exercising"] == (r["fresh_funded_value"] > 599.0)
+
+    def test_option_never_negative(self) -> None:
+        firm = load_firm("topstep_50k")
+        log = day_trades([[simple(-500)]] * 20)  # certain loser: never funded
+        eco = run_monte_carlo(log, firm, MCConfig(n_paths=100, seed=1)).economics
+        assert eco.reactivation is not None
+        assert eco.reactivation["ev_uplift_single_attempt"] == 0.0
+
+    def test_absent_when_firm_has_none(self) -> None:
+        firm = load_firm("apex40_50k_eod")  # no reactivations defined
+        log = day_trades([[simple(-500)]] * 20)
+        eco = run_monte_carlo(log, firm, MCConfig(n_paths=50, seed=1)).economics
+        assert eco.reactivation is None

@@ -175,3 +175,53 @@ numbers corrected:
 - NOT adopted from the video: its downloadable Claude skill / Pine
   indicator (unvetted third-party code), GARCH-first estimation at
   trade-log sample sizes, and any "extra return" framing.
+
+## M10 — everything-review verifications and economics ledger
+
+Findings from the full completeness/correctness review (three parallel
+audits + direct re-verification of every flagged defect).
+
+- **Apex 50K "preset drift" — REFUTED.** A gap-analysis pass flagged our
+  $2,000 trailing drawdown against 2026 secondaries quoting $2,500. Direct
+  re-verification: $2,500 belongs to the **legacy (pre-2026-03) product**;
+  the Apex 4.0 line these presets model is $3,000 target / $2,000 trailing
+  / $1,000 DLL (Apex "Legacy Evaluation Rules" help-center article vs the
+  4.0 rules articles cited in the YAMLs). Presets unchanged.
+- **Back2Funded reactivations (Topstep)**: now valued as an *analytic
+  option* in `economics.summarize` — eligibility mirrors the firm rule
+  (account lost before any payout, max 2, $599 each; only sold before the
+  first payout), each paid reactivation is approximated as a fresh funded
+  phase worth E[received], the k-th opportunity arises with probability
+  ruin^k, and every term is floored at zero because exercise is optional.
+  Reported SEPARATELY from headline EV ("what the option is worth if you'd
+  exercise it"), never silently added. Generic point (verified): for a
+  marginal trader a fresh funded account is often worth *less* than $599 —
+  the report now computes this per log instead of assuming either way.
+- **Data/platform fees**: the deferred ledger assumed ~$39/mo mandatory
+  data fees. Verified wrong for the modeled funnel: Topstep Level-1 data
+  is **free during the Combine** (the ~$38/mo item is the optional L2
+  add-on) and CME professional data fees (~$133/mo/exchange) apply to
+  **Live Funded accounts only** — beyond the simulated eval→XFA/PA phases.
+  Hence no firm-specific data-fee model; instead the generic
+  `--extra-monthly` / `--per-payout-fee` knobs (FeeSchedule.extra_monthly /
+  per_payout) let a trader bill their own overheads into every EV figure
+  (density-aware months, same convention as subscription fees).
+- **Equity-curve trading** (pausing/sizing by your own equity curve —
+  a recurring guru claim): only helps when PnL is serially dependent;
+  the runs test in the decay panel is exactly the test for that. If runs
+  z ≥ 0 (no loss clustering), equity-curve filters just delete random
+  trades. No feature needed — the decay panel already answers it.
+- **Log-selection / survivorship caveat**: every number the tool emits is
+  conditional on the ONE log you fed it. If that log was picked from
+  several attempts/accounts because it looked best, all statistics inherit
+  that selection bias — the honest fix is `--trials N` (deflation) and
+  feeding the *complete* trading history, not the good months.
+- **Calendar seasonality**: day-of-week/month effects in trade logs are
+  almost always noise at these sample sizes; the block bootstrap already
+  preserves short-range dependence. Not modeled deliberately.
+- **Per-symbol cost sweeps**: mixed-symbol logs get the dominant symbol's
+  tick economics plus an explicit warning; a minority symbol with very
+  different tick values is the residual risk (accepted, documented).
+- **Stop-slippage stress**: a log does not record order types, so the
+  all-exits-as-stops row is the correct worst-case bound (inherent input
+  limitation, not a modeling gap).

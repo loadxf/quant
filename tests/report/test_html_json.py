@@ -53,7 +53,8 @@ class TestCombinedJson:
         payload = combined_json(metrics, verdict, mc)
         text = json.dumps(payload, default=str)  # must not raise
         parsed = json.loads(text)
-        assert parsed["schema_version"] == 2
+        assert parsed["schema_version"] == 3
         assert set(parsed) == {"schema_version", "metrics", "verdict", "prop_simulation"}
+        assert parsed["metrics"]["schema_version"] == 1  # same shape as `quant metrics --json`
         assert parsed["prop_simulation"]["economics"]["pass_prob"] >= 0.0
         assert parsed["verdict"]["overall"] in "ABCDF"

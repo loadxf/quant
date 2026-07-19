@@ -90,9 +90,15 @@ class TestTradeLog:
 
 
 class TestEquityCurve:
-    def test_from_trades_and_daily(self) -> None:
-        log = trades_from_daily([[100, -50], [200]])
-        curve = EquityCurve.from_trades(log, 1_000.0)
+    def test_from_series_and_daily(self) -> None:
+        import pandas as pd
+
+        times = [
+            dt.datetime(2026, 1, 5, 15, 0, tzinfo=UTC),
+            dt.datetime(2026, 1, 5, 16, 0, tzinfo=UTC),
+            dt.datetime(2026, 1, 6, 15, 0, tzinfo=UTC),
+        ]
+        curve = EquityCurve.from_series(pd.Series([1_100.0, 1_050.0, 1_250.0], index=times))
         assert [p.equity for p in curve.points] == [1_100.0, 1_050.0, 1_250.0]
         daily = curve.daily()
         assert list(daily.values) == [1_050.0, 1_250.0]

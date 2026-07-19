@@ -168,6 +168,13 @@ class FeeSchedule(_RuleBase):
     free_resets_per_cycle: int = 0  # informational; ignored by EV math (documented pessimistic)
     activation: float = 0.0  # funded activation / PA fee
     refundable_on_first_payout: bool = False  # FTMO 2-Step refunds the fee
+    # Generic user-side overheads, off by default (presets stay 0 — e.g.
+    # Topstep L1 data is free during the Combine and pro data fees only hit
+    # Live Funded, outside the modeled funnel). Set via YAML or the
+    # --extra-monthly / --per-payout-fee CLI knobs for platform/data
+    # subscriptions and payout processing costs.
+    extra_monthly: float = 0.0  # recurring overhead billed while trading (eval AND funded)
+    per_payout: float = 0.0  # processing cost deducted from each payout
 
     @model_validator(mode="after")
     def _exclusive(self) -> FeeSchedule:
@@ -218,6 +225,20 @@ class FirmConfig(_RuleBase):
         if self.funded.profit_target is not None:
             raise ConfigError("funded phase must not define a profit_target")
         return self
+
+
+def with_fee_overrides(
+    firm: FirmConfig, extra_monthly: float = 0.0, per_payout: float = 0.0
+) -> FirmConfig:
+    """Copy of `firm` with user-side overhead knobs applied (CLI path)."""
+    if extra_monthly <= 0 and per_payout <= 0:
+        return firm
+    updates: dict[str, float] = {}
+    if extra_monthly > 0:
+        updates["extra_monthly"] = extra_monthly
+    if per_payout > 0:
+        updates["per_payout"] = per_payout
+    return firm.model_copy(update={"fees": firm.fees.model_copy(update=updates)})
 
 
 def resolved_amount(

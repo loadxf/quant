@@ -76,6 +76,8 @@ class EconomicsSummary:
     payout_quantiles: dict[str, float]  # net received per funded account
     time_to_pass_quantiles: dict[str, float]  # trading days across eval phases
     days_to_first_payout_quantiles: dict[str, float]  # trading days incl. eval
+    overhead: dict[str, float] | None = None  # extra_monthly / per_payout knobs, when set
+    reactivation: dict[str, Any] | None = None  # Back2Funded option value, when firm defines it
 
 
 @dataclass
@@ -102,7 +104,7 @@ class MonteCarloReport:
         """Stable numeric summary (no per-path arrays)."""
         eco = self.economics
         return {
-            "schema_version": 2,  # v2: adds the sizing block (M9)
+            "schema_version": 3,  # v3: adds economics.overhead + economics.reactivation (M10)
             "firm": self.firm_name,
             "account_size": self.account_size,
             "n_paths": self.n_paths,
@@ -152,5 +154,7 @@ class MonteCarloReport:
                 "payout_quantiles": eco.payout_quantiles,
                 "time_to_pass_quantiles": eco.time_to_pass_quantiles,
                 "days_to_first_payout_quantiles": eco.days_to_first_payout_quantiles,
+                "overhead": eco.overhead,
+                "reactivation": eco.reactivation,
             },
         }

@@ -52,6 +52,12 @@ def register_stress_commands(app: typer.Typer) -> None:
             help="ISO date where out-of-sample begins (e.g. strategy went live) — "
             "adds the walk-forward-efficiency row.",
         ),
+        extra_monthly: float = typer.Option(
+            0.0, "--extra-monthly", help="Recurring $/mo overhead (data feed, platform) in the EV."
+        ),
+        per_payout_fee: float = typer.Option(
+            0.0, "--per-payout-fee", help="Processing cost deducted from each payout."
+        ),
         json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
     ) -> None:
         """Cost stress, edge decay, and deflated statistics for a trade log.
@@ -61,8 +67,12 @@ def register_stress_commands(app: typer.Typer) -> None:
         deflation? Methods and thresholds are literature-anchored — see
         docs/research-notes.md for citations.
         """
+        from quantlab.prop.config import with_fee_overrides
+
         log = read_trade_log(trades)
         firm_cfg = load_firm(firm) if firm else None
+        if firm_cfg is not None:
+            firm_cfg = with_fee_overrides(firm_cfg, extra_monthly, per_payout_fee)
         oos_dt: dt.datetime | None = None
         if oos_start is not None:
             try:

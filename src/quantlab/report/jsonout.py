@@ -15,7 +15,7 @@ from quantlab.metrics.core import Metrics
 from quantlab.metrics.scorecard import Verdict
 from quantlab.prop.outcomes import MonteCarloReport
 
-SCHEMA_VERSION = 2  # v2: adds reality_check + robustness pillar inputs
+SCHEMA_VERSION = 3  # v3: versioned metrics block; MC economics gains overhead/reactivation
 
 
 def sanitize(obj: Any) -> Any:
@@ -41,7 +41,10 @@ def combined_json(
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
-        "metrics": dataclasses.asdict(metrics),
+        # The metrics block carries its own version marker so consumers of
+        # the embedded and standalone (`quant metrics --json`) forms parse
+        # one identical shape.
+        "metrics": {"schema_version": 1, **dataclasses.asdict(metrics)},
     }
     if verdict is not None:
         payload["verdict"] = verdict.to_json_dict()

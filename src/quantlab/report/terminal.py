@@ -83,7 +83,30 @@ def render_report(report: MonteCarloReport, console: Console) -> None:
     econ.add_row("VaR 95% / CVaR 95%", f"{_money(eco.var_95)} / {_money(eco.cvar_95)}")
     for k, ev in eco.ev_with_resets.items():
         econ.add_row(f"campaign EV, up to {k} attempt(s)", _money(ev))
+    if eco.overhead is not None:
+        econ.add_row(
+            "overheads included",
+            f"{_money(eco.overhead.get('extra_monthly', 0.0))}/mo + "
+            f"{_money(eco.overhead.get('per_payout', 0.0))}/payout",
+        )
     console.print(econ)
+    if eco.reactivation is not None:
+        r = eco.reactivation
+        if r["worth_exercising"]:
+            console.print(
+                f"[dim]reactivation option ({r['max']}x, fees "
+                f"{'/'.join(_money(f) for f in r['fees'])}): fresh funded account worth "
+                f"{_money(r['fresh_funded_value'])} -> exercising adds "
+                f"{_money(r['ev_uplift_single_attempt'])} EV per attempt "
+                "(fresh-phase approximation; not in headline EV)[/dim]"
+            )
+        else:
+            console.print(
+                f"[dim]reactivation option ({r['max']}x, fees "
+                f"{'/'.join(_money(f) for f in r['fees'])}): NOT worth exercising — "
+                f"a fresh funded account is worth {_money(r['fresh_funded_value'])}, "
+                "less than the fee[/dim]"
+            )
 
 
 def render_reality(rc: Any, console: Console) -> None:

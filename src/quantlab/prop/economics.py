@@ -13,7 +13,9 @@ are ignored, making reset EV slightly pessimistic; FTMO's fee refund
 applies on the first funded payout; retry attempts replace the attempt
 fee (monthly rebill or one-time purchase) with the discounted reset fee
 when the firm defines one, full price otherwise; funded-account
-reactivations (Topstep Back2Funded) are NOT modeled.
+reactivations (Topstep Back2Funded) are valued as an OPTIONAL analytic
+option (fresh-funded-phase approximation, floored at zero, reported
+separately from the headline EV — never silently added to it).
 """
 
 from __future__ import annotations
@@ -90,27 +92,48 @@ def summarize(
     ci = wilson_ci(int(passed_all.sum()), n)
 
     # ---- per-attempt evaluation fees ----
+    # Density-aware month count: N trading days of a sparse trader span
+    # more calendar months (and rebills) than the same N of a daily trader.
+    days_per_month = TRADING_DAYS_PER_MONTH * sessions_per_week / BASELINE_SESSIONS_PER_WEEK
     if fees.one_time > 0:
         attempt_fees = np.full(n, float(fees.one_time))
     elif fees.monthly > 0:
-        # Density-aware: N trading days of a sparse trader span more
-        # calendar months (and rebills) than the same N of a daily trader.
-        days_per_month = TRADING_DAYS_PER_MONTH * sessions_per_week / BASELINE_SESSIONS_PER_WEEK
         months = np.ceil(days_used / days_per_month)
         attempt_fees = fees.monthly * np.maximum(months, 1)
     else:
         attempt_fees = np.zeros(n)
+    # Generic recurring overhead (data/platform subscriptions) bills over
+    # the same density-aware months as the eval subscription; folding it
+    # into attempt_fees makes every downstream figure (retry campaign EV,
+    # cost-to-funded, VaR) overhead-aware with one insertion point.
+    overhead = None
+    if fees.extra_monthly > 0:
+        eval_overhead = fees.extra_monthly * np.maximum(np.ceil(days_used / days_per_month), 1)
+        attempt_fees = attempt_fees + eval_overhead
+        overhead = {"expected_eval_overhead_per_attempt": float(eval_overhead.mean())}
 
     # ---- funded value per path ----
     assert funded.total_withdrawn is not None and funded.payout_count is not None
     assert funded.first_payout_day is not None
     received = funded.total_withdrawn * payout.profit_split
+    if fees.per_payout > 0:
+        received = received - fees.per_payout * funded.payout_count
     refund = (
         float(fees.one_time) * (funded.payout_count >= 1)
         if fees.refundable_on_first_payout and fees.one_time > 0
         else np.zeros(n)
     )
     funded_value = received + refund - fees.activation
+    if fees.extra_monthly > 0:
+        funded_months = np.ceil((funded.end_day + 1) / days_per_month)
+        funded_value = funded_value - fees.extra_monthly * funded_months
+        assert overhead is not None
+        overhead["expected_funded_overhead"] = float((fees.extra_monthly * funded_months).mean())
+    if fees.extra_monthly > 0 or fees.per_payout > 0:
+        overhead = (overhead or {}) | {
+            "extra_monthly": fees.extra_monthly,
+            "per_payout": fees.per_payout,
+        }
 
     # ---- single-attempt net distribution ----
     net = -attempt_fees + passed_all * funded_value
@@ -171,6 +194,39 @@ def summarize(
     p_payout = float(np.mean(got_payout))
     ruin = float(np.mean((funded.outcome == OUTCOME_BREACHED) & ~got_payout))
 
+    # ---- reactivation option value (Topstep Back2Funded-style) ----
+    # Analytic layer over the MC estimates, like ev_with_resets. Eligibility
+    # mirrors the firm rule AND the ruin metric: the account was lost before
+    # any payout. Approximations (documented in research-notes): each paid
+    # reactivation restarts a FRESH funded phase whose expected trader value
+    # is E[received] (profit-split net of per-payout costs; activation and
+    # eval-fee-refund mechanics are not re-applied), and the k-th
+    # opportunity arises with probability ruin^k. Exercise is OPTIONAL, so
+    # every term is floored at 0 — the option can only add EV; when the
+    # fresh-funded value is below the fee the block says so explicitly.
+    reactivation = None
+    react = payout.reactivations
+    if react.max > 0 and react.fees:
+        fresh_value = float(received.mean())
+        uplift = 0.0
+        chain = 1.0
+        fee_list = [
+            float(react.fees[k] if k < len(react.fees) else react.fees[-1])
+            for k in range(react.max)
+        ]
+        for fee_k in fee_list:
+            chain *= ruin
+            uplift += chain * max(fresh_value - fee_k, 0.0)
+        reactivation = {
+            "max": react.max,
+            "fees": fee_list,
+            "p_ruin_before_payout": ruin,
+            "fresh_funded_value": fresh_value,
+            "worth_exercising": fresh_value > min(fee_list),
+            "ev_uplift_per_funded": uplift,
+            "ev_uplift_single_attempt": pass_prob * uplift,
+        }
+
     time_to_pass = _quantiles(days_used[passed_all]) if passed_all.any() else {}
     to_first = passed_all & got_payout
     days_to_first_payout = (
@@ -193,6 +249,8 @@ def summarize(
         payout_quantiles=_quantiles(received),
         time_to_pass_quantiles=time_to_pass,
         days_to_first_payout_quantiles=days_to_first_payout,
+        overhead=overhead,
+        reactivation=reactivation,
     )
     return MonteCarloReport(
         firm_name=firm.name,

@@ -41,6 +41,24 @@ challenge: pass probability (with CI), expected fees, expected payout value,
 **net EV per attempt and per retry campaign**, VaR/CVaR, risk of ruin,
 days-to-pass and days-to-first-payout distributions.
 
+Knobs worth knowing (all on `quant prop simulate`, most also on `quant
+stress` and `quant report` — see `--help` for the full list):
+
+- `--scale 0.5` (plus `--challenge-scale`/`--funded-scale`) — position-sizing
+  what-ifs: rerun the whole simulation at a fraction/multiple of your size.
+- `--bootstrap stationary|iid_day|iid_trade` and `--block-len` — resampling
+  scheme; the default stationary block bootstrap preserves streaks and
+  volatility clustering (block length auto-tuned via Politis-White).
+- `--sizing vol_target` with `--vol-lambda/--vol-target/--vol-clip-lo/hi` —
+  dynamic EWMA vol-targeted sizing inside the Monte Carlo (M9).
+- `--extra-monthly 39 --per-payout-fee 30` — fold recurring overheads (data
+  feed, platform) and payout processing costs into every EV figure.
+- `quant stress --oos-start 2026-03-01` — declare where out-of-sample
+  begins (e.g. the strategy went live) to add the walk-forward-efficiency
+  row to the decay panel.
+- `quant stress --trials 8` — how many strategy variants you tried before
+  this one; enables the Deflated Sharpe Ratio / MinBTL / haircut rows.
+
 Include MAE/MFE columns in your export if you can — without them,
 intraday-sensitive rules (Apex-style real-time trailing, daily loss limits)
 are checked at trade-close fidelity and results are **optimistic** (every

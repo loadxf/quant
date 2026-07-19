@@ -138,11 +138,19 @@ def simulate_cmd(
     ),
     vol_clip_lo: float = typer.Option(0.5, "--vol-clip-lo", help="Weight floor."),
     vol_clip_hi: float = typer.Option(1.5, "--vol-clip-hi", help="Weight cap (Moreira-Muir 1.5)."),
+    extra_monthly: float = typer.Option(
+        0.0, "--extra-monthly", help="Recurring $/mo overhead (data feed, platform) in the EV."
+    ),
+    per_payout_fee: float = typer.Option(
+        0.0, "--per-payout-fee", help="Processing cost deducted from each payout."
+    ),
     json_out: Path | None = typer.Option(None, "--json", help="Write JSON summary here."),
 ) -> None:
     """Monte Carlo the challenge + funded phases from a trade log."""
+    from quantlab.prop.config import with_fee_overrides
+
     log = read_trade_log(trades)
-    firm = load_firm(firm_name)
+    firm = with_fee_overrides(load_firm(firm_name), extra_monthly, per_payout_fee)
     cfg = MCConfig(
         n_paths=paths,
         seed=seed,
