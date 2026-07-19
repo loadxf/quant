@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
-from quantlab.metrics.core import Metrics, bootstrap_means, compute_metrics
+from quantlab.metrics.core import Metrics, compute_metrics
 from quantlab.metrics.overfit import OverfitFlag, overfit_flags
 from quantlab.schema.trade import TradeLog
 
@@ -98,12 +98,11 @@ def _grade_edge(m: Metrics) -> PillarScore:
 def _grade_robustness(log: TradeLog, m: Metrics) -> PillarScore:
     pnls = np.array([t.pnl for t in log.trades])
     n = pnls.size
-    if n > 1:
-        # Same resampling run (seed/count) as the expectancy CI in
-        # compute_metrics — the two statistics can never disagree.
-        p_positive = float(np.mean(bootstrap_means(pnls) > 0))
-    else:
-        p_positive = 0.0
+    # Computed inside compute_metrics from the SAME bootstrap run as the
+    # expectancy CI (same count and seed, even caller-overridden ones), so
+    # the two published statistics can never disagree — and the most
+    # expensive metrics computation runs once, not twice.
+    p_positive = m.bootstrap_p_positive
     trimmed = np.sort(pnls)[:-5] if n > 5 else pnls
     wins, losses = trimmed[trimmed > 0].sum(), -trimmed[trimmed < 0].sum()
     pf_trimmed = float(wins / losses) if losses > 0 else float("inf")

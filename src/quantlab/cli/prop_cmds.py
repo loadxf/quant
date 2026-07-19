@@ -13,6 +13,7 @@ from quantlab.prop.evaluator import EvaluationResult, evaluate, evaluate_sequenc
 from quantlab.prop.montecarlo import MCConfig, run_monte_carlo
 from quantlab.prop.registry import list_firms, load_firm
 from quantlab.prop.synthetic import resolve_geometry, synthetic_geometry_log
+from quantlab.report.format import money
 from quantlab.report.jsonout import sanitize
 from quantlab.report.terminal import render_report
 from quantlab.schema.io import read_trade_log
@@ -35,9 +36,9 @@ def firms_list() -> None:
         firm = load_firm(name)
         table.add_row(
             name,
-            f"${firm.account_size:,.0f}",
+            money(firm.account_size, decimals=0),
             " -> ".join(
-                f"{p.name} (+${p.profit_target:,.0f})"
+                f"{p.name} (+{money(p.profit_target, decimals=0)})"
                 for p in firm.phases
                 if p.profit_target is not None
             ),
@@ -63,13 +64,13 @@ def _print_result(result: EvaluationResult) -> None:
     }[result.outcome]
     console.print(
         f"[bold {color}]{result.phase}: {result.outcome.upper()}[/bold {color}]  "
-        f"(final balance ${result.final_balance:,.2f}, "
+        f"(final balance {money(result.final_balance)}, "
         f"{result.trading_days} trading days)"
     )
     if result.effective_target is not None:
         console.print(
-            f"  effective target: ${result.effective_target:,.2f}"
-            f" (best day ${result.best_day:,.2f})"
+            f"  effective target: {money(result.effective_target)}"
+            f" (best day {money(result.best_day)})"
         )
     if result.breach:
         b = result.breach

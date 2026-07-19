@@ -58,3 +58,23 @@ class TestLoadOhlcv:
         text = out.read_text()
         assert text.splitlines()[0] == "datetime,open,high,low,close,volume"
         assert "2026-01-05T09:30:00Z" in text
+
+
+class TestDstFallBack:
+    """Pass-2 regression: ambiguous=True stamped both passes of the repeated
+    fall-back hour with the SAME UTC offset, so the dedupe silently deleted
+    the entire standard-time hour of real bars."""
+
+    def test_fall_back_hour_bars_survive(self, tmp_path: Path) -> None:
+        csv = _write(
+            tmp_path,
+            "Date,Open,High,Low,Close,Volume\n"
+            "2025-11-02 01:15,100,101,99,100.5,10\n"  # CDT pass
+            "2025-11-02 01:15,101,102,100,101.5,10\n"  # CST pass (real data)
+            "2025-11-02 02:15,102,103,101,102.5,10\n",
+        )
+        frame, report = load_ohlcv(csv, tz="America/Chicago")
+        assert report.bars_kept == 3
+        assert report.duplicate_timestamps == 0
+        stamps = sorted(frame["datetime"])
+        assert len(set(stamps)) == 3  # distinct UTC instants

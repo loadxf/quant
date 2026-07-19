@@ -64,10 +64,19 @@ def load_ohlcv(path: Path | str, tz: str = "UTC") -> tuple[pd.DataFrame, OhlcvRe
     out = pd.DataFrame()
     stamps = pd.to_datetime(frame[columns["datetime"]], errors="coerce")
     if getattr(stamps.dt, "tz", None) is None:
-        # DST edges: fall-back-hour bars are real data — resolve ambiguity to
-        # the DST side and shift nonexistent spring-forward stamps forward
-        # instead of deleting an hour of bars every transition.
-        stamps = stamps.dt.tz_localize(tzinfo, nonexistent="shift_forward", ambiguous=True)
+        # DST edges: fall-back-hour bars are real data — "infer" uses bar
+        # ordering to label the first pass daylight time and the second
+        # standard time (a blanket ambiguous=True stamps both passes with
+        # the same UTC offset, and the dedupe below would silently delete
+        # the whole second hour). Nonexistent spring-forward stamps shift
+        # forward instead of deleting an hour every transition.
+        try:
+            stamps = stamps.dt.tz_localize(tzinfo, nonexistent="shift_forward", ambiguous="infer")
+        except ValueError:
+            # Ordering gives no answer (unsorted export or a lone ambiguous
+            # stamp): NaT those bars so they land in the drop report as
+            # unparseable instead of masquerading as clean data.
+            stamps = stamps.dt.tz_localize(tzinfo, nonexistent="shift_forward", ambiguous="NaT")
     out["datetime"] = stamps.dt.tz_convert("UTC")
     for name in ("open", "high", "low", "close"):
         out[name] = pd.to_numeric(frame[columns[name]], errors="coerce")

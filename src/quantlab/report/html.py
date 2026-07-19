@@ -113,11 +113,11 @@ def _prop_context(mc: MonteCarloReport, firm: FirmConfig) -> dict:
         prop_charts.append(_fig_html(charts.fig_payout_hist(received), False))
     prop_charts.append(_fig_html(charts.fig_ev_waterfall(eco, firm.fees.activation), False))
 
-    rules_lines = [f"account size: ${firm.account_size:,.0f}"]
+    rules_lines = [f"account size: {money(firm.account_size, decimals=0)}"]
     for phase_cfg in [*firm.phases, firm.funded]:
         rules_lines.append(f"\n[{phase_cfg.name}]")
         if phase_cfg.profit_target is not None:
-            rules_lines.append(f"  profit target: ${phase_cfg.profit_target:,.0f}")
+            rules_lines.append(f"  profit target: {money(phase_cfg.profit_target, decimals=0)}")
         for spec in phase_cfg.rules:
             rules_lines.append(f"  {spec.model_dump(exclude_none=True)}")
     return {

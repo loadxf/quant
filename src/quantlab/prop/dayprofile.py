@@ -80,8 +80,9 @@ class DayProfile:
         return int(self.low_rel.shape[1])
 
     @classmethod
-    def from_log(cls, log: TradeLog, boundary: DayBoundary) -> DayProfile:
-        days = log.daily_groups(boundary)
+    def from_log(cls, log: TradeLog, boundary: DayBoundary, days: list | None = None) -> DayProfile:
+        if days is None:
+            days = log.daily_groups(boundary)
         if not days:
             raise QuantLabError("Trade log has no trading days")
         return cls.from_day_lists([trades for _, trades in days], log.has_excursions)

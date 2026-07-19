@@ -13,7 +13,7 @@ convert to trading days using the SOURCE LOG'S observed trading density
 (sessions per week), so a Monday/Wednesday-only trader gets ~9 sessions
 out of a 30-calendar-day limit, not 22. Dense weekday logs convert at
 5/7 (Apex's 30-day expiry -> 22 trading days); fee months are 21 trading
-days (see economics.py).
+days at that baseline, scaled by the same density (see economics.py).
 """
 
 from __future__ import annotations
@@ -64,13 +64,23 @@ def calendar_to_trading_days(
     return max(1, math.ceil(calendar_days * sessions_per_week / 7))
 
 
-def observed_sessions_per_week(log: TradeLog, boundary) -> float:
-    """Trading density of the source log (sessions/week), capped at 7."""
-    days = log.daily_groups(boundary)
+def observed_sessions_per_week(log: TradeLog, boundary, days: list | None = None) -> float:
+    """Trading density of the source log (sessions/week), capped at 7.
+
+    The span is padded to whole calendar weeks: a Mon-Fri log spans 5
+    days but represents a 5-sessions-per-7-day cadence, and the raw
+    endpoint ratio (5*7/5 = 7.0) would silently grant weekend sessions
+    to every calendar-quoted time limit. Logs spanning under two weeks
+    carry too little cadence evidence either way and use the default.
+    """
+    if days is None:
+        days = log.daily_groups(boundary)
     if len(days) < 2:
         return DEFAULT_SESSIONS_PER_WEEK
     span_days = (days[-1][0] - days[0][0]).days + 1
-    return min(7.0, len(days) * 7.0 / span_days)
+    if span_days < 14:
+        return DEFAULT_SESSIONS_PER_WEEK
+    return min(7.0, len(days) / math.ceil(span_days / 7))
 
 
 @dataclass
@@ -424,8 +434,18 @@ def _simulate_phase(
             # next tick. Bound the amount by every trailing threshold.
             floor_eff = np.full(n_paths, float(payout.floor))
             for r, tr in enumerate(rules.trailing):
-                thr = np.minimum(hwms[r] - tr.amount, tr.cap)
-                floor_eff = np.maximum(floor_eff, thr + PAYOUT_FLOOR_MARGIN)
+                if np.isinf(tr.cap):
+                    # Rebasing trail (FTMO 1-Step): the hwm drops with the
+                    # withdrawal below, so the threshold moves down 1:1 with
+                    # the amount — bounding by the PRE-withdrawal threshold
+                    # would strand withdrawable profit. Only the post-rebase
+                    # minimum (initial - width) constrains the amount.
+                    floor_eff = np.maximum(
+                        floor_eff, float(initial) - tr.amount + PAYOUT_FLOOR_MARGIN
+                    )
+                else:
+                    thr = np.minimum(hwms[r] - tr.amount, tr.cap)
+                    floor_eff = np.maximum(floor_eff, thr + PAYOUT_FLOOR_MARGIN)
             amount = np.minimum(balance - floor_eff, cap)
             if payout.share_of_balance is not None:
                 amount = np.minimum(amount, payout.share_of_balance * balance)
@@ -474,9 +494,14 @@ def _simulate_phase(
 
 
 def _iid_trade_profile(
-    log: TradeLog, boundary, rng: np.random.Generator, n_synth_days: int = 1000
+    log: TradeLog,
+    boundary,
+    rng: np.random.Generator,
+    n_synth_days: int = 1000,
+    days: list | None = None,
 ) -> DayProfile:
-    days = log.daily_groups(boundary)
+    if days is None:
+        days = log.daily_groups(boundary)
     sizes = np.array([len(trades) for _, trades in days])
     all_trades = log.trades
     synth = []
@@ -492,15 +517,16 @@ def run_monte_carlo(
     cfg = cfg or MCConfig()
     rng = np.random.default_rng(cfg.seed)
     boundary = firm.day_boundary.to_boundary()
-    sessions_per_week = observed_sessions_per_week(log, boundary)
+    source_day_groups = log.daily_groups(boundary)  # single scan serves density + profile
+    sessions_per_week = observed_sessions_per_week(log, boundary, days=source_day_groups)
     warnings: list[str] = []
 
     bootstrap_name: BootstrapName = cfg.bootstrap
     if bootstrap_name == "iid_trade":
-        profile = _iid_trade_profile(log, boundary, rng)
+        profile = _iid_trade_profile(log, boundary, rng, days=source_day_groups)
         sampler = make_bootstrapper("iid_day")
     else:
-        profile = DayProfile.from_log(log, boundary)
+        profile = DayProfile.from_log(log, boundary, days=source_day_groups)
         if bootstrap_name == "stationary" and profile.n_days < MIN_DAYS_FOR_BLOCKS:
             warnings.append(
                 f"only {profile.n_days} source trading days (<{MIN_DAYS_FOR_BLOCKS}): "
@@ -569,4 +595,5 @@ def run_monte_carlo(
         scale_challenge=challenge_scale,
         scale_funded=funded_scale,
         warnings=warnings,
+        sessions_per_week=sessions_per_week,
     )

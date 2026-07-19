@@ -7,6 +7,7 @@ build on it) — kept out of the CLI layer.
 from __future__ import annotations
 
 import datetime as dt
+import warnings
 from dataclasses import dataclass
 from zoneinfo import ZoneInfo
 
@@ -71,7 +72,21 @@ def synthetic_geometry_log(
         [np.full(n_wins, geometry.win_size), np.full(n_total - n_wins, geometry.loss_size)]
     )
     pnls = rng.permutation(pnls)
-    pnls += ev - pnls.mean()  # zero out the exact-count rounding residual
+    residual = ev - float(pnls.mean())
+    pnls += residual  # zero out the exact-count rounding residual
+    if risk > 0 and abs(residual) > 0.01 * risk:
+        # round(win_rate * n) can't hit win_rate exactly for small n; the
+        # demeaning shift then materially moves BOTH trade sizes away from
+        # the requested geometry, invisibly to resolve_geometry().distorted
+        # (which only sees the EV-reconciliation shift).
+        warnings.warn(
+            f"exact-win-count rounding shifted every trade by {residual:+.2f} "
+            f"({abs(residual) / risk:.0%} of risk) to hold EV at {ev:g}; "
+            f"effective sizes are win {geometry.win_size + residual:+.2f} / "
+            f"loss {geometry.loss_size + residual:+.2f} — increase days or "
+            "trades_per_day for a faithful sample",
+            stacklevel=2,
+        )
     ct = ZoneInfo("America/Chicago")
     date = dt.date(2026, 1, 5)
     trades: list[Trade] = []

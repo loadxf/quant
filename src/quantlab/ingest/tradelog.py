@@ -100,9 +100,24 @@ def _combine_split_date_time(frame: pd.DataFrame, column: str) -> str:
 
 def _parse_time_column(frame: pd.DataFrame, column: str, mapping: ColumnMapping) -> pd.Series:
     """Vectorized parse (one format inference per column, ~100x faster than
-    per-row) with per-row NaT for unparseable values."""
-    column = _combine_split_date_time(frame, column)
-    return pd.to_datetime(frame[column], format=mapping.datetime_format, errors="coerce")
+    per-row) with a per-row fallback so mixed-format columns still load.
+
+    pandas infers ONE format from the first value and coerces every
+    non-matching row to NaT — a broker export mixing '09:31:00' and
+    '09:32:00.123' (fractional seconds only when nonzero) would silently
+    drop the fractional rows. The rare stragglers re-parse row-by-row;
+    rows that still fail stay NaT and are dropped with a reason.
+    """
+    combined = _combine_split_date_time(frame, column)
+    # A user-declared format describes the ORIGINAL (time-only) column; it
+    # cannot match once a Date column has been merged in front.
+    fmt = mapping.datetime_format if combined == column else None
+    parsed = pd.to_datetime(frame[combined], format=fmt, errors="coerce")
+    missing = parsed.isna() & frame[combined].notna()
+    for idx in frame.index[missing]:
+        # dtype=str at read time, and the mask excludes nulls
+        parsed.at[idx] = pd.to_datetime(str(frame.at[idx, combined]), format=fmt, errors="coerce")
+    return parsed
 
 
 def _parse_side(value: object, mapping: ColumnMapping) -> Side:

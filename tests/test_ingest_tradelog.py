@@ -115,3 +115,21 @@ class TestLoadSampleCsv:
         csv.write_text("Exit DateTime,Net P/L\nnope,\n")
         with pytest.raises(MappingError, match="No trades"):
             load_trade_log(csv)
+
+
+class TestMixedFormatColumns:
+    """Pass-2 regression: the vectorized parser infers ONE format from the
+    first row and used to silently NaT (and drop) every other-format row."""
+
+    def test_mixed_datetime_formats_all_load(self, tmp_path: Path) -> None:
+        csv = tmp_path / "mixed.csv"
+        csv.write_text(
+            "Exit DateTime,Symbol,Net P/L\n"
+            "2026-01-05 09:31:00,MNQ,100\n"
+            "01/06/2026 10:15,MNQ,-50\n"  # minority format
+            "2026-01-07 11:00:00.123,MNQ,25\n"  # fractional seconds
+        )
+        log, report = load_trade_log(csv)
+        assert report.rows_dropped == 0
+        assert len(log) == 3
+        assert sorted(t.exit_time.day for t in log.trades) == [5, 6, 7]

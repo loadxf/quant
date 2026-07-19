@@ -41,7 +41,10 @@ def load_firm(name_or_path: str | Path) -> FirmConfig:
         raise ConfigError(f"Firm config {name_or_path} must be a YAML mapping")
     try:
         firm = FirmConfig.model_validate(raw)
-    except ValidationError as exc:
+    # Model validators raise ConfigError, which pydantic does NOT wrap in
+    # ValidationError (only ValueError/AssertionError are) — catch both so
+    # every invalid config names the offending file.
+    except (ValidationError, ConfigError) as exc:
         raise ConfigError(f"Invalid firm config {name_or_path}: {exc}") from exc
     _validate_amounts(firm, str(name_or_path))
     return firm

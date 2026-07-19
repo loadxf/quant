@@ -64,6 +64,13 @@ class OpeningRangeBreakoutEquity(QCAlgorithm):  # noqa: F405
             return
         if any(t.order_id == order_event.order_id for t in self._exit_tickets):
             self._cancel_exits()
+        # No true OCO in LEAN: a single wide bar can fill BOTH bracket legs
+        # in one time slice (cancel arrives too late for an already-filled
+        # sibling), flipping this long-only book short. The second fill's
+        # event lands after the ticket list is cleared, so catch the
+        # inversion here and flatten immediately.
+        if not self._exit_tickets and self.portfolio[self._spy].quantity < 0:
+            self.liquidate(self._spy)
 
     def on_data(self, slice_):
         bar = slice_.bars.get(self._spy)

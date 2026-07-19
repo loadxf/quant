@@ -44,6 +44,10 @@ class Metrics:
     daily_pnl_std: float
     per_trade_pnl_std: float
     starting_equity: float
+    # P(mean pnl > 0) from the SAME bootstrap run as expectancy_ci95 —
+    # the scorecard's robustness pillar consumes this instead of
+    # re-resampling with its own (possibly different) count/seed.
+    bootstrap_p_positive: float = 0.0
     extras: dict[str, float] = field(default_factory=dict)
 
 
@@ -110,8 +114,10 @@ def compute_metrics(
     if n > 1:
         means = bootstrap_means(pnls, n_samples=bootstrap_samples, seed=seed)
         ci = (float(np.percentile(means, 2.5)), float(np.percentile(means, 97.5)))
+        p_positive = float(np.mean(means > 0))
     else:
         ci = (expectancy, expectancy)
+        p_positive = 0.0
 
     equity = starting_equity + np.cumsum(pnls)
     max_dd = _max_drawdown(np.concatenate(([starting_equity], equity)))
@@ -168,4 +174,5 @@ def compute_metrics(
         daily_pnl_std=float(daily_pnls.std(ddof=1)) if daily_pnls.size > 1 else 0.0,
         per_trade_pnl_std=per_trade_std,
         starting_equity=starting_equity,
+        bootstrap_p_positive=p_positive,
     )

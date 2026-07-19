@@ -206,3 +206,93 @@ funded:
         )
         with pytest.raises(ConfigError, match=r"badfirm|bad\.yaml"):
             load_firm(path)
+
+
+class TestDensityEndpointBias:
+    """Pass-2 findings: span endpoint bias inflated sessions/week."""
+
+    def test_one_week_dense_log_uses_default_not_seven(self) -> None:
+        # 5 Mon-Fri sessions span 5 calendar days: the raw endpoint ratio
+        # is 7.0/week, which converted Apex's 30-day expiry to 30 trading
+        # days instead of 22. Under two weeks of span -> default density.
+        firm = load_firm("apex40_50k_intraday")
+        boundary = firm.day_boundary.to_boundary()
+        log = day_trades([[simple(100)]] * 5)
+        assert observed_sessions_per_week(log, boundary) == 5.0
+
+    def test_multi_week_dense_log_converges_to_five(self) -> None:
+        firm = load_firm("apex40_50k_intraday")
+        boundary = firm.day_boundary.to_boundary()
+        log = day_trades([[simple(100)]] * 20)  # 4 Mon-Fri weeks
+        density = observed_sessions_per_week(log, boundary)
+        assert density == pytest.approx(5.0, abs=0.35)
+        assert calendar_to_trading_days(30, density) <= 22
+
+
+class TestPayoutUncappedTrailNotStranded:
+    def test_full_profit_above_floor_is_withdrawable(self) -> None:
+        """FTMO 1-Step: the trail rebases 1:1 with the withdrawal, so the
+        pre-withdrawal threshold must not cap the amount (was: every
+        payout clipped at width - 0.01, stranding profit each cycle)."""
+        firm = load_firm("ftmo_1step_100k")
+        log = day_trades([[simple(2000)]] * 60)
+        profile = DayProfile.from_log(log, firm.day_boundary.to_boundary())
+        idx = np.arange(profile.n_days)[None, :]
+        gates = _resolve_rules(firm.funded, firm, 100_000.0).payout_gate_pcts
+        payout = _resolve_payout(firm, 100_000.0, gates)
+        outcome = _simulate_phase(profile, idx, firm.funded, firm, payout, 1)
+        assert outcome.outcome[0] != OUTCOME_BREACHED
+        assert outcome.total_withdrawn is not None
+        # 6 payout cycles x 20k profit each; the old bound capped the total
+        # at ~60k (6 x 9,999.99).
+        assert float(outcome.total_withdrawn[0]) >= 90_000
+
+
+class TestRetryPricingOneTimeFees:
+    def test_one_time_firm_with_reset_prices_retries_at_reset(self) -> None:
+        firm = load_firm("tpt_50k").model_copy(
+            update={"fees": type(load_firm("tpt_50k").fees)(one_time=297, reset=35)}
+        )
+        log = day_trades([[simple(-700)]] * 10)  # certain fail
+        report = run_monte_carlo(log, firm, MCConfig(n_paths=50, seed=5))
+        assert report.economics.pass_prob == 0.0
+        assert report.economics.ev_with_resets[3] == pytest.approx(-(297.0 + 35.0 + 35.0))
+
+
+class TestConfigDefaultsAndContext:
+    def test_period_days_defaults_to_biweekly(self) -> None:
+        from quantlab.prop.config import PayoutPolicy
+
+        assert PayoutPolicy().period_days == 14
+
+    def test_fee_exclusivity_error_names_the_file(self, tmp_path) -> None:
+        path = tmp_path / "myfirm.yaml"
+        path.write_text(
+            """
+name: myfirm
+account_size: 10000
+fees: {monthly: 99, one_time: 297}
+phases:
+  - name: challenge
+    profit_target: 800
+    rules: []
+funded:
+  name: funded
+  rules: []
+"""
+        )
+        with pytest.raises(ConfigError, match=r"myfirm\.yaml"):
+            load_firm(path)
+
+
+class TestSyntheticResidualWarning:
+    def test_small_sample_rounding_residual_warns(self) -> None:
+        with pytest.warns(UserWarning, match="rounding shifted"):
+            synthetic_geometry_log(0.45, 2.0, 1, 100.0, 35.0, 10, 1)
+
+    def test_exact_sample_stays_silent(self) -> None:
+        import warnings as _warnings
+
+        with _warnings.catch_warnings():
+            _warnings.simplefilter("error")
+            synthetic_geometry_log(0.5, 1.0, 3, 100.0, 0.0, 30, 1)

@@ -11,6 +11,7 @@ individual objects under 50 MB.
 from __future__ import annotations
 
 import os
+import warnings
 from pathlib import Path
 
 from quantlab.errors import CloudUnavailableError, QuantLabError
@@ -44,5 +45,13 @@ def upload(path: Path, key: str) -> str:
                 f"lean CLI upload failed ({exc}); set {ENV_ORG} to enable the "
                 "REST fallback (POST /api/v2/object/set)."
             ) from exc
+        # Surface the swallowed CLI error: a genuine failure (wrong workspace
+        # login, org mismatch) must not be silently papered over by a REST
+        # upload that may land in a different organization's store.
+        warnings.warn(
+            f"lean CLI object-store upload failed ({exc}); retrying via REST "
+            f"(POST /api/v2/object/set) under organization {organization!r}",
+            stacklevel=2,
+        )
         QCClient().object_store_set(organization, key, path.read_bytes())
         return key

@@ -157,7 +157,6 @@ def _evaluate_days(
             )
 
     balance = initial
-    trading_days = 0
     best_day_completed = 0.0
     lockout_days = 0
     max_qty = 0.0
@@ -177,7 +176,6 @@ def _evaluate_days(
         # daily_groups never yields an empty day, so every consumed day is
         # also a trading day — one counter serves both.
         days_consumed += 1
-        trading_days = days_consumed
         day_open = balance
         for rule in (*daily_fail, *daily_lockout):
             rule.day_start(day_open)
@@ -249,7 +247,7 @@ def _evaluate_days(
                 if (
                     not blocked
                     and balance - initial >= effective_target
-                    and min_days.satisfied(trading_days)
+                    and min_days.satisfied(days_consumed)
                 ):
                     outcome = "passed"
                     pass_date = date
@@ -294,7 +292,7 @@ def _evaluate_days(
         breach=breach,
         pass_date=pass_date,
         pass_day_index=pass_day_index,
-        trading_days=trading_days,
+        trading_days=days_consumed,
         final_balance=balance if rows else initial,
         initial_balance=initial,
         effective_target=effective_target,

@@ -183,7 +183,10 @@ class FeeSchedule(_RuleBase):
 class PayoutPolicy(_RuleBase):
     profit_split: float = 1.0  # trader's share
     min_payout: float = 0.0
-    period_days: int = 0  # min calendar days between payout requests (0 = no wait)
+    # Min calendar days between payout requests. Biweekly is the industry
+    # norm, so it is the safe default for user YAMLs that omit the field;
+    # set 0 explicitly for on-demand payout firms.
+    period_days: int = 14
     qualifying_days: QualifyingDays = Field(default_factory=QualifyingDays)
     payout_cap_ladder: list[float] = Field(default_factory=list)  # per-payout caps, indexed
     max_lifetime_payouts: int | None = None  # Apex 4.0: 6, then the PA closes

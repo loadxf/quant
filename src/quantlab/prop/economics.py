@@ -5,12 +5,15 @@ with upside from funded-phase withdrawals net of profit split and
 activation costs — the convex payoff structure that can make prop-firm
 campaigns +EV even for marginal strategies.
 
-Approximations (documented): fee months are 21 trading days; free reset
-credits (Topstep banks 1/rebill) are ignored, making reset EV slightly
-pessimistic; FTMO's fee refund applies on the first funded payout; retry
-attempts price the first month at the discounted reset fee when the firm
-defines one (a reset pushes the rebill out), full price otherwise;
-funded-account reactivations (Topstep Back2Funded) are NOT modeled.
+Approximations (documented): fee months are 21 trading days at the
+5-sessions/week baseline, scaled by the source log's observed density so
+a 2-sessions/week trader's 21 trading days bill as the ~2.5 calendar
+months they actually span; free reset credits (Topstep banks 1/rebill)
+are ignored, making reset EV slightly pessimistic; FTMO's fee refund
+applies on the first funded payout; retry attempts replace the attempt
+fee (monthly rebill or one-time purchase) with the discounted reset fee
+when the firm defines one, full price otherwise; funded-account
+reactivations (Topstep Back2Funded) are NOT modeled.
 """
 
 from __future__ import annotations
@@ -28,7 +31,8 @@ from quantlab.prop.outcomes import (
     PhaseOutcome,
 )
 
-TRADING_DAYS_PER_MONTH = 21
+TRADING_DAYS_PER_MONTH = 21  # at the 5-sessions/week baseline density
+BASELINE_SESSIONS_PER_WEEK = 5.0
 
 
 class MCConfigProtocol(Protocol):
@@ -65,6 +69,7 @@ def summarize(
     scale_challenge: float,
     scale_funded: float,
     warnings: list[str],
+    sessions_per_week: float = BASELINE_SESSIONS_PER_WEEK,
 ) -> MonteCarloReport:
     n = cfg.n_paths
     fees = firm.fees
@@ -87,7 +92,10 @@ def summarize(
     if fees.one_time > 0:
         attempt_fees = np.full(n, float(fees.one_time))
     elif fees.monthly > 0:
-        months = np.ceil(days_used / TRADING_DAYS_PER_MONTH)
+        # Density-aware: N trading days of a sparse trader span more
+        # calendar months (and rebills) than the same N of a daily trader.
+        days_per_month = TRADING_DAYS_PER_MONTH * sessions_per_week / BASELINE_SESSIONS_PER_WEEK
+        months = np.ceil(days_used / days_per_month)
         attempt_fees = fees.monthly * np.maximum(months, 1)
     else:
         attempt_fees = np.zeros(n)
@@ -119,9 +127,11 @@ def summarize(
     cost_pass = (
         float(attempt_fees[passed_all].mean()) if passed_all.any() else float(attempt_fees.mean())
     )
-    # Retry attempts: firms with a discounted reset fee replace the first
-    # month's subscription with the reset (the reset pushes the rebill out).
-    retry_discount = fees.monthly - fees.reset if fees.monthly > 0 and fees.reset > 0 else 0.0
+    # Retry attempts: a declared reset fee replaces the attempt's base fee
+    # (the monthly rebill it pushes out, or the one-time purchase price) —
+    # gating on monthly alone would bill one_time-fee firms full price.
+    base_fee = fees.monthly if fees.monthly > 0 else fees.one_time
+    retry_discount = base_fee - fees.reset if base_fee > 0 and fees.reset > 0 else 0.0
     retry_fail = max(cost_fail - retry_discount, 0.0)
     retry_pass = max(cost_pass - retry_discount, 0.0)
     value_funded = float(funded_value.mean())

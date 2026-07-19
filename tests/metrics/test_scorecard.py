@@ -47,3 +47,19 @@ class TestRiskPillar:
         vt = compute_scorecard(with_tail, compute_metrics(with_tail, starting_equity=20_000))
         order = "ABCDF"
         assert order.index(vt.risk.grade) >= order.index(vs.risk.grade)
+
+
+class TestRobustnessSharesBootstrapRun:
+    """Pass-2 regression: the robustness pillar re-ran the bootstrap with
+    hard-coded (4000, seed 7), disagreeing with a caller-configured
+    expectancy CI and doubling the most expensive computation."""
+
+    def test_p_positive_comes_from_metrics(self) -> None:
+        import pytest
+
+        log = random_log(n_days=40, trades_per_day=2, mean=20.0, std=150.0, seed=99)
+        metrics = compute_metrics(log, bootstrap_samples=500, seed=123)
+        verdict = compute_scorecard(log, metrics)
+        assert verdict.robustness.inputs["p_expectancy_positive"] == pytest.approx(
+            metrics.bootstrap_p_positive
+        )
