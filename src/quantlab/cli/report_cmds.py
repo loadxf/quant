@@ -74,6 +74,10 @@ def register_report_commands(app: typer.Typer) -> None:
         reality: bool = typer.Option(
             True, "--reality/--no-reality", help="Include the Reality Check section."
         ),
+        outer: int = typer.Option(
+            100, "--outer", help="Outer resamples for the sampling band (0 to skip)."
+        ),
+        inner_paths: int = typer.Option(500, "--inner-paths", help="MC paths per outer resample."),
         json_out: Path | None = typer.Option(None, "--json"),
     ) -> None:
         """The full experience: metrics + verdict + prop Monte Carlo + reality check -> HTML."""
@@ -85,7 +89,14 @@ def register_report_commands(app: typer.Typer) -> None:
         mc = run_monte_carlo(log, firm, MCConfig(n_paths=paths, seed=seed, scale=scale))
         rc = (
             compute_reality_check(
-                log, firm=firm, trials=trials, seed=seed, scale=scale, baseline_mc=mc
+                log,
+                firm=firm,
+                trials=trials,
+                seed=seed,
+                scale=scale,
+                baseline_mc=mc,
+                outer=outer,
+                inner_paths=inner_paths,
             )
             if reality
             else None
