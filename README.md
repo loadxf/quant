@@ -29,6 +29,8 @@ quant verdict  trades.parquet                      # A-F scorecard + overfit fla
 quant prop firms list                              # 18 verified firm presets
 quant prop evaluate trades.parquet --firm topstep_50k    # deterministic replay
 quant prop simulate trades.parquet --firm topstep_50k    # Monte Carlo
+quant stress   trades.parquet --firm topstep_50k --trials 5       # reality check:
+                                                   # cost sweep, edge decay, deflated Sharpe
 quant report   trades.parquet --firm topstep_50k -o report.html   # everything
 ```
 
@@ -114,6 +116,18 @@ Validation anchors (zero-EV synthetic strategies):
   parameters (daily loss limits, consistency, time limits) — a refinement
   of the popular claim that low-RR/high-win-rate always passes trailing
   challenges more often.
+
+## Reality Check (why trust these numbers)
+
+`quant stress` (and the report's "Reality check" section) runs the
+honesty layer: does the edge survive realistic commissions and slippage
+(cost sweep with a breakeven-ticks headline), is it deteriorating inside
+the log (split-half + HAC trend + Mann-Kendall + runs test), and does it
+clear multiple-testing deflation (PSR, and with `--trials N` the Deflated
+Sharpe Ratio, MinBTL, and the Harvey-Liu haircut)? Decay scenarios are
+literature-anchored (26% / 50% / 58% / 90%) — never a half-life fitted to
+one log, which is statistically unidentifiable. Full citations:
+[docs/research-notes.md](docs/research-notes.md).
 
 ## Development
 

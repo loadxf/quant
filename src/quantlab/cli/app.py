@@ -14,6 +14,7 @@ from quantlab.cli.ingest_cmds import ingest_app
 from quantlab.cli.metrics_cmds import register_metrics_commands
 from quantlab.cli.prop_cmds import prop_app
 from quantlab.cli.report_cmds import register_report_commands
+from quantlab.cli.stress_cmds import register_stress_commands
 from quantlab.errors import QuantLabError
 
 app = typer.Typer(
@@ -27,6 +28,7 @@ app.add_typer(prop_app, name="prop", help="Prop-firm evaluation and Monte Carlo 
 app.add_typer(cloud_app, name="cloud", help="QuantConnect Cloud backtests (needs QC account).")
 register_metrics_commands(app)
 register_report_commands(app)
+register_stress_commands(app)
 
 
 @app.callback()

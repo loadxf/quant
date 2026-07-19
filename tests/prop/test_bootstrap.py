@@ -47,3 +47,35 @@ class TestIIDAndFactory:
         assert isinstance(make_bootstrapper("stationary"), StationaryBlockBootstrap)
         assert isinstance(make_bootstrapper("iid_day"), IIDDayBootstrap)
         assert isinstance(make_bootstrapper("iid_trade"), IIDDayBootstrap)
+
+
+class TestOptimalBlockLength:
+    """Politis-White automatic block length (pass: M8)."""
+
+    def test_iid_data_gets_short_blocks(self) -> None:
+        from quantlab.prop.bootstrap import optimal_block_length
+
+        rng = np.random.default_rng(1)
+        iid = rng.standard_normal(400)
+        assert 2 <= optimal_block_length(iid) <= 6
+
+    def test_autocorrelated_data_gets_longer_blocks(self) -> None:
+        from quantlab.prop.bootstrap import optimal_block_length
+
+        rng = np.random.default_rng(2)
+        ar = np.zeros(400)
+        for i in range(1, 400):
+            ar[i] = 0.85 * ar[i - 1] + rng.standard_normal()
+        iid = rng.standard_normal(400)
+        assert optimal_block_length(ar) > optimal_block_length(iid)
+
+    def test_short_series_falls_back_to_heuristic(self) -> None:
+        from quantlab.prop.bootstrap import default_block_length, optimal_block_length
+
+        series = np.arange(10.0)
+        assert optimal_block_length(series) == default_block_length(10)
+
+    def test_constant_series_no_crash(self) -> None:
+        from quantlab.prop.bootstrap import optimal_block_length
+
+        assert optimal_block_length(np.full(100, 5.0)) >= 2

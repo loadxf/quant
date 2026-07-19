@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from importlib import resources
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import plotly.io as pio
@@ -137,6 +138,82 @@ def _prop_context(mc: MonteCarloReport, firm: FirmConfig) -> dict:
     }
 
 
+def _reality_context(rc: Any) -> dict:
+    costs = rc.costs
+    d = rc.deflated
+    cost_rows = [
+        (
+            p.label,
+            money(p.added_rt_per_contract),
+            money(p.expectancy),
+            "inf" if p.profit_factor == float("inf") else f"{p.profit_factor:.2f}",
+            pct(p.mc_pass_prob) if p.mc_pass_prob is not None else "-",
+        )
+        for p in costs.grid
+    ]
+    decay = rc.decay
+    decay_rows = [
+        ("First half expectancy", f"{money(decay.first_half.expectancy)} (n={decay.first_half.n})"),
+        (
+            "Second half expectancy",
+            f"{money(decay.second_half.expectancy)} (n={decay.second_half.n})",
+        ),
+        ("HAC trend slope", f"{decay.hac.slope:+.3f}/trade (p={decay.hac.p:.3f})"),
+        ("Mann-Kendall", f"z={decay.mk.z:.2f} (p={decay.mk.p:.3f})"),
+        (
+            "Runs test",
+            f"z={decay.runs.z:.2f} (p={decay.runs.p:.3f}, "
+            f"{decay.runs.n_wins}W/{decay.runs.n_losses}L)",
+        ),
+        ("Decayed", "YES" if decay.decayed else "no"),
+    ]
+    if decay.wfe is not None:
+        decay_rows.insert(-1, ("Walk-forward efficiency", f"{decay.wfe:.2f} (>0.5 acceptable)"))
+    stat_rows = [
+        ("PSR — P(true Sharpe > 0)", pct(d.psr)),
+        ("SQN (t-stat / Van Tharp capped)", f"{d.sqn:.2f} / {d.sqn_capped:.2f}"),
+    ]
+    if d.min_trl is not None:
+        stat_rows.append(("MinTRL — trades to trust SR>0 at 95%", f"{d.min_trl:,.0f}"))
+    if d.dsr is not None:
+        stat_rows.append((f"DSR over {d.n_trials} declared trials", pct(d.dsr)))
+    if d.minbtl_years is not None:
+        stat_rows.append(("MinBTL — years to support SR=1/yr", f"{d.minbtl_years:.1f}"))
+    if d.haircut_pct is not None:
+        stat_rows.append(("Harvey-Liu Sharpe haircut", pct(d.haircut_pct)))
+    dd = rc.drawdown
+    dd_rows = [
+        ("Permutation median max DD", money(dd.median_max_dd)),
+        ("Permutation p95 max DD", money(dd.p95_max_dd)),
+    ]
+    if dd.p_ruin is not None:
+        dd_rows.append((f"P(ruin at {money(dd.ruin_capital or 0)})", pct(dd.p_ruin)))
+    haircut_rows = [
+        (
+            pct(h.haircut),
+            h.label,
+            money(h.expectancy),
+            pct(h.mc_pass_prob) if h.mc_pass_prob is not None else "-",
+        )
+        for h in rc.haircuts
+    ]
+    survives = (
+        f"edge survives up to {costs.survives_ticks_rt:.1f} ticks of added round-turn cost "
+        f"(tick {money(costs.tick_value)}, {costs.tick_source})"
+        if costs.survives_ticks_rt is not None
+        else "no positive baseline edge to stress"
+    )
+    return {
+        "cost_rows": cost_rows,
+        "survives": survives,
+        "decay_rows": decay_rows,
+        "stat_rows": stat_rows,
+        "dd_rows": dd_rows,
+        "haircut_rows": haircut_rows,
+        "warnings": rc.warnings,
+    }
+
+
 def build_html_report(
     log: TradeLog,
     metrics: Metrics,
@@ -144,6 +221,7 @@ def build_html_report(
     out_path: Path,
     mc: MonteCarloReport | None = None,
     firm: FirmConfig | None = None,
+    reality=None,
     title: str = "Strategy report",
 ) -> Path:
     if (mc is None) != (firm is None):
@@ -177,6 +255,16 @@ def build_html_report(
         metric_rows=_metric_rows(metrics),
         strategy_charts=strategy_charts,
         prop=_prop_context(mc, firm) if mc and firm else None,
+        reality=_reality_context(reality) if reality is not None else None,
+        reality_charts=(
+            [
+                _fig_html(charts.fig_cost_sweep(reality.costs), include_js=False),
+                _fig_html(charts.fig_rolling_expectancy(reality.decay), include_js=False),
+                _fig_html(charts.fig_drawdown_compare(reality.drawdown, mc), include_js=False),
+            ]
+            if reality is not None
+            else []
+        ),
         version=__version__,
         reproducibility=(
             f"seed {mc.seed}, {mc.n_paths:,} paths, {mc.bootstrap} bootstrap"

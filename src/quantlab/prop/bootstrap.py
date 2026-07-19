@@ -10,6 +10,7 @@ it is kept as an explicit comparison mode.
 
 from __future__ import annotations
 
+import math
 from typing import Literal, Protocol
 
 import numpy as np
@@ -29,6 +30,48 @@ class Bootstrapper(Protocol):
 
 def default_block_length(n_days: int) -> int:
     return max(2, round(n_days ** (1 / 3)))
+
+
+def optimal_block_length(series: np.ndarray) -> int:
+    """Politis-White (2004) automatic block length for the stationary
+    bootstrap, with the Patton-Politis-White (2009) correction —
+    adapts the expected block length to the series' actual
+    autocorrelation instead of the n^(1/3) rule of thumb.
+    Cross-checked against the `arch` package's implementation.
+    Falls back to the heuristic for short or degenerate series.
+    """
+    x = np.asarray(series, dtype=float)
+    n = x.size
+    if n < 30:
+        return default_block_length(n)
+    x = x - x.mean()
+    kn = max(5, int(math.log10(n)))
+    m_max = math.ceil(math.sqrt(n)) + kn
+    acv = np.array([float(np.sum(x[: n - k] * x[k:])) / n for k in range(m_max + 1)])
+    if acv[0] <= 0:
+        return default_block_length(n)
+    # Lag cutoff: twice the first lag after which K_N consecutive sample
+    # autocorrelations are insignificant at the 2*sqrt(log10(n)/n) band.
+    rho = np.abs(acv[1:] / acv[0])
+    cv = 2.0 * math.sqrt(math.log10(n) / n)
+    insignificant = rho < cv
+    run_start = None
+    for i in range(len(insignificant) - kn + 1):
+        if insignificant[i : i + kn].all():
+            run_start = i + 1  # lag index (1-based)
+            break
+    m = 2 * (run_start if run_start is not None else m_max)
+    m = max(1, min(m, m_max))
+    ks = np.arange(1, m + 1)
+    lam = np.where(ks / m <= 0.5, 1.0, 2.0 * (1.0 - ks / m))  # flat-top window
+    g = float(np.sum(2.0 * lam * ks * acv[1 : m + 1]))
+    lr_acv = float(acv[0] + np.sum(2.0 * lam * acv[1 : m + 1]))
+    d_sb = 2.0 * lr_acv**2
+    if d_sb <= 0.0:
+        return default_block_length(n)
+    b = (2.0 * g**2 / d_sb) ** (1.0 / 3.0) * n ** (1.0 / 3.0)
+    b = min(b, math.ceil(min(3.0 * math.sqrt(n), n / 3.0)))
+    return max(2, round(b))
 
 
 class StationaryBlockBootstrap:

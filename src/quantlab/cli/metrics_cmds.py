@@ -95,3 +95,8 @@ def register_metrics_commands(app: typer.Typer) -> None:
                     "[yellow]Note:[/yellow] log has no MAE/MFE columns — "
                     "intraday-sensitive prop-firm checks will run at trade-close fidelity."
                 )
+            from quantlab.metrics.costs import gross_pnl_warning
+
+            gross = gross_pnl_warning(log)
+            if gross:
+                console.print(f"[yellow]Note:[/yellow] {gross}")

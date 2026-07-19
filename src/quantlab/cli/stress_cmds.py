@@ -1,0 +1,73 @@
+"""`quant stress` — the Reality Check command."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+import typer
+from rich.console import Console
+
+from quantlab.metrics.reality import compute_reality_check
+from quantlab.prop.registry import load_firm
+from quantlab.report.jsonout import sanitize
+from quantlab.report.terminal import render_reality
+from quantlab.schema.io import read_trade_log
+
+console = Console()
+
+
+def register_stress_commands(app: typer.Typer) -> None:
+    @app.command("stress")
+    def stress(
+        trades: Path = typer.Argument(..., help="Canonical trade-log parquet."),
+        firm: str | None = typer.Option(
+            None, "--firm", help="Firm preset (adds MC pass-prob columns to the sweep)."
+        ),
+        tick_value: float | None = typer.Option(
+            None, "--tick-value", help="$ per tick per contract (auto-resolved for ES/MES/NQ/MNQ)."
+        ),
+        commission: float | None = typer.Option(
+            None, "--commission", help="All-in round-turn commission $ per contract."
+        ),
+        stop_slip: float = typer.Option(
+            1.0, "--stop-slip", help="Extra ticks/side for the stop-stress row (stops fill worse)."
+        ),
+        trials: int = typer.Option(
+            1,
+            "--trials",
+            help="Strategy variants tried before this one — enables DSR/MinBTL/haircut Sharpe.",
+        ),
+        window: int = typer.Option(30, "--window", help="Rolling-expectancy window (trades)."),
+        paths: int = typer.Option(2000, "--paths", help="MC paths per sweep anchor point."),
+        seed: int = typer.Option(42, "--seed"),
+        ruin_capital: float | None = typer.Option(
+            None, "--ruin-capital", help="Capital for P(ruin) in the permutation drawdown."
+        ),
+        json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
+    ) -> None:
+        """Cost stress, edge decay, and deflated statistics for a trade log.
+
+        The honesty layer: does the edge survive realistic costs, is it
+        deteriorating within the log, and does it clear multiple-testing
+        deflation? Methods and thresholds are literature-anchored — see
+        docs/research-notes.md for citations.
+        """
+        log = read_trade_log(trades)
+        firm_cfg = load_firm(firm) if firm else None
+        rc = compute_reality_check(
+            log,
+            firm=firm_cfg,
+            trials=trials,
+            tick_value=tick_value,
+            commission_rt=commission,
+            stop_slip_ticks=stop_slip,
+            decay_window=window,
+            mc_paths=paths,
+            seed=seed,
+            ruin_capital=ruin_capital,
+        )
+        if json_out:
+            typer.echo(json.dumps(sanitize(rc.to_json_dict()), indent=2, default=str))
+            return
+        render_reality(rc, console)

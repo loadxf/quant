@@ -11,6 +11,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from quantlab.metrics.core import Metrics
+from quantlab.metrics.decay import DecayPanel, compute_decay
 from quantlab.schema.trade import TradeLog
 
 
@@ -111,11 +112,61 @@ def _symbol_month_concentration(log: TradeLog, m: Metrics) -> OverfitFlag:
     )
 
 
-def overfit_flags(log: TradeLog, m: Metrics) -> list[OverfitFlag]:
+def _edge_decay(panel: DecayPanel) -> OverfitFlag:
+    triggered = panel.decayed
+    detail = (
+        f"HAC trend slope {panel.hac.slope:+.3f}/trade (p={panel.hac.p:.3f}); "
+        f"expectancy first half {panel.first_half.expectancy:.2f} -> "
+        f"second half {panel.second_half.expectancy:.2f}"
+    )
+    return OverfitFlag(
+        "edge_decaying_over_log",
+        triggered,
+        detail
+        + (
+            " — the edge is significantly weaker in the recent half; live results "
+            "start where the log ENDS, not at its average"
+            if triggered
+            else ""
+        ),
+    )
+
+
+def _mk_downtrend(panel: DecayPanel) -> OverfitFlag:
+    triggered = panel.mk.z < 0 and panel.mk.p < 0.05
+    return OverfitFlag(
+        "mann_kendall_downtrend",
+        triggered,
+        f"Mann-Kendall z={panel.mk.z:.2f} (p={panel.mk.p:.3f})"
+        + (" — non-parametric confirmation of a deteriorating trend" if triggered else ""),
+    )
+
+
+def _streak_dependence(panel: DecayPanel) -> OverfitFlag:
+    triggered = panel.runs.z < 0 and panel.runs.p < 0.05
+    return OverfitFlag(
+        "streak_dependence",
+        triggered,
+        f"runs test z={panel.runs.z:.2f} (p={panel.runs.p:.3f}), "
+        f"{panel.runs.runs} runs over {panel.runs.n_wins}W/{panel.runs.n_losses}L"
+        + (
+            " — wins/losses cluster; iid-based analyses (permutation drawdowns, "
+            "iid bootstrap) are OPTIMISTIC — prefer the block-bootstrap results"
+            if triggered
+            else ""
+        ),
+    )
+
+
+def overfit_flags(log: TradeLog, m: Metrics, decay: DecayPanel | None = None) -> list[OverfitFlag]:
+    panel = decay if decay is not None else compute_decay(log)
     return [
         _smooth_curve(log, m),
         _zero_crossing(m),
         _top5_concentration(log, m),
         _breakeven_frontier(m),
         _symbol_month_concentration(log, m),
+        _edge_decay(panel),
+        _mk_downtrend(panel),
+        _streak_dependence(panel),
     ]

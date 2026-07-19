@@ -8,6 +8,8 @@ One axis per chart; plotly's hover layer supplies tooltips.
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import plotly.graph_objects as go
 
@@ -159,4 +161,83 @@ def fig_daily_pnl_hist(log: TradeLog) -> go.Figure:
     fig = _base("Daily PnL distribution", "day PnL ($)", "days")
     fig.add_trace(go.Histogram(x=daily, marker_color=BLUE, nbinsx=40))
     fig.add_vline(x=0, line=dict(color=INK_MUTED, width=1, dash="dot"))
+    return fig
+
+
+def fig_cost_sweep(stress: Any) -> go.Figure:
+    """Expectancy (and MC pass prob when present) vs added round-turn cost."""
+    grid = sorted(
+        (p for p in stress.grid if not p.label.startswith("stop-stress")),
+        key=lambda p: p.added_rt_per_contract,
+    )
+    added = [p.added_rt_per_contract for p in grid]
+    fig = _base("Edge vs added cost per round turn", "added $/contract RT", "expectancy ($/trade)")
+    fig.add_trace(
+        go.Scatter(
+            x=added,
+            y=[p.expectancy for p in grid],
+            mode="lines+markers",
+            line=dict(color=BLUE, width=2),
+            name="expectancy",
+        )
+    )
+    fig.add_hline(y=0.0, line=dict(color=INK_MUTED, width=1, dash="dot"))
+    mc_points = [p for p in grid if p.mc_pass_prob is not None]
+    if mc_points:
+        fig.add_trace(
+            go.Scatter(
+                x=[p.added_rt_per_contract for p in mc_points],
+                y=[p.mc_pass_prob * 100 for p in mc_points],
+                mode="lines+markers",
+                line=dict(color=RED, width=2, dash="dash"),
+                name="MC pass prob (%)",
+                yaxis="y2",
+            )
+        )
+        fig.update_layout(
+            yaxis2=dict(
+                title="MC pass prob (%)",
+                overlaying="y",
+                side="right",
+                range=[0, 100],
+                color=RED,
+                showgrid=False,
+            ),
+            showlegend=True,
+        )
+    return fig
+
+
+def fig_rolling_expectancy(panel: Any) -> go.Figure:
+    """Rolling expectancy with the half-split marker."""
+    fig = _base(
+        f"Rolling expectancy ({panel.rolling_window}-trade window)",
+        "trade #",
+        "expectancy ($/trade)",
+    )
+    if panel.rolling:
+        x = np.arange(panel.rolling_window - 1, panel.rolling_window - 1 + len(panel.rolling))
+        fig.add_trace(
+            go.Scatter(
+                x=x, y=panel.rolling, mode="lines", line=dict(color=BLUE, width=2), name="rolling"
+            )
+        )
+        half = panel.first_half.n
+        fig.add_vline(x=half, line=dict(color=INK_MUTED, width=1, dash="dash"))
+    fig.add_hline(y=0.0, line=dict(color=INK_MUTED, width=1, dash="dot"))
+    return fig
+
+
+def fig_drawdown_compare(dd: Any, mc: Any | None = None) -> go.Figure:
+    """Permutation (independence-assuming) vs block-bootstrap drawdowns."""
+    fig = _base("Max-drawdown estimates", "", "max drawdown ($)")
+    labels = ["permutation p50", "permutation p95"]
+    values = [dd.median_max_dd, dd.p95_max_dd]
+    colors = [BLUE_RAMP[2], BLUE_RAMP[4]]
+    if mc is not None:
+        quantiles = {f"p{q}": float(np.percentile(mc.funded.max_drawdown, q)) for q in (50, 95)}
+        labels += ["block bootstrap p50", "block bootstrap p95"]
+        values += [quantiles["p50"], quantiles["p95"]]
+        colors += [BLUE_RAMP[3], BLUE_RAMP[5]]
+    fig.add_trace(go.Bar(x=labels, y=values, marker_color=colors))
     return fig

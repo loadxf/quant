@@ -10,6 +10,7 @@ from rich.console import Console
 from rich.table import Table
 
 from quantlab.metrics.core import compute_metrics
+from quantlab.metrics.reality import compute_reality_check
 from quantlab.metrics.scorecard import compute_scorecard
 from quantlab.prop.montecarlo import MCConfig, run_monte_carlo
 from quantlab.prop.registry import load_firm
@@ -67,16 +68,23 @@ def register_report_commands(app: typer.Typer) -> None:
         paths: int = typer.Option(10_000, "--paths"),
         seed: int = typer.Option(42, "--seed"),
         scale: float = typer.Option(1.0, "--scale"),
+        trials: int = typer.Option(
+            1, "--trials", help="Strategy variants tried (enables DSR deflation)."
+        ),
+        reality: bool = typer.Option(
+            True, "--reality/--no-reality", help="Include the Reality Check section."
+        ),
         json_out: Path | None = typer.Option(None, "--json"),
     ) -> None:
-        """The full experience: metrics + verdict + prop-firm Monte Carlo -> HTML."""
+        """The full experience: metrics + verdict + prop Monte Carlo + reality check -> HTML."""
         log = read_trade_log(trades)
         firm = load_firm(firm_name)
         metrics = compute_metrics(
             log, starting_equity=equity if equity is not None else firm.account_size
         )
-        verdict = compute_scorecard(log, metrics)
+        verdict = compute_scorecard(log, metrics, trials=trials)
         mc = run_monte_carlo(log, firm, MCConfig(n_paths=paths, seed=seed, scale=scale))
+        rc = compute_reality_check(log, firm=firm, trials=trials, seed=seed) if reality else None
 
         _render_verdict(verdict)
         render_report(mc, console)
@@ -87,11 +95,12 @@ def register_report_commands(app: typer.Typer) -> None:
             output,
             mc=mc,
             firm=firm,
+            reality=rc,
             title=f"Strategy report — {mc.firm_display}",
         )
         console.print(f"\n[bold green]HTML report written to {output}[/bold green]")
         if json_out is not None:
             json_out.write_text(
-                json.dumps(combined_json(metrics, verdict, mc), indent=2, default=str)
+                json.dumps(combined_json(metrics, verdict, mc, reality=rc), indent=2, default=str)
             )
             console.print(f"JSON summary written to {json_out}")

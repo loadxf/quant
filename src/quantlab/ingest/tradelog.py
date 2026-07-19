@@ -98,7 +98,9 @@ def _scalar_stamp(value: object, fmt: str | None) -> pd.Timestamp:
 def _attach_tz(stamp: Any, tzinfo: ZoneInfo) -> dt.datetime:
     if pd.isna(stamp):
         raise ValueError("unparseable timestamp")
-    py = pd.Timestamp(stamp).to_pydatetime()
+    # floor("us"): python datetime is microsecond-precision — truncate
+    # sub-us explicitly instead of warning per row.
+    py = pd.Timestamp(stamp).floor("us").to_pydatetime()
     if py.tzinfo is None:
         py = py.replace(tzinfo=tzinfo)
     return py.astimezone(dt.UTC)

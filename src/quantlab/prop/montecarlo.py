@@ -25,7 +25,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from quantlab.errors import ConfigError, QuantLabError
-from quantlab.prop.bootstrap import BootstrapName, make_bootstrapper
+from quantlab.prop.bootstrap import BootstrapName, make_bootstrapper, optimal_block_length
 from quantlab.prop.config import (
     ConsistencySpec,
     ContractLimitSpec,
@@ -550,7 +550,12 @@ def run_monte_carlo(
                 "treat results as low-confidence"
             )
             bootstrap_name = "iid_day"
-        sampler = make_bootstrapper(bootstrap_name, cfg.block_len)
+        block_len_used = cfg.block_len
+        if block_len_used is None and bootstrap_name == "stationary":
+            # Politis-White automatic length from the day-PnL series'
+            # actual autocorrelation (see bootstrap.optimal_block_length).
+            block_len_used = optimal_block_length(profile.day_pnl)
+        sampler = make_bootstrapper(bootstrap_name, block_len_used)
 
     if not profile.has_excursions:
         warnings.append(
@@ -612,4 +617,5 @@ def run_monte_carlo(
         scale_funded=funded_scale,
         warnings=warnings,
         sessions_per_week=sessions_per_week,
+        block_len_used=block_len_used,
     )

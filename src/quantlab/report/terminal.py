@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 from rich.console import Console
 from rich.panel import Panel
@@ -82,3 +84,106 @@ def render_report(report: MonteCarloReport, console: Console) -> None:
     for k, ev in eco.ev_with_resets.items():
         econ.add_row(f"campaign EV, up to {k} attempt(s)", _money(ev))
     console.print(econ)
+
+
+def render_reality(rc: Any, console: Console) -> None:
+    """Terminal rendering of a RealityCheck (quant stress)."""
+    costs = rc.costs
+    cost_table = Table(title="Cost stress (added round-turn cost per contract)")
+    cost_table.add_column("Scenario")
+    cost_table.add_column("Added $/RT", justify="right")
+    cost_table.add_column("Expectancy", justify="right")
+    cost_table.add_column("PF", justify="right")
+    has_mc = any(p.mc_pass_prob is not None for p in costs.grid)
+    if has_mc:
+        cost_table.add_column("MC pass prob", justify="right")
+        cost_table.add_column("MC EV", justify="right")
+    for p in costs.grid:
+        row = [
+            p.label,
+            money(p.added_rt_per_contract),
+            money(p.expectancy),
+            "inf" if p.profit_factor == float("inf") else f"{p.profit_factor:.2f}",
+        ]
+        if has_mc:
+            row.append(pct(p.mc_pass_prob) if p.mc_pass_prob is not None else "-")
+            row.append(money(p.mc_expected_net) if p.mc_expected_net is not None else "-")
+        cost_table.add_row(*row)
+    console.print(cost_table)
+    if costs.survives_ticks_rt is not None:
+        console.print(
+            f"breakeven: edge survives up to [bold]{costs.survives_ticks_rt:.1f} ticks[/bold] "
+            f"of added round-turn cost (tick={money(costs.tick_value)}, "
+            f"source {costs.tick_source})"
+        )
+
+    decay = rc.decay
+    decay_table = Table(title="Edge decay panel")
+    decay_table.add_column("Check")
+    decay_table.add_column("Value", justify="right")
+    decay_table.add_row(
+        "First half expectancy",
+        f"{money(decay.first_half.expectancy)} (n={decay.first_half.n})",
+    )
+    decay_table.add_row(
+        "Second half expectancy",
+        f"{money(decay.second_half.expectancy)} (n={decay.second_half.n})",
+    )
+    decay_table.add_row("HAC trend slope", f"{decay.hac.slope:+.3f}/trade (p={decay.hac.p:.3f})")
+    decay_table.add_row("Mann-Kendall", f"z={decay.mk.z:.2f} (p={decay.mk.p:.3f})")
+    decay_table.add_row(
+        "Runs test",
+        f"z={decay.runs.z:.2f} (p={decay.runs.p:.3f}) "
+        f"[{decay.runs.n_wins}W/{decay.runs.n_losses}L, {decay.runs.runs} runs]",
+    )
+    if decay.wfe is not None:
+        decay_table.add_row("Walk-forward efficiency", f"{decay.wfe:.2f} (>0.5 acceptable)")
+    decay_table.add_row("DECAYED", "[red]YES[/red]" if decay.decayed else "[green]no[/green]")
+    console.print(decay_table)
+
+    d = rc.deflated
+    stat_table = Table(title="Deflated statistics")
+    stat_table.add_column("Statistic")
+    stat_table.add_column("Value", justify="right")
+    stat_table.add_row("Per-trade Sharpe", f"{d.sr_per_trade:.4f}")
+    stat_table.add_row("PSR (P(true SR > 0))", pct(d.psr))
+    stat_table.add_row("SQN (t-stat)", f"{d.sqn:.2f}")
+    stat_table.add_row("SQN (Van Tharp, n capped 100)", f"{d.sqn_capped:.2f}")
+    if d.min_trl is not None:
+        stat_table.add_row("MinTRL (trades to trust SR>0 @95%)", f"{d.min_trl:.0f}")
+    if d.dsr is not None:
+        stat_table.add_row(f"DSR ({d.n_trials} trials declared)", pct(d.dsr))
+    if d.minbtl_years is not None:
+        stat_table.add_row("MinBTL (yrs to support SR=1/yr)", f"{d.minbtl_years:.1f}")
+    if d.haircut_pct is not None:
+        stat_table.add_row("Harvey-Liu haircut", pct(d.haircut_pct))
+    console.print(stat_table)
+
+    dd = rc.drawdown
+    dd_table = Table(title="Permutation drawdown (assumes trade independence)")
+    dd_table.add_column("Statistic")
+    dd_table.add_column("Value", justify="right")
+    dd_table.add_row("Median max drawdown", money(dd.median_max_dd))
+    dd_table.add_row("95th percentile max drawdown", money(dd.p95_max_dd))
+    if dd.p_ruin is not None:
+        dd_table.add_row(f"P(ruin at {money(dd.ruin_capital or 0)})", pct(dd.p_ruin))
+    console.print(dd_table)
+
+    if rc.haircuts:
+        hc_table = Table(title="Literature-anchored decay scenarios (never a fitted half-life)")
+        hc_table.add_column("Haircut")
+        hc_table.add_column("Anchor")
+        hc_table.add_column("Expectancy", justify="right")
+        if any(h.mc_pass_prob is not None for h in rc.haircuts):
+            hc_table.add_column("MC pass prob", justify="right")
+            hc_table.add_column("MC EV", justify="right")
+        for h in rc.haircuts:
+            row = [pct(h.haircut), h.label, money(h.expectancy)]
+            if h.mc_pass_prob is not None:
+                row.append(pct(h.mc_pass_prob))
+                row.append(money(h.mc_expected_net) if h.mc_expected_net is not None else "-")
+            hc_table.add_row(*row)
+        console.print(hc_table)
+
+    for warning in rc.warnings:
+        console.print(Panel(warning, style="yellow", title="warning"))

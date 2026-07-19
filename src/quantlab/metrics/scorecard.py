@@ -9,11 +9,17 @@ from 40 trades.
 |-------------|--------------------|--------------------|------------------|-------------------|
 | Edge        | PF>=1.75 & Sh>=2.0 | PF>=1.5 & Sh>=1.5  | PF>=1.3 & Sh>=1  | PF>=1.15 & Sh>=.5 |
 | Robustness  | P>=99% & PF-5>=1.3 | P>=95% & PF-5>=1.15| P>=90% & PF-5>=1 | P>=80%            |
+|             | & PSR>=.95         | & PSR>=.90         |                  |                   |
 | Risk        | MAR>=2 & WL/AL<=4  | MAR>=1 & <=6       | MAR>=.5 & <=8    | MAR>=.25          |
 | Sample      | N>=500 & t>=3      | N>=300 & t>=2.5    | N>=150 & t>=2    | N>=75 & t>=1.5    |
 
 (P = bootstrap P(expectancy > 0); PF-5 = profit factor after dropping the
-top 5 winners; WL/AL = worst loss / average loss.)
+top 5 winners; WL/AL = worst loss / average loss; PSR = Probabilistic
+Sharpe Ratio, Bailey & Lopez de Prado 2012 — non-normality-adjusted
+P(true SR > 0). The sample pillar's t>=3.0 A-bar matches Harvey, Liu &
+Zhu's (RFS 2016) multiple-testing hurdle for novel factors. When the
+caller declares n_trials > 1 strategy variants were tried, a Deflated
+Sharpe Ratio < 0.5 caps robustness at C.)
 """
 
 from __future__ import annotations
@@ -23,6 +29,7 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from quantlab.metrics.core import Metrics, bootstrap_means, compute_metrics
+from quantlab.metrics.deflate import compute_deflated
 from quantlab.metrics.overfit import OverfitFlag, overfit_flags
 from quantlab.schema.trade import TradeLog
 
@@ -95,9 +102,12 @@ def _grade_edge(m: Metrics) -> PillarScore:
     )
 
 
-def _grade_robustness(log: TradeLog, m: Metrics) -> PillarScore:
+def _grade_robustness(log: TradeLog, m: Metrics, trials: int = 1) -> PillarScore:
     pnls = np.array([t.pnl for t in log.trades])
     n = pnls.size
+    deflated = compute_deflated(pnls, n_trials=trials) if n >= 3 else None
+    psr = deflated.psr if deflated is not None else 0.0
+    dsr = deflated.dsr if deflated is not None else None
     # Computed inside compute_metrics from the SAME bootstrap run as the
     # expectancy CI (same count and seed, even caller-overridden ones), so
     # the two published statistics can never disagree — and the most
@@ -111,9 +121,9 @@ def _grade_robustness(log: TradeLog, m: Metrics) -> PillarScore:
     wins, losses = trimmed[trimmed > 0].sum(), -trimmed[trimmed < 0].sum()
     pf_trimmed = float(wins / losses) if losses > 0 else float("inf")
 
-    if p_positive >= 0.99 and pf_trimmed >= 1.3:
+    if p_positive >= 0.99 and pf_trimmed >= 1.3 and psr >= 0.95:
         grade = "A"
-    elif p_positive >= 0.95 and pf_trimmed >= 1.15:
+    elif p_positive >= 0.95 and pf_trimmed >= 1.15 and psr >= 0.90:
         grade = "B"
     elif p_positive >= 0.90 and pf_trimmed >= 1.0:
         grade = "C"
@@ -121,12 +131,25 @@ def _grade_robustness(log: TradeLog, m: Metrics) -> PillarScore:
         grade = "D"
     else:
         grade = "F"
-    return PillarScore(
-        "robustness",
-        grade,
-        f"bootstrap P(edge>0) {p_positive:.0%}, PF without top-5 wins {pf_trimmed:.2f}",
-        {"p_expectancy_positive": p_positive, "pf_minus_top5": pf_trimmed},
+    detail = (
+        f"bootstrap P(edge>0) {p_positive:.0%}, PSR {psr:.0%}, "
+        f"PF without top-5 wins {pf_trimmed:.2f}"
     )
+    inputs = {
+        "p_expectancy_positive": p_positive,
+        "psr": psr,
+        "pf_minus_top5": pf_trimmed,
+    }
+    if dsr is not None:
+        # Declared-trials honesty gate: an edge that does not clear the
+        # expected max Sharpe of `trials` random tries caps at C.
+        inputs["dsr"] = dsr
+        inputs["n_trials"] = float(deflated.n_trials) if deflated else 1.0
+        detail += f", DSR {dsr:.0%} over {int(inputs['n_trials'])} declared trials"
+        if dsr < 0.5 and grade in ("A", "B"):
+            grade = "C"
+            detail += " (capped: edge within luck range of the declared trials)"
+    return PillarScore("robustness", grade, detail, inputs)
 
 
 def _grade_risk(log: TradeLog, m: Metrics) -> PillarScore:
@@ -170,10 +193,10 @@ def _grade_sample(m: Metrics) -> PillarScore:
     )
 
 
-def compute_scorecard(log: TradeLog, metrics: Metrics | None = None) -> Verdict:
+def compute_scorecard(log: TradeLog, metrics: Metrics | None = None, trials: int = 1) -> Verdict:
     m = metrics or compute_metrics(log)
     edge = _grade_edge(m)
-    robustness = _grade_robustness(log, m)
+    robustness = _grade_robustness(log, m, trials=trials)
     risk = _grade_risk(log, m)
     sample = _grade_sample(m)
 

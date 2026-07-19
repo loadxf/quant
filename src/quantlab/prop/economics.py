@@ -70,6 +70,7 @@ def summarize(
     scale_funded: float,
     warnings: list[str],
     sessions_per_week: float = BASELINE_SESSIONS_PER_WEEK,
+    block_len_used: int | None = None,
 ) -> MonteCarloReport:
     n = cfg.n_paths
     fees = firm.fees
@@ -200,7 +201,7 @@ def summarize(
         n_paths=n,
         seed=cfg.seed,
         bootstrap=bootstrap_used,
-        block_len=cfg.block_len,
+        block_len=block_len_used if block_len_used is not None else cfg.block_len,
         fidelity=fidelity,
         scale_challenge=scale_challenge,
         scale_funded=scale_funded,

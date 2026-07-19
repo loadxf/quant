@@ -15,7 +15,7 @@ from quantlab.metrics.core import Metrics
 from quantlab.metrics.scorecard import Verdict
 from quantlab.prop.outcomes import MonteCarloReport
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2  # v2: adds reality_check + robustness pillar inputs
 
 
 def sanitize(obj: Any) -> Any:
@@ -37,6 +37,7 @@ def combined_json(
     metrics: Metrics,
     verdict: Verdict | None = None,
     mc: MonteCarloReport | None = None,
+    reality: Any | None = None,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
         "schema_version": SCHEMA_VERSION,
@@ -46,4 +47,6 @@ def combined_json(
         payload["verdict"] = verdict.to_json_dict()
     if mc is not None:
         payload["prop_simulation"] = mc.to_json_dict()
+    if reality is not None:
+        payload["reality_check"] = reality.to_json_dict()
     return sanitize(payload)
