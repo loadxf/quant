@@ -108,31 +108,3 @@ class DayProfile:
             day_pnl=close[:, -1].copy(),
             has_excursions=has_excursions,
         )
-
-    @classmethod
-    def from_daily_pnl_arrays(cls, daily: list[list[float]]) -> DayProfile:
-        """Synthetic profile from raw per-day PnL lists (geometry explorer,
-        iid_trade mode). Trade-close fidelity: low/high equal PnL extremes."""
-        n_days = len(daily)
-        k = max(len(day) for day in daily)
-        low = np.full((n_days, k), np.inf)
-        high = np.full((n_days, k), -np.inf)
-        close = np.zeros((n_days, k))
-        n_trades = np.zeros(n_days, dtype=np.int64)
-        for d, pnls in enumerate(daily):
-            cum = 0.0
-            for i, pnl in enumerate(pnls):
-                low[d, i] = cum + min(0.0, pnl)
-                high[d, i] = cum + max(0.0, pnl)
-                cum += pnl
-                close[d, i] = cum
-            n_trades[d] = len(pnls)
-            close[d, len(pnls) :] = cum
-        return cls(
-            low_rel=low,
-            high_rel=high,
-            close_rel=close,
-            n_trades=n_trades,
-            day_pnl=close[:, -1].copy(),
-            has_excursions=False,
-        )
