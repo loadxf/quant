@@ -100,6 +100,29 @@ def test_reality_check_null_uniformish_and_power():
     assert p_sig < 0.05
 
 
+def test_psr_pinned_to_sharpe_frontier_paper():
+    """Bailey & Lopez de Prado, 'The Sharpe Ratio Efficient Frontier', sec. 3
+    worked example (verified in research/prior_art/multiple_testing.md C6):
+    2y monthly track record, annualized SR 1.59 -> monthly SR 1.59/sqrt(12).
+    Normal moments: PSR(0) ~ 0.98; with skew -2.448, kurt 10.164: ~ 0.914;
+    with 3 years: ~ 0.954."""
+    m = 1.59 / np.sqrt(12)
+    assert probabilistic_sharpe_ratio(m, 24, 0.0, 3.0, 0.0) == pytest.approx(0.982, abs=0.002)
+    assert probabilistic_sharpe_ratio(m, 24, -2.448, 10.164, 0.0) == pytest.approx(0.914, abs=0.002)
+    assert probabilistic_sharpe_ratio(m, 36, -2.448, 10.164, 0.0) == pytest.approx(0.954, abs=0.002)
+
+
+def test_dsr_pinned_to_deflated_sharpe_paper():
+    """Bailey & Lopez de Prado 2014 'The Deflated Sharpe Ratio' worked example
+    (verified in multiple_testing.md C9): N=100, V=1/500 (daily units), T=1250,
+    skew -3, kurt 10, annualized SR 2.5 (250 d/y) -> SR0 ~ 0.1132, DSR ~ 0.9004."""
+    sr0 = expected_max_sharpe(100, 1.0 / 500.0)
+    assert sr0 == pytest.approx(0.113176, abs=1e-4)
+    sr_daily = 2.5 / np.sqrt(250)
+    dsr = probabilistic_sharpe_ratio(sr_daily, 1250, -3.0, 10.0, sr0)
+    assert dsr == pytest.approx(0.9004, abs=0.001)
+
+
 def test_dsr_golden_regression():
     """Golden values frozen at harness build; guards silent formula drift."""
     rng = np.random.default_rng(42)
