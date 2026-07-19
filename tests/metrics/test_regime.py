@@ -172,7 +172,7 @@ class TestDependenceSensitivity:
     most-eroding regime BY NET, not the stress regime (worst per day) —
     otherwise diverging tercile counts silently weaken the flag."""
 
-    def _analysis(self, regimes) -> RegimeAnalysis:
+    def _analysis(self, regimes):
         from quantlab.metrics.regime import RegimeAnalysis, RegimeStats
 
         stats = [
