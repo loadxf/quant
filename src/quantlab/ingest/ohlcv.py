@@ -64,7 +64,10 @@ def load_ohlcv(path: Path | str, tz: str = "UTC") -> tuple[pd.DataFrame, OhlcvRe
     out = pd.DataFrame()
     stamps = pd.to_datetime(frame[columns["datetime"]], errors="coerce")
     if getattr(stamps.dt, "tz", None) is None:
-        stamps = stamps.dt.tz_localize(tzinfo, nonexistent="NaT", ambiguous="NaT")
+        # DST edges: fall-back-hour bars are real data — resolve ambiguity to
+        # the DST side and shift nonexistent spring-forward stamps forward
+        # instead of deleting an hour of bars every transition.
+        stamps = stamps.dt.tz_localize(tzinfo, nonexistent="shift_forward", ambiguous=True)
     out["datetime"] = stamps.dt.tz_convert("UTC")
     for name in ("open", "high", "low", "close"):
         out[name] = pd.to_numeric(frame[columns[name]], errors="coerce")
@@ -84,7 +87,7 @@ def load_ohlcv(path: Path | str, tz: str = "UTC") -> tuple[pd.DataFrame, OhlcvRe
     for index in out.index[~bad_time & ~bad_price & bad_ohlc]:
         report.dropped.append((int(index), "inconsistent OHLC (high/low violate open/close)"))
 
-    out = out[~(bad_time | bad_price | bad_ohlc)].sort_values("datetime")
+    out = out[~(bad_time | bad_price | bad_ohlc)].sort_values("datetime", kind="stable")
     before = len(out)
     out = out.drop_duplicates(subset="datetime", keep="first")
     report.duplicate_timestamps = before - len(out)

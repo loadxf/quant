@@ -48,7 +48,6 @@ class PhaseOutcome:
 
     def fail_breakdown(self) -> dict[str, float]:
         """Fraction of paths ended by each rule (and expiry)."""
-        n = len(self.outcome)
         out: dict[str, float] = {}
         for code, name in enumerate(self.rule_names):
             out[name] = float(
@@ -57,9 +56,7 @@ class PhaseOutcome:
         expired = float(np.mean(self.outcome == OUTCOME_EXPIRED))
         if expired:
             out["time_limit"] = expired
-        out = {k: v for k, v in out.items() if v > 0}
-        _ = n
-        return out
+        return {k: v for k, v in out.items() if v > 0}
 
 
 @dataclass
@@ -132,6 +129,10 @@ class MonteCarloReport:
                 "breach_rate": float(np.mean(self.funded.outcome == OUTCOME_BREACHED)),
                 "retired_rate": float(np.mean(self.funded.outcome == OUTCOME_RETIRED)),
                 "fail_breakdown": self.funded.fail_breakdown(),
+                # Trading drawdown only — payout withdrawals rebase the peak.
+                "max_drawdown_quantiles": {
+                    f"p{q}": float(np.percentile(self.funded.max_drawdown, q)) for q in (50, 75, 95)
+                },
             },
             "economics": {
                 "pass_prob": eco.pass_prob,

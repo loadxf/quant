@@ -12,21 +12,14 @@ from jinja2 import Environment
 from quantlab import __version__
 from quantlab.metrics.core import Metrics
 from quantlab.metrics.scorecard import Verdict
+from quantlab.prop.config import FirmConfig
 from quantlab.prop.outcomes import MonteCarloReport
-from quantlab.prop.registry import load_firm
 from quantlab.report import charts
+from quantlab.report.format import money, pct
 from quantlab.schema.trade import TradeLog
 
-
-def _money(value: float) -> str:
-    if value == float("inf"):
-        return "inf"
-    sign = "-" if value < 0 else ""
-    return f"{sign}${abs(value):,.2f}"
-
-
-def _pct(value: float) -> str:
-    return f"{value:.1%}"
+_money = money
+_pct = pct
 
 
 def _fig_html(fig, include_js: bool) -> str:
@@ -60,9 +53,10 @@ def _metric_rows(m: Metrics) -> list[tuple[str, str]]:
     ]
 
 
-def _prop_context(mc: MonteCarloReport) -> dict:
+def _prop_context(mc: MonteCarloReport, firm: FirmConfig) -> dict:
+    """The SIMULATED FirmConfig is passed in — re-resolving by name would
+    crash for user-YAML firms and could silently render a preset's rules."""
     eco = mc.economics
-    firm = load_firm(mc.firm_name)
     challenge_rows: list[tuple[str, str]] = []
     for ph in mc.phases:
         challenge_rows.append((f"{ph.phase}: pass probability", _pct(float(np.mean(ph.passed)))))
@@ -149,8 +143,11 @@ def build_html_report(
     verdict: Verdict,
     out_path: Path,
     mc: MonteCarloReport | None = None,
+    firm: FirmConfig | None = None,
     title: str = "Strategy report",
 ) -> Path:
+    if (mc is None) != (firm is None):
+        raise ValueError("mc and firm must be provided together")
     template_text = (
         resources.files("quantlab.report") / "templates" / "report.html.j2"
     ).read_text()
@@ -179,7 +176,7 @@ def build_html_report(
         verdict=verdict,
         metric_rows=_metric_rows(metrics),
         strategy_charts=strategy_charts,
-        prop=_prop_context(mc) if mc else None,
+        prop=_prop_context(mc, firm) if mc and firm else None,
         version=__version__,
         reproducibility=(
             f"seed {mc.seed}, {mc.n_paths:,} paths, {mc.bootstrap} bootstrap"

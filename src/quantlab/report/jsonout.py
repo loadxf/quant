@@ -1,8 +1,14 @@
-"""Stable JSON output combining metrics, verdict, and simulation."""
+"""Stable JSON output combining metrics, verdict, and simulation.
+
+All payloads pass through `sanitize`, which converts non-finite floats
+(inf from profit_factor/MAR on flawless logs, expected_cost_to_funded on
+zero-pass strategies; NaN) into strings/None — bare Infinity/NaN tokens
+are invalid RFC 8259 JSON and break jq/JSON.parse consumers."""
 
 from __future__ import annotations
 
 import dataclasses
+import math
 from typing import Any
 
 from quantlab.metrics.core import Metrics
@@ -10,6 +16,21 @@ from quantlab.metrics.scorecard import Verdict
 from quantlab.prop.outcomes import MonteCarloReport
 
 SCHEMA_VERSION = 1
+
+
+def sanitize(obj: Any) -> Any:
+    """Recursively replace non-finite floats: inf -> "inf", nan -> None."""
+    if isinstance(obj, float):
+        if math.isinf(obj):
+            return "inf" if obj > 0 else "-inf"
+        if math.isnan(obj):
+            return None
+        return obj
+    if isinstance(obj, dict):
+        return {key: sanitize(value) for key, value in obj.items()}
+    if isinstance(obj, list | tuple):
+        return [sanitize(value) for value in obj]
+    return obj
 
 
 def combined_json(
@@ -25,4 +46,4 @@ def combined_json(
         payload["verdict"] = verdict.to_json_dict()
     if mc is not None:
         payload["prop_simulation"] = mc.to_json_dict()
-    return payload
+    return sanitize(payload)

@@ -72,7 +72,9 @@ def register_report_commands(app: typer.Typer) -> None:
         """The full experience: metrics + verdict + prop-firm Monte Carlo -> HTML."""
         log = read_trade_log(trades)
         firm = load_firm(firm_name)
-        metrics = compute_metrics(log, starting_equity=equity or firm.account_size)
+        metrics = compute_metrics(
+            log, starting_equity=equity if equity is not None else firm.account_size
+        )
         verdict = compute_scorecard(log, metrics)
         mc = run_monte_carlo(log, firm, MCConfig(n_paths=paths, seed=seed, scale=scale))
 
@@ -84,6 +86,7 @@ def register_report_commands(app: typer.Typer) -> None:
             verdict,
             output,
             mc=mc,
+            firm=firm,
             title=f"Strategy report — {mc.firm_display}",
         )
         console.print(f"\n[bold green]HTML report written to {output}[/bold green]")

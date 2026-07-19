@@ -1,10 +1,16 @@
 """QC backtest result -> canonical TradeLog + EquityCurve.
 
-Field names verified against QC docs (July 2026):
+Field names verified against QC docs and LEAN source (July 2026):
 `backtest.totalPerformance.closedTrades[]` carries per-trade
 symbol, entryTime, entryPrice, exitTime, exitPrice, quantity,
 direction (0=Long/1=Short), profitLoss, totalFees, mae, mfe.
+LEAN's `Trade.ProfitLoss` is documented as "The GROSS profit/loss of the
+trade" with fees accumulated separately in TotalFees — the canonical
+Trade.pnl contract is NET, so pnl = profitLoss - totalFees here.
 MAE/MFE flow straight into the intraday rule fidelity.
+
+Malformed entries are dropped with a reason (mirroring the CSV
+ingester's contract) instead of aborting the whole download.
 
 The equity curve comes from the separate chart endpoint ("Strategy
 Equity"); series values arrive as [t, value] pairs or [t, o, h, l, c]
@@ -42,7 +48,9 @@ def _symbol_text(raw: Any) -> str:
     return str(raw)
 
 
-def parse_closed_trades(backtest: dict[str, Any]) -> TradeLog:
+def parse_closed_trades(backtest: dict[str, Any]) -> tuple[TradeLog, list[str]]:
+    """Returns (log, skipped_reasons). One malformed trade must not abort a
+    500-trade download."""
     performance = backtest.get("totalPerformance") or {}
     closed = performance.get("closedTrades") or []
     if not closed:
@@ -51,29 +59,41 @@ def parse_closed_trades(backtest: dict[str, Any]) -> TradeLog:
             "algorithm may not have closed any round-trip trades."
         )
     trades: list[Trade] = []
-    for raw in closed:
-        quantity = abs(float(raw.get("quantity", 0)) or 1.0)
-        pnl = float(raw.get("profitLoss", 0.0))
-        mae = raw.get("mae")
-        mfe = raw.get("mfe")
-        trades.append(
-            Trade(
-                entry_time=_parse_time(raw["entryTime"]),
-                exit_time=_parse_time(raw["exitTime"]),
-                symbol=_symbol_text(raw.get("symbol", "UNKNOWN")),
-                side=Side.LONG if int(raw.get("direction", 0)) == 0 else Side.SHORT,
-                quantity=quantity,
-                pnl=pnl,
-                entry_price=(
-                    float(raw["entryPrice"]) if raw.get("entryPrice") is not None else None
-                ),
-                exit_price=float(raw["exitPrice"]) if raw.get("exitPrice") is not None else None,
-                fees=abs(float(raw.get("totalFees", 0.0))),
-                mae=-abs(float(mae)) if mae is not None else None,
-                mfe=abs(float(mfe)) if mfe is not None else None,
+    skipped: list[str] = []
+    for position, raw in enumerate(closed):
+        try:
+            quantity = abs(float(raw.get("quantity", 0)) or 1.0)
+            fees = abs(float(raw.get("totalFees", 0.0)))
+            gross = float(raw.get("profitLoss", 0.0))
+            mae = raw.get("mae")
+            mfe = raw.get("mfe")
+            trades.append(
+                Trade(
+                    entry_time=_parse_time(raw["entryTime"]),
+                    exit_time=_parse_time(raw["exitTime"]),
+                    symbol=_symbol_text(raw.get("symbol", "UNKNOWN")),
+                    side=Side.LONG if int(raw.get("direction", 0)) == 0 else Side.SHORT,
+                    quantity=quantity,
+                    # LEAN profitLoss is GROSS; canonical pnl is NET of fees.
+                    pnl=gross - fees,
+                    entry_price=(
+                        float(raw["entryPrice"]) if raw.get("entryPrice") is not None else None
+                    ),
+                    exit_price=(
+                        float(raw["exitPrice"]) if raw.get("exitPrice") is not None else None
+                    ),
+                    fees=fees,
+                    mae=-abs(float(mae)) if mae is not None else None,
+                    mfe=abs(float(mfe)) if mfe is not None else None,
+                )
             )
+        except Exception as exc:
+            skipped.append(f"closedTrades[{position}]: {type(exc).__name__}: {exc}")
+    if not trades:
+        raise QuantLabError(
+            f"No usable trades in closedTrades ({len(skipped)} skipped; first reason: {skipped[0]})"
         )
-    return TradeLog(trades=trades, source="lean-cloud")
+    return TradeLog(trades=trades, source="lean-cloud"), skipped
 
 
 def parse_equity_chart(chart: dict[str, Any]) -> EquityCurve:

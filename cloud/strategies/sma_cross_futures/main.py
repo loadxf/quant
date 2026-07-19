@@ -39,12 +39,17 @@ class SmaCrossFutures(QCAlgorithm):  # noqa: F405
         if not (self._fast.is_ready and self._slow.is_ready):
             return
 
-        # Trade only regular hours; flatten before the 16:00 CT close.
-        bar_time = self.time
-        if bar_time.hour >= 15 and bar_time.minute >= 45:
-            self.liquidate()
+        # Trade only 08:45-15:45 CT; flatten at/after 15:45 (time-object
+        # comparisons — a naive `hour >= 15 and minute >= 45` check would
+        # leak evening-session bars like 16:10 into the order logic).
+        bar_time = self.time.time()
+        session_start = time(8, 45)  # noqa: F405
+        session_end = time(15, 45)  # noqa: F405
+        if bar_time >= session_end:
+            if self.portfolio.invested:
+                self.liquidate()
             return
-        if bar_time.hour < 8 or (bar_time.hour == 8 and bar_time.minute < 45):
+        if bar_time < session_start:
             return
 
         holdings = self.portfolio[mapped].quantity if mapped in self.portfolio else 0

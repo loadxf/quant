@@ -12,7 +12,7 @@ import re
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from quantlab.errors import MappingError
 
@@ -98,7 +98,6 @@ class ColumnMapping(BaseModel):
     tz: str = "UTC"  # timezone applied to naive timestamps
     datetime_format: str | None = None  # strptime format; None = pandas inference
     default_symbol: str = "UNKNOWN"
-    extra: dict[str, str] = Field(default_factory=dict)
 
     @classmethod
     def from_yaml(cls, path: Path | str) -> ColumnMapping:

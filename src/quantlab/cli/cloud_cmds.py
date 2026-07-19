@@ -72,14 +72,21 @@ def results_cmd(
         save_json.write_text(json.dumps(backtest, indent=2, default=str))
         console.print(f"raw result saved to {save_json}")
 
-    log = parse_closed_trades(backtest)
+    log, skipped = parse_closed_trades(backtest)
     write_trade_log(log, output)
     console.print(
         f"[green]{len(log)} closed trades[/green] -> {output} "
-        f"(MAE/MFE {'present' if log.has_excursions else 'missing'})"
+        f"(MAE/MFE {'present' if log.has_excursions else 'missing'}; "
+        f"pnl = profitLoss - totalFees)"
     )
+    for reason in skipped[:10]:
+        console.print(f"[yellow]skipped[/yellow] {reason}")
+    if len(skipped) > 10:
+        console.print(f"[yellow]... and {len(skipped) - 10} more skipped trades[/yellow]")
     console.print(f"next: quant report {output} --firm topstep_50k -o report.html")
     if with_chart:
         chart = client.read_backtest_chart(project_id, backtest_id)
         curve = parse_equity_chart(chart)
-        console.print(f"equity chart: {len(curve.points)} points fetched")
+        chart_path = output.with_suffix(".equity.csv")
+        curve.to_series().rename("equity").to_csv(chart_path, index_label="datetime")
+        console.print(f"equity chart: {len(curve.points)} points -> {chart_path}")

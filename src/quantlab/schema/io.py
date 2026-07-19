@@ -42,7 +42,12 @@ def read_trade_log(path: Path | str) -> TradeLog:
     table = pq.read_table(str(path))
     meta_raw = (table.schema.metadata or {}).get(_META_KEY)
     meta = json.loads(meta_raw.decode()) if meta_raw else {}
-    version = meta.get("schema_version", SCHEMA_VERSION)
+    try:
+        version = int(meta.get("schema_version", SCHEMA_VERSION))
+    except (TypeError, ValueError) as exc:
+        raise QuantLabError(
+            f"{path} carries an unreadable trade-log schema_version {meta.get('schema_version')!r}"
+        ) from exc
     if version > SCHEMA_VERSION:
         raise QuantLabError(
             f"{path} was written with trade-log schema v{version}; this build "

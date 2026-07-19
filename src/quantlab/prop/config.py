@@ -134,6 +134,12 @@ class DayBoundarySpec(_RuleBase):
     tz: str = "America/Chicago"
     cutoff_hour: int = 17
 
+    def to_boundary(self):  # -> quantlab.schema.trade.DayBoundary
+        """Single conversion point so every engine groups sessions identically."""
+        from quantlab.schema.trade import DayBoundary
+
+        return DayBoundary(self.tz, self.cutoff_hour)
+
 
 class PhaseConfig(_RuleBase):
     name: str
@@ -156,18 +162,28 @@ class Reactivations(_RuleBase):
 
 
 class FeeSchedule(_RuleBase):
-    monthly: float = 0.0  # recurring eval subscription (Topstep/TPT/FTMO=one_time instead)
-    one_time: float = 0.0  # single eval fee (Apex 4.0, FTMO)
-    reset: float = 0.0
-    free_resets_per_cycle: int = 0
+    monthly: float = 0.0  # recurring eval subscription (Topstep/TPT; exclusive with one_time)
+    one_time: float = 0.0  # single eval fee (Apex 4.0, FTMO; exclusive with monthly)
+    reset: float = 0.0  # discounted retry fee replacing the next month (0 = full-price retry)
+    free_resets_per_cycle: int = 0  # informational; ignored by EV math (documented pessimistic)
     activation: float = 0.0  # funded activation / PA fee
     refundable_on_first_payout: bool = False  # FTMO 2-Step refunds the fee
+
+    @model_validator(mode="after")
+    def _exclusive(self) -> FeeSchedule:
+        if self.monthly > 0 and self.one_time > 0:
+            raise ConfigError(
+                "FeeSchedule: set either monthly (recurring subscription) or "
+                "one_time (single eval fee), not both — the EV math would "
+                "silently ignore the monthly fee."
+            )
+        return self
 
 
 class PayoutPolicy(_RuleBase):
     profit_split: float = 1.0  # trader's share
     min_payout: float = 0.0
-    period_days: int = 14  # min days between payout requests / windows
+    period_days: int = 0  # min calendar days between payout requests (0 = no wait)
     qualifying_days: QualifyingDays = Field(default_factory=QualifyingDays)
     payout_cap_ladder: list[float] = Field(default_factory=list)  # per-payout caps, indexed
     max_lifetime_payouts: int | None = None  # Apex 4.0: 6, then the PA closes

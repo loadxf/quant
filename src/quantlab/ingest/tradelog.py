@@ -13,6 +13,7 @@ import math
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import pandas as pd
@@ -22,6 +23,8 @@ from quantlab.ingest.mapping import ColumnMapping, autodetect_mapping
 from quantlab.schema.trade import Side, Trade, TradeLog
 
 _CURRENCY_RE = re.compile(r"[$€£,\s]")
+_TIME_ONLY_RE = re.compile(r"^\d{1,2}:\d{2}(:\d{2}(\.\d+)?)?\s*([AaPp][Mm])?$")
+_DATE_HEADER_SYNONYMS = ("date", "tradedate", "tradeday", "day")
 
 
 @dataclass
@@ -38,33 +41,68 @@ class IngestReport:
 
 
 def parse_money(value: object) -> float:
-    """Parse '$1,234.56', '(500)', unicode-minus '\u221212', ' 3.5 ' etc. into a float."""
+    """Parse '$1,234.56', '(500)', '$(500.00)', unicode-minus '\u221212', etc.
+
+    Currency symbols/commas are stripped BEFORE parenthesized-negative
+    detection so accounting exports that put the symbol outside the parens
+    ('$(500.00)') parse as negatives instead of being dropped."""
     if isinstance(value, int | float):
         if isinstance(value, float) and math.isnan(value):
             raise ValueError("missing money value (NaN)")
         return float(value)
     text = str(value).strip().replace("\u2212", "-")  # unicode minus
+    text = _CURRENCY_RE.sub("", text)
     negative = text.startswith("(") and text.endswith(")")
     if negative:
         text = text[1:-1]
-    text = _CURRENCY_RE.sub("", text)
     if text in ("", "-", "--"):
         raise ValueError(f"empty money value {value!r}")
     number = float(text)
     return -abs(number) if negative else number
 
 
-def _parse_time(value: object, mapping: ColumnMapping, tzinfo: ZoneInfo) -> dt.datetime:
-    if mapping.datetime_format:
-        stamp = pd.to_datetime(str(value), format=mapping.datetime_format)
-    else:
-        stamp = pd.to_datetime(str(value))
+def _attach_tz(stamp: Any, tzinfo: ZoneInfo) -> dt.datetime:
     if pd.isna(stamp):
-        raise ValueError(f"unparseable timestamp {value!r}")
-    py = stamp.to_pydatetime()
+        raise ValueError("unparseable timestamp")
+    py = pd.Timestamp(stamp).to_pydatetime()
     if py.tzinfo is None:
         py = py.replace(tzinfo=tzinfo)
     return py.astimezone(dt.UTC)
+
+
+def _combine_split_date_time(frame: pd.DataFrame, column: str) -> str:
+    """Handle exports with separate Date and Time columns.
+
+    If the mapped timestamp column holds time-of-day only ('09:31:00'),
+    pandas would silently fill in TODAY's date for every trade. Look for a
+    companion date column and combine; fail loudly when there is none.
+    """
+    sample = frame[column].dropna().astype(str).head(20)
+    if sample.empty or not all(_TIME_ONLY_RE.match(v.strip()) for v in sample):
+        return column
+    normalized = {re.sub(r"[^a-z0-9]", "", str(h).lower()): str(h) for h in frame.columns}
+    for synonym in _DATE_HEADER_SYNONYMS:
+        date_col = normalized.get(synonym)
+        if date_col is not None and date_col != column:
+            combined = f"__combined_{column}"
+            frame[combined] = (
+                frame[date_col].astype(str).str.strip()
+                + " "
+                + frame[column].astype(str).str.strip()
+            )
+            return combined
+    raise MappingError(
+        f"Column {column!r} contains time-of-day values only and no companion "
+        "date column was found — pandas would assign today's date to every "
+        "trade. Provide a combined datetime column or a Date column."
+    )
+
+
+def _parse_time_column(frame: pd.DataFrame, column: str, mapping: ColumnMapping) -> pd.Series:
+    """Vectorized parse (one format inference per column, ~100x faster than
+    per-row) with per-row NaT for unparseable values."""
+    column = _combine_split_date_time(frame, column)
+    return pd.to_datetime(frame[column], format=mapping.datetime_format, errors="coerce")
 
 
 def _parse_side(value: object, mapping: ColumnMapping) -> Side:
@@ -100,13 +138,17 @@ def load_trade_log(
 
     assert mapping.exit_time is not None and mapping.pnl is not None  # validate_against ran
     tzinfo = ZoneInfo(mapping.tz)
+    exit_stamps = _parse_time_column(frame, mapping.exit_time, mapping)
+    entry_stamps = (
+        _parse_time_column(frame, mapping.entry_time, mapping) if mapping.entry_time else None
+    )
     trades: list[Trade] = []
-    for index, row in frame.iterrows():
+    for position, (_, row) in enumerate(frame.iterrows()):
         try:
-            exit_time = _parse_time(row[mapping.exit_time], mapping, tzinfo)
+            exit_time = _attach_tz(exit_stamps.iloc[position], tzinfo)
             entry_time = (
-                _parse_time(row[mapping.entry_time], mapping, tzinfo)
-                if mapping.entry_time
+                _attach_tz(entry_stamps.iloc[position], tzinfo)
+                if entry_stamps is not None
                 else exit_time
             )
             mae = (
@@ -154,7 +196,7 @@ def load_trade_log(
                 )
             )
         except Exception as exc:
-            report.dropped.append((int(str(index)), f"{type(exc).__name__}: {exc}"))
+            report.dropped.append((position, f"{type(exc).__name__}: {exc}"))
 
     if not trades:
         raise MappingError(

@@ -11,6 +11,7 @@ from rich.console import Console
 from rich.table import Table
 
 from quantlab.metrics.core import Metrics, compute_metrics
+from quantlab.report.format import money, pct
 from quantlab.schema.io import read_trade_log
 
 console = Console()
@@ -18,9 +19,9 @@ console = Console()
 
 def _fmt(value: float, kind: str = "num") -> str:
     if kind == "money":
-        return f"${value:,.2f}"
+        return money(value)
     if kind == "pct":
-        return f"{value:.1%}"
+        return pct(value)
     if value == float("inf"):
         return "inf"
     return f"{value:.2f}"
@@ -82,9 +83,11 @@ def register_metrics_commands(app: typer.Typer) -> None:
         log = read_trade_log(trades)
         result = compute_metrics(log, starting_equity=equity)
         if as_json:
+            from quantlab.report.jsonout import sanitize
+
             payload = dataclasses.asdict(result)
             payload["schema_version"] = 1
-            typer.echo(json.dumps(payload, indent=2, default=str))
+            typer.echo(json.dumps(sanitize(payload), indent=2, default=str))
         else:
             console.print(render_metrics_table(result))
             if not log.has_excursions:

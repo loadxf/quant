@@ -52,17 +52,36 @@ def _max_drawdown(equity: np.ndarray) -> float:
     return float(np.max(peaks - equity)) if equity.size else 0.0
 
 
+def bootstrap_means(pnls: np.ndarray, n_samples: int = 4000, seed: int = 7) -> np.ndarray:
+    """Bootstrap distribution of the mean per-trade PnL.
+
+    Single source for BOTH the expectancy CI (compute_metrics) and the
+    robustness pillar's P(edge>0) (scorecard), so the two published
+    statistics can never disagree about the same resampling question.
+    """
+    n = pnls.size
+    if n < 2:
+        return np.repeat(float(pnls.mean()) if n else 0.0, 2)
+    rng = np.random.default_rng(seed)
+    idx = rng.integers(0, n, size=(n_samples, n))
+    return pnls[idx].mean(axis=1)
+
+
 def _annualized_ratio(daily_returns: np.ndarray, downside_only: bool) -> float:
     if daily_returns.size < 2:
         return 0.0
     mean = daily_returns.mean()
     if downside_only:
-        downside = daily_returns[daily_returns < 0]
-        denom = float(np.sqrt(np.mean(downside**2))) if downside.size else 0.0
+        # Target-downside deviation over ALL periods (sum of squared
+        # below-zero returns / N) — the standard Sortino denominator.
+        # Dividing by only the losing days understates the ratio ~16x for
+        # rare-loss strategies.
+        downside_sq = np.minimum(daily_returns, 0.0) ** 2
+        denom = float(np.sqrt(downside_sq.mean()))
     else:
         denom = float(daily_returns.std(ddof=1))
     if denom == 0.0:
-        return 0.0
+        return float("inf") if mean > 0 else 0.0
     return float(mean / denom * math.sqrt(TRADING_DAYS_PER_YEAR))
 
 
@@ -70,7 +89,7 @@ def compute_metrics(
     log: TradeLog,
     starting_equity: float = 50_000.0,
     boundary: DayBoundary = FUTURES_DAY,
-    bootstrap_samples: int = 2_000,
+    bootstrap_samples: int = 4_000,
     seed: int = 7,
 ) -> Metrics:
     if starting_equity <= 0:
@@ -88,10 +107,8 @@ def compute_metrics(
     per_trade_std = float(pnls.std(ddof=1)) if n > 1 else 0.0
     tstat = expectancy / (per_trade_std / math.sqrt(n)) if n > 1 and per_trade_std > 0 else 0.0
 
-    rng = np.random.default_rng(seed)
     if n > 1:
-        idx = rng.integers(0, n, size=(bootstrap_samples, n))
-        means = pnls[idx].mean(axis=1)
+        means = bootstrap_means(pnls, n_samples=bootstrap_samples, seed=seed)
         ci = (float(np.percentile(means, 2.5)), float(np.percentile(means, 97.5)))
     else:
         ci = (expectancy, expectancy)
@@ -136,7 +153,13 @@ def compute_metrics(
         max_drawdown_pct=max_dd / starting_equity if starting_equity else 0.0,
         sharpe=_annualized_ratio(daily_returns, downside_only=False),
         sortino=_annualized_ratio(daily_returns, downside_only=True),
-        mar=annual_return / (max_dd / starting_equity) if max_dd > 0 else 0.0,
+        # Zero drawdown with positive return is the BEST outcome, not the
+        # worst — report inf, consistent with profit_factor's convention.
+        mar=(
+            annual_return / (max_dd / starting_equity)
+            if max_dd > 0
+            else (float("inf") if annual_return > 0 else 0.0)
+        ),
         longest_losing_streak=longest,
         best_day=best_day,
         best_day_share=best_day / net if net > 0 else 0.0,

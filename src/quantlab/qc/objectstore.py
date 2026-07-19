@@ -13,7 +13,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from quantlab.errors import CloudUnavailableError
+from quantlab.errors import CloudUnavailableError, QuantLabError
 from quantlab.qc import runner
 from quantlab.qc.api import QCClient
 
@@ -35,9 +35,14 @@ def upload(path: Path, key: str) -> str:
     try:
         runner.object_store_upload(key, path)
         return key
-    except CloudUnavailableError:
+    except (CloudUnavailableError, QuantLabError) as exc:
+        # Fall back to the REST endpoint when the lean CLI is missing OR its
+        # object-store subcommand fails (older CLI versions lack it).
         organization = os.environ.get(ENV_ORG, "").strip()
         if not organization:
-            raise
+            raise CloudUnavailableError(
+                f"lean CLI upload failed ({exc}); set {ENV_ORG} to enable the "
+                "REST fallback (POST /api/v2/object/set)."
+            ) from exc
         QCClient().object_store_set(organization, key, path.read_bytes())
         return key

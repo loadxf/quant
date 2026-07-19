@@ -8,17 +8,14 @@ from rich.panel import Panel
 from rich.table import Table
 
 from quantlab.prop.outcomes import OUTCOME_ACTIVE, MonteCarloReport
+from quantlab.report.format import money, pct
 
 
 def _money(value: float) -> str:
-    if value == float("inf"):
-        return "inf"
-    sign = "-" if value < 0 else ""
-    return f"{sign}${abs(value):,.0f}"
+    return money(value, decimals=0)
 
 
-def _pct(value: float) -> str:
-    return f"{value:.1%}"
+_pct = pct
 
 
 def render_report(report: MonteCarloReport, console: Console) -> None:

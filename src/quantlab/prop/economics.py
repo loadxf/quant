@@ -7,7 +7,10 @@ campaigns +EV even for marginal strategies.
 
 Approximations (documented): fee months are 21 trading days; free reset
 credits (Topstep banks 1/rebill) are ignored, making reset EV slightly
-pessimistic; FTMO's fee refund applies on the first funded payout.
+pessimistic; FTMO's fee refund applies on the first funded payout; retry
+attempts price the first month at the discounted reset fee when the firm
+defines one (a reset pushes the rebill out), full price otherwise;
+funded-account reactivations (Topstep Back2Funded) are NOT modeled.
 """
 
 from __future__ import annotations
@@ -116,16 +119,30 @@ def summarize(
     cost_pass = (
         float(attempt_fees[passed_all].mean()) if passed_all.any() else float(attempt_fees.mean())
     )
+    # Retry attempts: firms with a discounted reset fee replace the first
+    # month's subscription with the reset (the reset pushes the rebill out).
+    retry_discount = fees.monthly - fees.reset if fees.monthly > 0 and fees.reset > 0 else 0.0
+    retry_fail = max(cost_fail - retry_discount, 0.0)
+    retry_pass = max(cost_pass - retry_discount, 0.0)
     value_funded = float(funded_value.mean())
     ev_with_resets: dict[int, float] = {}
     for k in range(1, 6):
         ev = 0.0
+        fail_costs_before = 0.0
         for j in range(1, k + 1):
-            ev += (1 - p) ** (j - 1) * p * (value_funded - cost_pass - (j - 1) * cost_fail)
-        ev -= (1 - p) ** k * k * cost_fail
+            attempt_pass_cost = cost_pass if j == 1 else retry_pass
+            ev += (1 - p) ** (j - 1) * p * (value_funded - attempt_pass_cost - fail_costs_before)
+            fail_costs_before += cost_fail if j == 1 else retry_fail
+        ev -= (1 - p) ** k * fail_costs_before
         ev_with_resets[k] = ev
 
-    expected_cost_to_funded = cost_fail * (1 - p) / p + cost_pass if p > 0 else float("inf")
+    if p > 0:
+        # First attempt at full price; geometric retries at reset pricing.
+        expected_cost_to_funded = p * cost_pass + (1 - p) * (
+            cost_fail + retry_fail * (1 - p) / p + retry_pass
+        )
+    else:
+        expected_cost_to_funded = float("inf")
 
     # ---- funded-phase risk stats ----
     got_payout = funded.payout_count >= 1

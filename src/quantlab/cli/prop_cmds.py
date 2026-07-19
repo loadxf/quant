@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import datetime as dt
 import json
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
-import numpy as np
 import typer
 from rich.console import Console
 from rich.table import Table
@@ -15,9 +12,10 @@ from rich.table import Table
 from quantlab.prop.evaluator import EvaluationResult, evaluate, evaluate_sequence
 from quantlab.prop.montecarlo import MCConfig, run_monte_carlo
 from quantlab.prop.registry import list_firms, load_firm
+from quantlab.prop.synthetic import resolve_geometry, synthetic_geometry_log
+from quantlab.report.jsonout import sanitize
 from quantlab.report.terminal import render_report
 from quantlab.schema.io import read_trade_log
-from quantlab.schema.trade import Side, Trade, TradeLog
 
 prop_app = typer.Typer(no_args_is_help=True)
 firms_app = typer.Typer(no_args_is_help=True)
@@ -145,56 +143,8 @@ def simulate_cmd(
     report = run_monte_carlo(log, firm, cfg)
     render_report(report, console)
     if json_out is not None:
-        json_out.write_text(json.dumps(report.to_json_dict(), indent=2))
+        json_out.write_text(json.dumps(sanitize(report.to_json_dict()), indent=2))
         console.print(f"JSON summary written to {json_out}")
-
-
-def synthetic_geometry_log(
-    win_rate: float,
-    rr: float,
-    trades_per_day: int,
-    risk: float,
-    ev: float,
-    days: int,
-    seed: int,
-) -> TradeLog:
-    """Bernoulli strategy: win = +rr*risk, loss = -risk. The sample is built
-    with EXACT win counts and demeaned so its realized per-trade mean equals
-    `ev` exactly — bootstrapping resamples this log, so any sampling drift in
-    a naive finite sample would otherwise swamp the geometry effect (a
-    +7/trade accident compounds to thousands over a challenge horizon).
-    No intra-trade noise (MAE/MFE = PnL extremes)."""
-    rng = np.random.default_rng(seed)
-    n_total = days * trades_per_day
-    n_wins = round(win_rate * n_total)
-    pnls = np.concatenate([np.full(n_wins, rr * risk), np.full(n_total - n_wins, -risk)])
-    pnls = rng.permutation(pnls)
-    pnls += ev - pnls.mean()  # exact realized EV
-    ct = ZoneInfo("America/Chicago")
-    date = dt.date(2026, 1, 5)
-    trades: list[Trade] = []
-    for day in range(days):
-        while date.weekday() >= 5:
-            date += dt.timedelta(days=1)
-        for k in range(trades_per_day):
-            pnl = float(pnls[day * trades_per_day + k])
-            entry = dt.datetime.combine(date, dt.time(9, 0), tzinfo=ct) + dt.timedelta(
-                minutes=15 * k
-            )
-            trades.append(
-                Trade(
-                    entry_time=entry,
-                    exit_time=entry + dt.timedelta(minutes=10),
-                    symbol="SYN",
-                    side=Side.LONG,
-                    quantity=1,
-                    pnl=pnl,
-                    mae=min(0.0, pnl),
-                    mfe=max(0.0, pnl),
-                )
-            )
-        date += dt.timedelta(days=1)
-    return TradeLog(trades=trades, source="synthetic")
 
 
 @prop_app.command("geometry")
@@ -212,17 +162,27 @@ def geometry_cmd(
 ) -> None:
     """Explore pass-rate/EV for a synthetic risk geometry — no trade log needed.
 
-    Replicates the zero-EV geometry analysis from the QuantPad methodology:
-    at fixed EV, lower-RR/higher-win-rate geometries pass trailing-drawdown
-    challenges more often than high-RR/low-win-rate ones.
+    Note: for pure barrier rules at zero EV, pass probability is
+    geometry-independent in the diffusion limit (static: D/(T+D);
+    trailing: exp(-T/D)) — geometry effects emerge from day-scale rules
+    (daily loss limits, consistency, time limits) and finite trade sizes.
     """
     log = synthetic_geometry_log(win_rate, rr, trades_per_day, risk, ev, days, seed)
     firm = load_firm(firm_name)
+    geometry = resolve_geometry(win_rate, rr, risk, ev)
     console.print(
         f"synthetic geometry: win rate {win_rate:.0%}, RR {rr:g}, "
-        f"{trades_per_day}/day, ${risk:g} risk, EV ${ev:g}/trade"
+        f"{trades_per_day}/day, ${risk:g} risk, EV ${ev:g}/trade "
+        f"(effective win {geometry.win_size:+.2f} / loss {geometry.loss_size:+.2f})"
     )
+    if geometry.distorted:
+        console.print(
+            f"[yellow]warning:[/yellow] the requested EV is inconsistent with "
+            f"win_rate x RR x risk (shift {geometry.shift:+.2f}/trade) — the "
+            "simulated geometry differs from the stated stop/target sizes."
+        )
     report = run_monte_carlo(log, firm, MCConfig(n_paths=paths, seed=seed))
     render_report(report, console)
     if json_out is not None:
-        json_out.write_text(json.dumps(report.to_json_dict(), indent=2))
+        json_out.write_text(json.dumps(sanitize(report.to_json_dict()), indent=2))
+        console.print(f"JSON summary written to {json_out}")

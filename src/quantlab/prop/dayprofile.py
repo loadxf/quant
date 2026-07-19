@@ -31,11 +31,15 @@ def trade_points(trade: Trade, base: float) -> tuple[float, float, float]:
     """(high, low, close) equity for one trade at cumulative base `base`.
 
     MAE/MFE-refined when present; trade-close fidelity otherwise
-    (documented as optimistic for intraday-sensitive rules).
+    (documented as optimistic for intraday-sensitive rules). The low/high
+    are clamped to include the close: platforms sometimes export MAE/MFE
+    that excludes fees or the final tick, so a net PnL below the recorded
+    MAE (or above the MFE) must still count — equity provably passed
+    through the close.
     """
     if trade.mae is not None and trade.mfe is not None:
-        low = base + trade.mae
-        high = base + trade.mfe
+        low = base + min(trade.mae, trade.pnl)
+        high = base + max(trade.mfe, trade.pnl)
     else:
         low = base + min(0.0, trade.pnl)
         high = base + max(0.0, trade.pnl)

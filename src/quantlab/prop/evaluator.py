@@ -40,7 +40,7 @@ from quantlab.prop.rules import (
     TimeLimitGate,
     TrailingDrawdownRule,
 )
-from quantlab.schema.trade import DayBoundary, Trade, TradeLog
+from quantlab.schema.trade import Trade, TradeLog
 
 Outcome = Literal["passed", "breached", "expired", "incomplete", "survived"]
 
@@ -74,16 +74,14 @@ def evaluate(
 ) -> EvaluationResult:
     """Replay `log` (from trading-day index `start_day`) against one phase."""
     phase_cfg = _find_phase(firm, phase)
-    boundary = DayBoundary(firm.day_boundary.tz, firm.day_boundary.cutoff_hour)
-    days = log.daily_groups(boundary)[start_day:]
+    days = log.daily_groups(firm.day_boundary.to_boundary())[start_day:]
     return _evaluate_days(days, firm, phase_cfg, fidelity_from(log))
 
 
 def evaluate_sequence(log: TradeLog, firm: FirmConfig) -> list[EvaluationResult]:
     """Chain phases over the log: each eval phase consumes trading days until
     it resolves; the funded phase replays whatever remains."""
-    boundary = DayBoundary(firm.day_boundary.tz, firm.day_boundary.cutoff_hour)
-    all_days = log.daily_groups(boundary)
+    all_days = log.daily_groups(firm.day_boundary.to_boundary())
     fidelity = fidelity_from(log)
     results: list[EvaluationResult] = []
     cursor = 0
@@ -152,6 +150,11 @@ def _evaluate_days(
             time_limit = TimeLimitGate(spec)
         elif isinstance(spec, ContractLimitSpec):
             max_contracts_spec = spec
+        else:  # pragma: no cover - exhaustiveness guard for future rule types
+            raise ConfigError(
+                f"Rule type {type(spec).__name__} is not handled by the evaluator — "
+                "add it here (and in montecarlo._resolve_rules) before use."
+            )
 
     balance = initial
     trading_days = 0
@@ -171,13 +174,15 @@ def _evaluate_days(
         if time_limit is not None and time_limit.expired(date):
             outcome = "expired"
             break
+        # daily_groups never yields an empty day, so every consumed day is
+        # also a trading day — one counter serves both.
         days_consumed += 1
+        trading_days = days_consumed
         day_open = balance
         for rule in (*daily_fail, *daily_lockout):
             rule.day_start(day_open)
         day_cum = 0.0
         locked = False
-        counted_day = False
         day_resolved = False
 
         for trade_index, trade in enumerate(trades):
@@ -229,21 +234,23 @@ def _evaluate_days(
                         day_resolved = True
                         break
 
-            if not counted_day:
-                trading_days += 1
-                counted_day = True
-
             if day_resolved:
                 break
 
             if not locked and not is_funded and target is not None:
                 best_day_running = max(best_day_completed, day_cum)
                 effective_target = target
+                blocked = False
                 for gate in raise_gates:
                     effective_target = max(
                         effective_target, gate.required_total(target, best_day_running)
                     )
-                if balance - initial >= effective_target and min_days.satisfied(trading_days):
+                    blocked = blocked or gate.pass_blocked(balance - initial, best_day_running)
+                if (
+                    not blocked
+                    and balance - initial >= effective_target
+                    and min_days.satisfied(trading_days)
+                ):
                     outcome = "passed"
                     pass_date = date
                     pass_day_index = day_index

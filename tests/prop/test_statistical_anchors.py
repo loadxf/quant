@@ -26,9 +26,9 @@ import math
 
 import pytest
 
-from quantlab.cli.prop_cmds import synthetic_geometry_log
 from quantlab.prop.montecarlo import MCConfig, run_monte_carlo
 from quantlab.prop.registry import load_firm
+from quantlab.prop.synthetic import synthetic_geometry_log
 
 from .conftest import make_firm
 

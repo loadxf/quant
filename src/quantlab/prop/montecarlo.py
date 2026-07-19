@@ -9,8 +9,11 @@ truncation at exactly -width, pass at trade close — which a golden
 equivalence test enforces.
 
 Calendar approximation: rule/payout windows quoted in calendar days
-convert to trading days at 5/7 (Apex's 30-day expiry -> 21 trading
-days); fee months are 21 trading days.
+convert to trading days using the SOURCE LOG'S observed trading density
+(sessions per week), so a Monday/Wednesday-only trader gets ~9 sessions
+out of a 30-calendar-day limit, not 22. Dense weekday logs convert at
+5/7 (Apex's 30-day expiry -> 22 trading days); fee months are 21 trading
+days (see economics.py).
 """
 
 from __future__ import annotations
@@ -20,10 +23,11 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from quantlab.errors import QuantLabError
+from quantlab.errors import ConfigError, QuantLabError
 from quantlab.prop.bootstrap import BootstrapName, make_bootstrapper
 from quantlab.prop.config import (
     ConsistencySpec,
+    ContractLimitSpec,
     DailyLossLimitSpec,
     FirmConfig,
     MinTradingDaysSpec,
@@ -44,14 +48,29 @@ from quantlab.prop.outcomes import (
     MonteCarloReport,
     PhaseOutcome,
 )
-from quantlab.schema.trade import DayBoundary, TradeLog
+from quantlab.prop.rules.base import breached
+from quantlab.schema.trade import TradeLog
 
-TRADING_DAYS_PER_MONTH = 21
 MIN_DAYS_FOR_BLOCKS = 30
+DEFAULT_SESSIONS_PER_WEEK = 5.0
+# Keep withdrawn balances strictly above trailing floors so a payout can
+# never itself trigger an inclusive-touch breach on the next bar.
+PAYOUT_FLOOR_MARGIN = 0.01
 
 
-def calendar_to_trading_days(calendar_days: int) -> int:
-    return math.ceil(calendar_days * 5 / 7)
+def calendar_to_trading_days(
+    calendar_days: int, sessions_per_week: float = DEFAULT_SESSIONS_PER_WEEK
+) -> int:
+    return max(1, math.ceil(calendar_days * sessions_per_week / 7))
+
+
+def observed_sessions_per_week(log: TradeLog, boundary) -> float:
+    """Trading density of the source log (sessions/week), capped at 7."""
+    days = log.daily_groups(boundary)
+    if len(days) < 2:
+        return DEFAULT_SESSIONS_PER_WEEK
+    span_days = (days[-1][0] - days[0][0]).days + 1
+    return min(7.0, len(days) * 7.0 / span_days)
 
 
 @dataclass
@@ -85,24 +104,35 @@ class _Barrier:  # static floors and daily-loss widths
 
 
 @dataclass
+class _ConsistencyRaise:
+    frac: float
+    strict: bool  # basis=total_profit: best day exactly at frac*total still blocks
+
+
+@dataclass
 class _PhaseRules:
     trailing: list[_Trailing]
     static: list[_Barrier]
     daily_fail: list[_Barrier]
     daily_lock: list[_Barrier]
-    raise_pcts: list[float]  # consistency pct fractions (raise_target)
+    raises: list[_ConsistencyRaise]  # consistency (raise_target)
     payout_gate_pcts: list[float]  # consistency pct fractions (gate_payout)
     min_days: int
     time_limit_td: int | None
     rule_names: list[str]  # fail-code order: trailing, static, daily_fail
 
 
-def _resolve_rules(phase: PhaseConfig, firm: FirmConfig, initial: float) -> _PhaseRules:
+def _resolve_rules(
+    phase: PhaseConfig,
+    firm: FirmConfig,
+    initial: float,
+    sessions_per_week: float = DEFAULT_SESSIONS_PER_WEEK,
+) -> _PhaseRules:
     trailing: list[_Trailing] = []
     static: list[_Barrier] = []
     daily_fail: list[_Barrier] = []
     daily_lock: list[_Barrier] = []
-    raise_pcts: list[float] = []
+    raises: list[_ConsistencyRaise] = []
     payout_gate_pcts: list[float] = []
     min_days = 0
     time_limit_td: int | None = None
@@ -135,13 +165,20 @@ def _resolve_rules(phase: PhaseConfig, firm: FirmConfig, initial: float) -> _Pha
         elif isinstance(spec, ConsistencySpec):
             frac = spec.max_best_day_pct / 100.0
             if spec.effect == "raise_target":
-                raise_pcts.append(frac)
+                raises.append(_ConsistencyRaise(frac=frac, strict=spec.basis == "total_profit"))
             else:
                 payout_gate_pcts.append(frac)
         elif isinstance(spec, MinTradingDaysSpec):
             min_days = spec.days
         elif isinstance(spec, TimeLimitSpec):
-            time_limit_td = calendar_to_trading_days(spec.max_calendar_days)
+            time_limit_td = calendar_to_trading_days(spec.max_calendar_days, sessions_per_week)
+        elif isinstance(spec, ContractLimitSpec):
+            pass  # advisory-only; reported by the deterministic evaluator
+        else:  # pragma: no cover - exhaustiveness guard for future rule types
+            raise ConfigError(
+                f"Rule type {type(spec).__name__} is not handled by the Monte Carlo "
+                "engine — add it to _resolve_rules (and the evaluator) before use."
+            )
     rule_names = (
         [t.name for t in trailing] + [s.name for s in static] + [d.name for d in daily_fail]
     )
@@ -150,7 +187,7 @@ def _resolve_rules(phase: PhaseConfig, firm: FirmConfig, initial: float) -> _Pha
         static=static,
         daily_fail=daily_fail,
         daily_lock=daily_lock,
-        raise_pcts=raise_pcts,
+        raises=raises,
         payout_gate_pcts=payout_gate_pcts,
         min_days=min_days,
         time_limit_td=time_limit_td,
@@ -171,7 +208,12 @@ class _PayoutParams:
     gate_pcts: list[float]
 
 
-def _resolve_payout(firm: FirmConfig, initial: float, gate_pcts: list[float]) -> _PayoutParams:
+def _resolve_payout(
+    firm: FirmConfig,
+    initial: float,
+    gate_pcts: list[float],
+    sessions_per_week: float = DEFAULT_SESSIONS_PER_WEEK,
+) -> _PayoutParams:
     p = firm.payout
     floor_candidates = [initial]
     if p.safety_net_floor is not None:
@@ -187,13 +229,11 @@ def _resolve_payout(firm: FirmConfig, initial: float, gate_pcts: list[float]) ->
         min_payout=max(p.min_payout, 1e-9),
         q_count=p.qualifying_days.count,
         q_min_profit=p.qualifying_days.min_daily_profit,
-        period_td=calendar_to_trading_days(p.period_days) if p.period_days else 0,
+        period_td=(
+            calendar_to_trading_days(p.period_days, sessions_per_week) if p.period_days else 0
+        ),
         gate_pcts=gate_pcts,
     )
-
-
-def _cmp(equity: np.ndarray, level: np.ndarray | float, inclusive: bool) -> np.ndarray:
-    return equity <= level if inclusive else equity < level
 
 
 def _simulate_phase(
@@ -203,10 +243,11 @@ def _simulate_phase(
     firm: FirmConfig,
     payout: _PayoutParams | None,
     sample_paths: int,
+    sessions_per_week: float = DEFAULT_SESSIONS_PER_WEEK,
 ) -> PhaseOutcome:
     n_paths, horizon = idx.shape
     initial = phase.resolved_initial(firm.account_size)
-    rules = _resolve_rules(phase, firm, initial)
+    rules = _resolve_rules(phase, firm, initial, sessions_per_week)
     target = phase.profit_target
     is_funded = target is None
 
@@ -267,20 +308,20 @@ def _simulate_phase(
             code = 0
             for r, tr in enumerate(rules.trailing):
                 thr = np.minimum(hwms[r] - tr.amount, tr.cap)
-                hit = stepping & _cmp(low, thr, tr.inclusive)
+                hit = stepping & breached(low, thr, tr.inclusive)
                 better = hit & (thr > best_fail_level)
                 best_fail_level = np.where(better, thr, best_fail_level)
                 best_fail_code = np.where(better, code, best_fail_code)
                 code += 1
             for st in rules.static:
-                hit = stepping & _cmp(low, st.value, st.inclusive)
+                hit = stepping & breached(low, st.value, st.inclusive)
                 better = hit & (st.value > best_fail_level)
                 best_fail_level = np.where(better, st.value, best_fail_level)
                 best_fail_code = np.where(better, code, best_fail_code)
                 code += 1
             for dl in rules.daily_fail:
                 level = day_open - dl.value
-                hit = stepping & _cmp(low, level, dl.inclusive)
+                hit = stepping & breached(low, level, dl.inclusive)
                 better = hit & (level > best_fail_level)
                 best_fail_level = np.where(better, level, best_fail_level)
                 best_fail_code = np.where(better, code, best_fail_code)
@@ -290,7 +331,7 @@ def _simulate_phase(
             best_lock_width = np.zeros(n_paths)
             for dl in rules.daily_lock:
                 level = day_open - dl.value
-                hit = stepping & _cmp(low, level, dl.inclusive)
+                hit = stepping & breached(low, level, dl.inclusive)
                 better = hit & (level > best_lock_level)
                 best_lock_level = np.where(better, level, best_lock_level)
                 best_lock_width = np.where(better, dl.value, best_lock_width)
@@ -318,7 +359,7 @@ def _simulate_phase(
             # check, kept for exact scalar parity.
             for r, tr in enumerate(rules.trailing):
                 thr = np.minimum(hwms[r] - tr.amount, tr.cap)
-                hit = still & _cmp(balance, thr, tr.inclusive)
+                hit = still & breached(balance, thr, tr.inclusive)
                 if hit.any():
                     outcome[hit] = OUTCOME_BREACHED
                     end_day[hit] = t
@@ -329,10 +370,20 @@ def _simulate_phase(
                 assert target is not None
                 best_running = np.maximum(best_day_completed, close_rel[d, i])
                 eff_target = np.full(n_paths, float(target))
-                for frac in rules.raise_pcts:
-                    raised = np.where(best_running > frac * target, best_running / frac, target)
+                blocked = np.zeros(n_paths, dtype=bool)
+                for gate in rules.raises:
+                    raised = np.where(
+                        best_running > gate.frac * target, best_running / gate.frac, target
+                    )
                     eff_target = np.maximum(eff_target, raised)
-                pass_hit = still & (balance - initial >= eff_target) & (t + 1 >= rules.min_days)
+                    if gate.strict:
+                        # "50% or more" wording: exact equality still blocks.
+                        blocked |= (best_running > 0) & (
+                            best_running >= gate.frac * (balance - initial)
+                        )
+                pass_hit = (
+                    still & ~blocked & (balance - initial >= eff_target) & (t + 1 >= rules.min_days)
+                )
                 if pass_hit.any():
                     outcome[pass_hit] = OUTCOME_PASSED
                     end_day[pass_hit] = t
@@ -365,15 +416,33 @@ def _simulate_phase(
                 & (days_since_payout >= max(payout.period_td, 1))
             )
             for frac in payout.gate_pcts:
-                eligible &= (profit_since > 0) & (best_day_since <= frac * profit_since)
+                # Apex wording: a best day at "50% or more" blocks — strict.
+                eligible &= (profit_since > 0) & (best_day_since < frac * profit_since)
             cap = payout.ladder[np.minimum(payout_count, len(payout.ladder) - 1)]
-            amount = np.minimum(balance - payout.floor, cap)
+            # A withdrawal must never drop the balance to (or below) a live
+            # trailing floor: the firm would liquidate the account on the
+            # next tick. Bound the amount by every trailing threshold.
+            floor_eff = np.full(n_paths, float(payout.floor))
+            for r, tr in enumerate(rules.trailing):
+                thr = np.minimum(hwms[r] - tr.amount, tr.cap)
+                floor_eff = np.maximum(floor_eff, thr + PAYOUT_FLOOR_MARGIN)
+            amount = np.minimum(balance - floor_eff, cap)
             if payout.share_of_balance is not None:
                 amount = np.minimum(amount, payout.share_of_balance * balance)
             paying = eligible & (amount >= payout.min_payout)
             if paying.any():
                 total_withdrawn = np.where(paying, total_withdrawn + amount, total_withdrawn)
                 balance = np.where(paying, balance - amount, balance)
+                # Withdrawal is not trading drawdown: shift the peak with it.
+                peak = np.where(paying, peak - amount, peak)
+                # Uncapped trails (FTMO 1-Step) reset on reward withdrawal —
+                # approximate by lowering the hwm with the withdrawn amount.
+                # Capped/locked floors (Topstep/Apex) never move down.
+                for r, tr in enumerate(rules.trailing):
+                    if np.isinf(tr.cap):
+                        hwms[r] = np.where(
+                            paying, np.maximum(hwms[r] - amount, float(initial)), hwms[r]
+                        )
                 first_payout_day = np.where(paying & (first_payout_day < 0), t, first_payout_day)
                 payout_count = np.where(paying, payout_count + 1, payout_count)
                 qual_days = np.where(paying, 0, qual_days)
@@ -405,7 +474,7 @@ def _simulate_phase(
 
 
 def _iid_trade_profile(
-    log: TradeLog, boundary: DayBoundary, rng: np.random.Generator, n_synth_days: int = 1000
+    log: TradeLog, boundary, rng: np.random.Generator, n_synth_days: int = 1000
 ) -> DayProfile:
     days = log.daily_groups(boundary)
     sizes = np.array([len(trades) for _, trades in days])
@@ -422,7 +491,8 @@ def run_monte_carlo(
 ) -> MonteCarloReport:
     cfg = cfg or MCConfig()
     rng = np.random.default_rng(cfg.seed)
-    boundary = DayBoundary(firm.day_boundary.tz, firm.day_boundary.cutoff_hour)
+    boundary = firm.day_boundary.to_boundary()
+    sessions_per_week = observed_sessions_per_week(log, boundary)
     warnings: list[str] = []
 
     bootstrap_name: BootstrapName = cfg.bootstrap
@@ -466,6 +536,7 @@ def run_monte_carlo(
                 firm,
                 payout=None,
                 sample_paths=cfg.sample_paths_kept,
+                sessions_per_week=sessions_per_week,
             )
         )
 
@@ -473,7 +544,7 @@ def run_monte_carlo(
         firm.funded, firm, firm.funded.resolved_initial(firm.account_size)
     ).payout_gate_pcts
     payout_params = _resolve_payout(
-        firm, firm.funded.resolved_initial(firm.account_size), funded_gates
+        firm, firm.funded.resolved_initial(firm.account_size), funded_gates, sessions_per_week
     )
     idx = sampler.sample(profile.n_days, cfg.n_paths, cfg.funded_horizon_days, rng)
     funded_outcome = _simulate_phase(
@@ -483,6 +554,7 @@ def run_monte_carlo(
         firm,
         payout=payout_params,
         sample_paths=cfg.sample_paths_kept,
+        sessions_per_week=sessions_per_week,
     )
 
     return summarize(

@@ -14,6 +14,8 @@ from typing import Literal, Protocol
 
 import numpy as np
 
+from quantlab.errors import QuantLabError
+
 BootstrapName = Literal["stationary", "iid_day", "iid_trade"]
 
 
@@ -59,4 +61,9 @@ class IIDDayBootstrap:
 def make_bootstrapper(name: BootstrapName, block_len: int | None = None) -> Bootstrapper:
     if name == "stationary":
         return StationaryBlockBootstrap(block_len)
-    return IIDDayBootstrap()  # iid_trade resamples the *profile*, then IID days
+    if name in ("iid_day", "iid_trade"):  # iid_trade resamples the *profile*, then IID days
+        return IIDDayBootstrap()
+    raise QuantLabError(
+        f"Unknown bootstrap {name!r}: choose stationary, iid_day, or iid_trade. "
+        "(A typo here must not silently fall back to IID sampling.)"
+    )

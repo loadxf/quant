@@ -17,11 +17,10 @@ class TestHtmlReport:
         log = random_log(n_days=60, seed=41, with_excursions=True)
         metrics = compute_metrics(log)
         verdict = compute_scorecard(log, metrics)
-        mc = run_monte_carlo(
-            log, load_firm("topstep_50k"), MCConfig(n_paths=300, seed=1, sample_paths_kept=50)
-        )
+        firm = load_firm("topstep_50k")
+        mc = run_monte_carlo(log, firm, MCConfig(n_paths=300, seed=1, sample_paths_kept=50))
         out = tmp_path / "report.html"
-        build_html_report(log, metrics, verdict, out, mc=mc)
+        build_html_report(log, metrics, verdict, out, mc=mc, firm=firm)
 
         html = out.read_text()
         assert html.startswith("<!doctype html>")

@@ -40,6 +40,27 @@ def load_firm(name_or_path: str | Path) -> FirmConfig:
     if not isinstance(raw, dict):
         raise ConfigError(f"Firm config {name_or_path} must be a YAML mapping")
     try:
-        return FirmConfig.model_validate(raw)
+        firm = FirmConfig.model_validate(raw)
     except ValidationError as exc:
         raise ConfigError(f"Invalid firm config {name_or_path}: {exc}") from exc
+    _validate_amounts(firm, str(name_or_path))
+    return firm
+
+
+def _validate_amounts(firm: FirmConfig, source: str) -> None:
+    """Fail at LOAD time (with firm context) when a rule has a bad
+    amount/pct combination — not mid-simulation with no file context."""
+    from quantlab.prop.config import (
+        DailyLossLimitSpec,
+        StaticMaxLossSpec,
+        TrailingDrawdownSpec,
+        resolved_amount,
+    )
+
+    for phase in [*firm.phases, firm.funded]:
+        for spec in phase.rules:
+            if isinstance(spec, TrailingDrawdownSpec | StaticMaxLossSpec | DailyLossLimitSpec):
+                try:
+                    resolved_amount(spec, firm.account_size)
+                except ConfigError as exc:
+                    raise ConfigError(f"Firm {source!r}, phase {phase.name!r}: {exc}") from exc
