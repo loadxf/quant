@@ -12,6 +12,7 @@ from quantlab import __version__
 from quantlab.cli.cloud_cmds import cloud_app
 from quantlab.cli.ingest_cmds import ingest_app
 from quantlab.cli.metrics_cmds import register_metrics_commands
+from quantlab.cli.pbo_cmds import register_pbo_commands
 from quantlab.cli.prop_cmds import prop_app
 from quantlab.cli.report_cmds import register_report_commands
 from quantlab.cli.stress_cmds import register_stress_commands
@@ -29,6 +30,7 @@ app.add_typer(cloud_app, name="cloud", help="QuantConnect Cloud backtests (needs
 register_metrics_commands(app)
 register_report_commands(app)
 register_stress_commands(app)
+register_pbo_commands(app)
 
 
 @app.callback()

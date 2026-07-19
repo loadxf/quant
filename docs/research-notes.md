@@ -225,3 +225,25 @@ audits + direct re-verification of every flagged defect).
 - **Stop-slippage stress**: a log does not record order types, so the
   all-exits-as-stops row is the correct worst-case bound (inherent input
   limitation, not a modeling gap).
+- **PBO / CSCV** (`quant pbo`): Bailey, Borwein, López de Prado & Zhu,
+  "The Probability of Backtest Overfitting", *J. Computational Finance*
+  (2017). S=16 even blocks, all C(16,8)=12,870 symmetric splits; the IS
+  winner's OOS rank gives the logit distribution; PBO = P(rank in the
+  bottom half). Sharpe from pooled block sums (exact), ties averaged,
+  degenerate variants ranked at ±inf by mean sign. Splits above the cap
+  are deterministically sampled and reported (no silent truncation).
+  Anchors tested: pure noise ⇒ PBO ≈ 0.5; one dominant edge ⇒ PBO < 0.15.
+- **Sampling-uncertainty band** (`quant stress --outer`): nested/double
+  bootstrap (Chang & Hall 2015; Efron & Tibshirani 1993 §12) — outer
+  stationary block resamples of the SOURCE DAYS, inner prop-firm MC per
+  resample; the p5–p95 band is source-log sampling uncertainty, which
+  the Wilson CI (simulation noise only) cannot see.
+- **Scale frontier** (`quant prop frontier`): risk-constrained sizing
+  per Busseti, Ryu & Boyd, "Risk-constrained Kelly gambling" (J. of
+  Investing, 2016); fractional-Kelly caveat (estimated edges are noisy;
+  overbetting beats underbetting only in fiction). Common random
+  numbers across grid points.
+- **Multi-account EV**: perfect correlation of copy-traded accounts —
+  EV/VaR/CVaR scale by k, P(all fail) = P(one fails); the independence
+  columns (p^k) exist only to display the illusion. No citation needed;
+  it is arithmetic.
