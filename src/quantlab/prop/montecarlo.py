@@ -50,6 +50,7 @@ from quantlab.prop.outcomes import (
     PhaseOutcome,
 )
 from quantlab.prop.rules.base import breached
+from quantlab.prop.voltarget import EwmaSizer, VolSizingParams, auto_target_vol
 from quantlab.schema.trade import TradeLog
 
 MIN_DAYS_FOR_BLOCKS = 30
@@ -111,6 +112,12 @@ class MCConfig:
     challenge_scale: float | None = None  # per-phase sizing what-ifs
     funded_scale: float | None = None
     sample_paths_kept: int = 200
+    # Dynamic vol-targeted sizing (M9): weight_t = clip(target/sigma_t)
+    # with a per-path EWMA forecast of the strategy's per-unit day PnL.
+    sizing: str = "fixed"  # "fixed" | "vol_target"
+    vol_lambda: float = 0.94  # RiskMetrics 1996 daily decay
+    vol_target: float | None = None  # None -> median EWMA sigma of the profile
+    vol_clip: tuple[float, float] = (0.5, 1.5)  # Moreira-Muir 1.5x cap
 
 
 @dataclass
@@ -270,6 +277,7 @@ def _simulate_phase(
     payout: _PayoutParams | None,
     sample_paths: int,
     sessions_per_week: float = DEFAULT_SESSIONS_PER_WEEK,
+    sizing: VolSizingParams | None = None,
 ) -> PhaseOutcome:
     n_paths, horizon = idx.shape
     initial = phase.resolved_initial(firm.account_size)
@@ -300,6 +308,9 @@ def _simulate_phase(
 
     n_trades_arr = profile.n_trades
     low_rel, high_rel, close_rel = profile.low_rel, profile.high_rel, profile.close_rel
+    # One shared sizing recursion serves both engines (see voltarget.py);
+    # sizer.var is a (P,) array here and a float in the evaluator.
+    sizer = EwmaSizer(sizing, n_paths=n_paths) if sizing is not None else None
 
     for t in range(horizon):
         alive = outcome == OUTCOME_ACTIVE
@@ -315,14 +326,22 @@ def _simulate_phase(
         day_open = balance.copy()
         locked = np.zeros(n_paths, dtype=bool)
         k_max = int(day_n[alive].max())
+        # Day weight from PRIOR days' unscaled PnL only (strict t-1 info);
+        # +/-inf padding survives the positive multiply unchanged.
+        w = sizer.weight() if sizer is not None else None
 
         for i in range(k_max):
             stepping = alive & ~locked & (i < day_n) & (outcome == OUTCOME_ACTIVE)
             if not stepping.any():
                 break
-            high = day_open + high_rel[d, i]
-            low = day_open + low_rel[d, i]
-            close = day_open + close_rel[d, i]
+            if w is None:
+                high = day_open + high_rel[d, i]
+                low = day_open + low_rel[d, i]
+                close = day_open + close_rel[d, i]
+            else:
+                high = day_open + w * high_rel[d, i]
+                low = day_open + w * low_rel[d, i]
+                close = day_open + w * close_rel[d, i]
 
             for r, tr in enumerate(rules.trailing):
                 if tr.intraday:
@@ -394,7 +413,8 @@ def _simulate_phase(
 
             if not is_funded:
                 assert target is not None
-                best_running = np.maximum(best_day_completed, close_rel[d, i])
+                day_close_so_far = close_rel[d, i] if w is None else w * close_rel[d, i]
+                best_running = np.maximum(best_day_completed, day_close_so_far)
                 eff_target = np.full(n_paths, float(target))
                 blocked = np.zeros(n_paths, dtype=bool)
                 for gate in rules.raises:
@@ -417,6 +437,11 @@ def _simulate_phase(
         # --- day close -----------------------------------------------------
         alive = outcome == OUTCOME_ACTIVE
         day_pnl = balance - day_open
+        if sizer is not None:
+            # Advance the forecast with the sampled day's UNSCALED per-unit
+            # PnL — the strategy's own volatility, independent of the
+            # weight that was applied to the account.
+            sizer.update(profile.day_pnl[d])
         for r, tr in enumerate(rules.trailing):
             if not tr.intraday:
                 hwms[r] = np.where(alive, np.maximum(hwms[r], balance), hwms[r])
@@ -570,6 +595,35 @@ def run_monte_carlo(
     challenge_profile = profile.scaled(challenge_scale)
     funded_profile = profile.scaled(funded_scale)
 
+    def _make_sizing(p: DayProfile) -> VolSizingParams | None:
+        if cfg.sizing != "vol_target":
+            if cfg.sizing != "fixed":
+                raise QuantLabError(
+                    f"unknown sizing mode {cfg.sizing!r}: choose fixed or vol_target"
+                )
+            return None
+        dp = p.day_pnl
+        # Seed with the profile's unconditional second moment (zero-mean
+        # RiskMetrics convention) — an asset-personality prior, legitimate
+        # in-bootstrap because the profile IS the sampling distribution.
+        seed = float(np.mean(dp**2))
+        target = (
+            cfg.vol_target
+            if cfg.vol_target is not None
+            else auto_target_vol(dp, lam=cfg.vol_lambda)
+        )
+        return VolSizingParams(
+            lam=cfg.vol_lambda,
+            target_vol=target,
+            seed_var=seed,
+            clip_lo=cfg.vol_clip[0],
+            clip_hi=cfg.vol_clip[1],
+            burn_in=0,
+        )
+
+    challenge_sizing = _make_sizing(challenge_profile)
+    funded_sizing = _make_sizing(funded_profile)
+
     if cfg.n_paths < 1:
         raise QuantLabError("n_paths must be >= 1")
 
@@ -585,6 +639,7 @@ def run_monte_carlo(
                 payout=None,
                 sample_paths=cfg.sample_paths_kept,
                 sessions_per_week=sessions_per_week,
+                sizing=challenge_sizing,
             )
         )
 
@@ -603,6 +658,7 @@ def run_monte_carlo(
         payout=payout_params,
         sample_paths=cfg.sample_paths_kept,
         sessions_per_week=sessions_per_week,
+        sizing=funded_sizing,
     )
 
     return summarize(

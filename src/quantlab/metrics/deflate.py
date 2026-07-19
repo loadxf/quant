@@ -70,6 +70,70 @@ _D = (
 _P_LOW = 0.02425
 
 
+def _gser(a: float, x: float) -> float:
+    """Series representation of the regularized lower incomplete gamma
+    P(a, x) (Numerical Recipes 6.2), for x < a + 1."""
+    gln = math.lgamma(a)
+    ap = a
+    total = 1.0 / a
+    delt = total
+    for _ in range(500):
+        ap += 1.0
+        delt *= x / ap
+        total += delt
+        if abs(delt) < abs(total) * 3e-12:
+            break
+    return total * math.exp(-x + a * math.log(x) - gln)
+
+
+def _gcf(a: float, x: float) -> float:
+    """Continued fraction for the regularized upper incomplete gamma
+    Q(a, x) via modified Lentz (Numerical Recipes 6.2), for x >= a + 1."""
+    gln = math.lgamma(a)
+    tiny = 1e-300
+    b = x + 1.0 - a
+    c = 1.0 / tiny
+    d = 1.0 / b if b != 0 else 1.0 / tiny
+    h = d
+    for i in range(1, 500):
+        an = -i * (i - a)
+        b += 2.0
+        d = an * d + b
+        if abs(d) < tiny:
+            d = tiny
+        c = b + an / c
+        if abs(c) < tiny:
+            c = tiny
+        d = 1.0 / d
+        de = d * c
+        h *= de
+        if abs(de - 1.0) < 3e-12:
+            break
+    return math.exp(-x + a * math.log(x) - gln) * h
+
+
+def gammq(a: float, x: float) -> float:
+    """Regularized upper incomplete gamma Q(a, x) = 1 - P(a, x).
+
+    Numerical Recipes 6.2 (series + modified-Lentz continued fraction),
+    ~1e-10 accuracy — the chi-squared survival function without scipy,
+    matching the precision standard of the Acklam ppf above."""
+    if a <= 0.0:
+        raise ValueError(f"gammq requires a > 0 (got {a})")
+    if x < 0.0:
+        raise ValueError(f"gammq requires x >= 0 (got {x})")
+    if x == 0.0:
+        return 1.0
+    if x < a + 1.0:
+        return 1.0 - _gser(a, x)
+    return _gcf(a, x)
+
+
+def chi2_sf(x: float, df: float) -> float:
+    """Chi-squared survival function P(X > x) with df degrees of freedom."""
+    return gammq(df / 2.0, x / 2.0)
+
+
 def norm_ppf(p: float) -> float:
     """Inverse standard normal CDF (Acklam)."""
     if p <= 0.0:

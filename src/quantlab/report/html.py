@@ -203,6 +203,45 @@ def _reality_context(rc: Any) -> dict:
         if costs.survives_ticks_rt is not None
         else "no positive baseline edge to stress"
     )
+    clustering_rows = []
+    if rc.clustering is not None:
+        cl = rc.clustering
+        clustering_rows = [
+            (f"ARCH-LM ({cl.arch_lm_lags} lags)", f"{cl.arch_lm_stat:.2f}", f"{cl.arch_lm_p:.4f}"),
+            (
+                f"McLeod-Li ({cl.mcleod_li_lags} lags)",
+                f"{cl.mcleod_li_stat:.2f}",
+                f"{cl.mcleod_li_p:.4f}",
+            ),
+            ("Verdict", "CLUSTERED" if cl.clustered else "no clustering", ""),
+        ]
+    voltarget_rows = []
+    voltarget_note = None
+    if rc.voltarget is not None:
+        vt = rc.voltarget
+        voltarget_rows = [
+            ("Net PnL", money(vt.fixed["net"]), money(vt.targeted["net"])),
+            (
+                "Daily Sharpe (ann.)",
+                f"{vt.fixed['daily_sharpe_ann']:.2f}",
+                f"{vt.targeted['daily_sharpe_ann']:.2f}",
+            ),
+            ("Max drawdown", money(vt.fixed["max_drawdown"]), money(vt.targeted["max_drawdown"])),
+            ("Worst month", money(vt.fixed["worst_month"]), money(vt.targeted["worst_month"])),
+        ]
+        if vt.mc_fixed is not None and vt.mc_targeted is not None:
+            voltarget_rows += [
+                ("MC pass prob", pct(vt.mc_fixed["pass_prob"]), pct(vt.mc_targeted["pass_prob"])),
+                (
+                    "MC risk of ruin",
+                    pct(vt.mc_fixed["risk_of_ruin_funded"]),
+                    pct(vt.mc_targeted["risk_of_ruin_funded"]),
+                ),
+            ]
+        voltarget_note = (
+            f"lambda={vt.lam:g}, clip [{vt.clip_lo:g}, {vt.clip_hi:g}], "
+            f"avg weight {vt.avg_weight:.2f} — {vt.assumption}"
+        )
     return {
         "cost_rows": cost_rows,
         "survives": survives,
@@ -210,6 +249,9 @@ def _reality_context(rc: Any) -> dict:
         "stat_rows": stat_rows,
         "dd_rows": dd_rows,
         "haircut_rows": haircut_rows,
+        "clustering_rows": clustering_rows,
+        "voltarget_rows": voltarget_rows,
+        "voltarget_note": voltarget_note,
         "warnings": rc.warnings,
     }
 
@@ -262,6 +304,11 @@ def build_html_report(
                 _fig_html(charts.fig_rolling_expectancy(reality.decay), include_js=False),
                 _fig_html(charts.fig_drawdown_permutation(reality.drawdown), include_js=False),
             ]
+            + (
+                [_fig_html(charts.fig_vol_weights(reality.voltarget), include_js=False)]
+                if reality.voltarget is not None
+                else []
+            )
             if reality is not None
             else []
         ),

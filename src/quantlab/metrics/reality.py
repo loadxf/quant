@@ -24,9 +24,11 @@ from quantlab.metrics.costs import (
 from quantlab.metrics.decay import DecayPanel, compute_decay
 from quantlab.metrics.deflate import DeflatedStats, compute_deflated
 from quantlab.metrics.drawdown_mc import DrawdownMC, permutation_drawdown
+from quantlab.metrics.volforecast import ClusteringTests, compute_clustering
 from quantlab.prop.config import FirmConfig
 from quantlab.prop.montecarlo import MCConfig
-from quantlab.schema.trade import TradeLog
+from quantlab.prop.voltarget import VolTargetCounterfactual, compute_voltarget
+from quantlab.schema.trade import FUTURES_DAY, TradeLog
 
 
 @dataclass
@@ -36,16 +38,20 @@ class RealityCheck:
     deflated: DeflatedStats
     drawdown: DrawdownMC
     haircuts: list[HaircutScenario]
+    clustering: ClusteringTests | None = None
+    voltarget: VolTargetCounterfactual | None = None
     warnings: list[str] = field(default_factory=list)
 
     def to_json_dict(self) -> dict:
         return {
-            "schema_version": 1,
+            "schema_version": 2,  # v2: adds clustering + voltarget (M9)
             "costs": self.costs.to_json_dict(),
             "decay": dataclasses.asdict(self.decay),
             "deflated": dataclasses.asdict(self.deflated),
             "drawdown": dataclasses.asdict(self.drawdown),
             "haircuts": [dataclasses.asdict(h) for h in self.haircuts],
+            "clustering": dataclasses.asdict(self.clustering) if self.clustering else None,
+            "voltarget": self.voltarget.to_json_dict() if self.voltarget else None,
             "warnings": self.warnings,
         }
 
@@ -89,7 +95,17 @@ def compute_reality_check(
     drawdown = permutation_drawdown(log, seed=seed, ruin_capital=ruin_capital)
     haircuts = run_haircut_scenarios(log, firm=firm, mc_cfg=mc_cfg)
 
+    boundary = firm.day_boundary.to_boundary() if firm is not None else FUTURES_DAY
+    day_groups = log.daily_groups(boundary)
+    day_pnl = np.array([sum(t.pnl for t in trades) for _, trades in day_groups], dtype=float)
+    clustering = compute_clustering(day_pnl)
+    voltarget = compute_voltarget(log, firm=firm, mc_cfg=mc_cfg) if len(day_groups) >= 60 else None
+
     warnings = list(costs.warnings)
+    if voltarget is not None:
+        warnings.extend(voltarget.warnings)
+    if voltarget is None:
+        warnings.append(f"vol-target counterfactual skipped: {len(day_groups)} trading days < 60")
     gross = gross_pnl_warning(log)
     if gross:
         warnings.append(gross)
@@ -110,5 +126,7 @@ def compute_reality_check(
         deflated=deflated,
         drawdown=drawdown,
         haircuts=haircuts,
+        clustering=clustering,
+        voltarget=voltarget,
         warnings=warnings,
     )

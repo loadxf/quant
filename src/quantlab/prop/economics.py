@@ -211,4 +211,12 @@ def summarize(
         funded=funded,
         economics=economics,
         warnings=warnings,
+        sizing={
+            "mode": getattr(cfg, "sizing", "fixed"),
+            "vol_lambda": getattr(cfg, "vol_lambda", None),
+            "vol_target": getattr(cfg, "vol_target", None),
+            "vol_clip": list(getattr(cfg, "vol_clip", (0.5, 1.5))),
+        }
+        if getattr(cfg, "sizing", "fixed") == "vol_target"
+        else {"mode": "fixed"},
     )

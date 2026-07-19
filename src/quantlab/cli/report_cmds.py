@@ -99,6 +99,7 @@ def register_report_commands(app: typer.Typer) -> None:
             trials=trials,
             decay=rc.decay if rc else None,
             deflated=rc.deflated if rc else None,
+            clustering=rc.clustering if rc else None,
         )
 
         _render_verdict(verdict)

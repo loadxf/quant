@@ -30,7 +30,9 @@ quant prop firms list                              # 18 verified firm presets
 quant prop evaluate trades.parquet --firm topstep_50k    # deterministic replay
 quant prop simulate trades.parquet --firm topstep_50k    # Monte Carlo
 quant stress   trades.parquet --firm topstep_50k --trials 5       # reality check:
-                                                   # cost sweep, edge decay, deflated Sharpe
+                                  # cost sweep, edge decay, deflated Sharpe, vol clustering,
+                                  # and a vol-targeted sizing counterfactual
+quant prop simulate trades.parquet --firm topstep_50k --sizing vol_target   # dynamic sizing MC
 quant report   trades.parquet --firm topstep_50k -o report.html   # everything
 ```
 

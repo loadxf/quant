@@ -203,6 +203,7 @@ def compute_scorecard(
     trials: int = 1,
     decay: DecayPanel | None = None,
     deflated: DeflatedStats | None = None,
+    clustering=None,
 ) -> Verdict:
     """decay/deflated: precomputed panels (e.g. from a RealityCheck) so a
     combined report never computes them twice; both derived internally
@@ -237,5 +238,5 @@ def compute_scorecard(
         overall=overall,
         points=points,
         capped_by_sample=capped,
-        flags=overfit_flags(log, m, decay=decay),
+        flags=overfit_flags(log, m, decay=decay, clustering=clustering),
     )

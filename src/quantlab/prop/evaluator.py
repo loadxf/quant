@@ -12,6 +12,7 @@ high -> low -> close (see rules/trailing_dd.py).
 
 from __future__ import annotations
 
+import dataclasses
 import datetime as dt
 from dataclasses import dataclass, field
 from typing import Literal
@@ -40,6 +41,7 @@ from quantlab.prop.rules import (
     TimeLimitGate,
     TrailingDrawdownRule,
 )
+from quantlab.prop.voltarget import EwmaSizer, VolSizingParams
 from quantlab.schema.trade import Trade, TradeLog
 
 Outcome = Literal["passed", "breached", "expired", "incomplete", "survived"]
@@ -71,11 +73,15 @@ def evaluate(
     firm: FirmConfig,
     phase: str = "challenge",
     start_day: int = 0,
+    sizing: VolSizingParams | None = None,
 ) -> EvaluationResult:
-    """Replay `log` (from trading-day index `start_day`) against one phase."""
+    """Replay `log` (from trading-day index `start_day`) against one phase.
+
+    `sizing`: optional vol-targeted dynamic sizing — the same EwmaSizer
+    recursion the Monte Carlo uses (golden equivalence by construction)."""
     phase_cfg = _find_phase(firm, phase)
     days = log.daily_groups(firm.day_boundary.to_boundary())[start_day:]
-    return _evaluate_days(days, firm, phase_cfg, fidelity_from(log))
+    return _evaluate_days(days, firm, phase_cfg, fidelity_from(log), sizing=sizing)
 
 
 def evaluate_sequence(log: TradeLog, firm: FirmConfig) -> list[EvaluationResult]:
@@ -116,6 +122,7 @@ def _evaluate_days(
     firm: FirmConfig,
     phase_cfg: PhaseConfig,
     fidelity: str,
+    sizing: VolSizingParams | None = None,
 ) -> EvaluationResult:
     initial = phase_cfg.resolved_initial(firm.account_size)
     account = firm.account_size
@@ -157,6 +164,7 @@ def _evaluate_days(
             )
 
     balance = initial
+    sizer = EwmaSizer(sizing) if sizing is not None else None
     best_day_completed = 0.0
     lockout_days = 0
     max_qty = 0.0
@@ -177,6 +185,9 @@ def _evaluate_days(
         # also a trading day — one counter serves both.
         days_consumed += 1
         day_open = balance
+        # Day weight from PRIOR days' unscaled PnL only (strict t-1 info) —
+        # identical recursion to the vectorized engine's (P,) sizer.
+        w = float(sizer.weight()) if sizer is not None else 1.0  # scalar engine
         for rule in (*daily_fail, *daily_lockout):
             rule.day_start(day_open)
         day_cum = 0.0
@@ -185,7 +196,20 @@ def _evaluate_days(
 
         for trade_index, trade in enumerate(trades):
             max_qty = max(max_qty, trade.quantity)
-            high, low, close = trade_points(trade, day_open + day_cum)
+            # Linear same-fill scaling: w constant within the day, so
+            # scaling each trade's pnl/mae/mfe equals the vector engine's
+            # w * {high,low,close}_rel row multiply exactly.
+            eff = (
+                trade
+                if w == 1.0
+                else dataclasses.replace(
+                    trade,
+                    pnl=trade.pnl * w,
+                    mae=trade.mae * w if trade.mae is not None else None,
+                    mfe=trade.mfe * w if trade.mfe is not None else None,
+                )
+            )
+            high, low, close = trade_points(eff, day_open + day_cum)
 
             for tr_rule in trailing:
                 tr_rule.observe_high(high)
@@ -260,6 +284,9 @@ def _evaluate_days(
 
         balance = day_open + day_cum
         best_day_completed = max(best_day_completed, day_cum)
+        if sizer is not None:
+            # Advance the forecast with the day's UNSCALED per-unit PnL.
+            sizer.update(float(sum(t.pnl for t in trades)))
         for tr_rule in trailing:
             tr_rule.day_close(balance)
 

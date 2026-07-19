@@ -240,3 +240,36 @@ def fig_drawdown_permutation(dd: Any) -> go.Figure:
     values = [dd.median_max_dd, dd.p95_max_dd]
     fig.add_trace(go.Bar(x=labels, y=values, marker_color=[BLUE_RAMP[2], BLUE_RAMP[4]]))
     return fig
+
+
+def fig_vol_weights(vt: Any) -> go.Figure:
+    """Vol-target counterfactual: applied weight path + forecast sigma."""
+    fig = _base("Vol-target sizing path (counterfactual)", "trading day", "applied weight")
+    x = np.arange(len(vt.weights))
+    fig.add_trace(
+        go.Scatter(x=x, y=vt.weights, mode="lines", line=dict(color=BLUE, width=2), name="weight")
+    )
+    fig.add_hline(y=1.0, line=dict(color=INK_MUTED, width=1, dash="dot"))
+    sigma = np.array(vt.sigma, dtype=float)
+    if np.isfinite(sigma).any():
+        fig.add_trace(
+            go.Scatter(
+                x=x,
+                y=sigma,
+                mode="lines",
+                line=dict(color=RED, width=1.5, dash="dash"),
+                name="forecast sigma ($/day)",
+                yaxis="y2",
+            )
+        )
+        fig.update_layout(
+            yaxis2=dict(
+                title="forecast sigma ($/day)",
+                overlaying="y",
+                side="right",
+                color=RED,
+                showgrid=False,
+            ),
+            showlegend=True,
+        )
+    return fig

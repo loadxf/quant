@@ -12,6 +12,7 @@ import numpy as np
 
 from quantlab.metrics.core import Metrics
 from quantlab.metrics.decay import DecayPanel, compute_decay
+from quantlab.metrics.volforecast import ClusteringTests
 from quantlab.schema.trade import TradeLog
 
 
@@ -158,9 +159,33 @@ def _streak_dependence(panel: DecayPanel) -> OverfitFlag:
     )
 
 
-def overfit_flags(log: TradeLog, m: Metrics, decay: DecayPanel | None = None) -> list[OverfitFlag]:
+def _vol_clustering(tests: ClusteringTests) -> OverfitFlag:
+    triggered = tests.clustered
+    detail = (
+        f"ARCH-LM p={tests.arch_lm_p:.3f} ({tests.arch_lm_lags} lags), "
+        f"McLeod-Li p={tests.mcleod_li_p:.3f}"
+    )
+    return OverfitFlag(
+        "volatility_clustering",
+        triggered,
+        detail
+        + (
+            " — daily PnL volatility clusters: the block bootstrap is "
+            "essential, and vol-targeted sizing is likely to matter"
+            if triggered
+            else " — no clustering detected: vol-targeted sizing is unlikely to help"
+        ),
+    )
+
+
+def overfit_flags(
+    log: TradeLog,
+    m: Metrics,
+    decay: DecayPanel | None = None,
+    clustering: ClusteringTests | None = None,
+) -> list[OverfitFlag]:
     panel = decay if decay is not None else compute_decay(log)
-    return [
+    flags = [
         _smooth_curve(log, m),
         _zero_crossing(m),
         _top5_concentration(log, m),
@@ -170,3 +195,13 @@ def overfit_flags(log: TradeLog, m: Metrics, decay: DecayPanel | None = None) ->
         _mk_downtrend(panel),
         _streak_dependence(panel),
     ]
+    if clustering is None:
+        from quantlab.metrics.volforecast import compute_clustering
+        from quantlab.schema.trade import FUTURES_DAY
+
+        day_pnl = np.array(
+            [sum(t.pnl for t in trades) for _, trades in log.daily_groups(FUTURES_DAY)]
+        )
+        clustering = compute_clustering(day_pnl)
+    flags.append(_vol_clustering(clustering))
+    return flags

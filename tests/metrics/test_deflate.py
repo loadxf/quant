@@ -157,3 +157,36 @@ class TestContracts:
 
     def test_unknown_is_none(self) -> None:
         assert resolve_contract("CL") is None
+
+
+class TestChi2:
+    """gammq/chi2_sf anchors (M9): standard chi-squared critical values."""
+
+    @pytest.mark.parametrize(
+        ("x", "df", "p"),
+        [
+            (3.841, 1, 0.05),
+            (11.0705, 5, 0.05),
+            (18.307, 10, 0.05),
+            (23.209, 10, 0.01),
+            (0.0, 5, 1.0),
+        ],
+    )
+    def test_critical_values(self, x: float, df: int, p: float) -> None:
+        from quantlab.metrics.deflate import chi2_sf
+
+        assert chi2_sf(x, df) == pytest.approx(p, abs=2e-4)
+
+    def test_monotone_decreasing_in_x(self) -> None:
+        from quantlab.metrics.deflate import chi2_sf
+
+        values = [chi2_sf(x, 5) for x in (0.5, 2.0, 5.0, 12.0, 30.0)]
+        assert all(a > b for a, b in itertools.pairwise(values))
+
+    def test_domain_errors(self) -> None:
+        from quantlab.metrics.deflate import gammq
+
+        with pytest.raises(ValueError):
+            gammq(0.0, 1.0)
+        with pytest.raises(ValueError):
+            gammq(1.0, -1.0)

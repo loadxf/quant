@@ -125,6 +125,19 @@ def simulate_cmd(
     funded_scale: float | None = typer.Option(None, "--funded-scale"),
     challenge_horizon: int = typer.Option(120, "--challenge-horizon", help="Trading days."),
     funded_horizon: int = typer.Option(252, "--funded-horizon", help="Trading days."),
+    sizing: str = typer.Option(
+        "fixed",
+        "--sizing",
+        help="fixed | vol_target (dynamic per-path EWMA vol-targeted sizing, M9).",
+    ),
+    vol_lambda: float = typer.Option(
+        0.94, "--vol-lambda", help="EWMA decay (RiskMetrics daily 0.94)."
+    ),
+    vol_target: float | None = typer.Option(
+        None, "--vol-target", help="Target daily $ vol (default: median EWMA sigma of the log)."
+    ),
+    vol_clip_lo: float = typer.Option(0.5, "--vol-clip-lo", help="Weight floor."),
+    vol_clip_hi: float = typer.Option(1.5, "--vol-clip-hi", help="Weight cap (Moreira-Muir 1.5)."),
     json_out: Path | None = typer.Option(None, "--json", help="Write JSON summary here."),
 ) -> None:
     """Monte Carlo the challenge + funded phases from a trade log."""
@@ -140,6 +153,10 @@ def simulate_cmd(
         funded_scale=funded_scale,
         challenge_horizon_days=challenge_horizon,
         funded_horizon_days=funded_horizon,
+        sizing=sizing,
+        vol_lambda=vol_lambda,
+        vol_target=vol_target,
+        vol_clip=(vol_clip_lo, vol_clip_hi),
     )
     report = run_monte_carlo(log, firm, cfg)
     render_report(report, console)

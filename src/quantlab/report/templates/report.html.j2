@@ -159,6 +159,25 @@
     <tr><td>{{ name }}</td><td class="num">{{ value }}</td></tr>
     {% endfor %}
   </table>
+  {% if reality.clustering_rows %}
+  <h3>Volatility clustering</h3>
+  <table>
+    <tr><th>Test</th><th class="num">Statistic</th><th class="num">p-value</th></tr>
+    {% for name, stat, p in reality.clustering_rows %}
+    <tr><td>{{ name }}</td><td class="num">{{ stat }}</td><td class="num">{{ p }}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+  {% if reality.voltarget_rows %}
+  <h3>Vol-target counterfactual</h3>
+  <table>
+    <tr><th>Metric</th><th class="num">Fixed size</th><th class="num">Vol-targeted</th></tr>
+    {% for name, fixed, targeted in reality.voltarget_rows %}
+    <tr><td>{{ name }}</td><td class="num">{{ fixed }}</td><td class="num">{{ targeted }}</td></tr>
+    {% endfor %}
+  </table>
+  <div class="meta">{{ reality.voltarget_note }}</div>
+  {% endif %}
   {% if reality.haircut_rows %}
   <h3>Literature-anchored decay scenarios</h3>
   <table>

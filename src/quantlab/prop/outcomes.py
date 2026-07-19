@@ -96,18 +96,20 @@ class MonteCarloReport:
     funded: PhaseOutcome
     economics: EconomicsSummary
     warnings: list[str] = field(default_factory=list)
+    sizing: dict[str, Any] = field(default_factory=lambda: {"mode": "fixed"})
 
     def to_json_dict(self) -> dict[str, Any]:
         """Stable numeric summary (no per-path arrays)."""
         eco = self.economics
         return {
-            "schema_version": 1,
+            "schema_version": 2,  # v2: adds the sizing block (M9)
             "firm": self.firm_name,
             "account_size": self.account_size,
             "n_paths": self.n_paths,
             "seed": self.seed,
             "bootstrap": self.bootstrap,
             "block_len": self.block_len,
+            "sizing": self.sizing,
             "fidelity": self.fidelity,
             "scale_challenge": self.scale_challenge,
             "scale_funded": self.scale_funded,

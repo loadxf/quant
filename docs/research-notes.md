@@ -130,3 +130,48 @@ adjustment.
   code valued at $1B+.
 - The video's decay numbers ("~10% bias, ~25% post-publication") are
   roughly HALF the published McLean–Pontiff figures (26% / 58%).
+
+## Volatility clustering and vol-targeted sizing (M9)
+
+Motivated by a video on GARCH forecasting; the theory verified, the
+numbers corrected:
+
+- **History**: Engle (1982, Econometrica) introduced ARCH; the 2003
+  Nobel was **shared with Clive Granger** (the video omits him).
+  Bollerslev (1986, J. Econometrics) — Engle's PhD student — extended it
+  to GARCH. Volatility clustering is a canonical stylized fact
+  (Mandelbrot 1963; Cont 2001; Schwert 1989 back to the 1800s).
+- **Estimator policy**: GARCH(1,1) MLE is negatively biased and unstable
+  in small samples — **≥500 observations recommended** (Hwang & Valls
+  Pereira, European J. of Finance, 2006). Trade logs are typically
+  60–250 days, so the default forecast is **EWMA/RiskMetrics λ=0.94**
+  (J.P. Morgan RiskMetrics Technical Document, 4th ed., 1996 — the
+  restricted IGARCH case, half-life ≈11 days). GARCH is offered above a
+  250-day hard floor (warning under 500) with variance targeting
+  (Engle & Mezrich 1996) and automatic EWMA fallback.
+- **Sizing rule**: weight = clip(target/σ_forecast, 0.5, 1.5) — the
+  1.5× cap per Moreira & Muir (J. Finance 2017); target defaults to the
+  trader's own median forecast σ so median weight is 1 (never injects
+  leverage a prop firm bars). Strict t−1 information; burn-in seeded
+  from the first 20 days only.
+- **What to expect**: vol targeting is **insurance, not return
+  enhancement** — Harvey et al. (JPM 2018) find tail/drawdown reduction
+  for risk assets with roughly Sharpe-neutral returns, and Cederburg,
+  O'Doherty, Wang & Yan (JFE 2020) show Moreira–Muir's Sharpe gains
+  largely vanish out-of-sample. Under static dollar prop limits the
+  survival benefit is **conditional** (Grossman & Zhou 1993 for the
+  drawdown-constraint theory): it helps when losses cluster in
+  high-forecast-vol periods and can hurt otherwise — which is why the
+  simulator MEASURES it per log (fixed vs vol-targeted comparison and
+  the `--sizing vol_target` MC mode) instead of promising it.
+- **Clustering diagnostics**: Engle's ARCH-LM (T·R² ~ χ²(q)) and
+  McLeod-Li (1983) on squared daily PnL; χ² tail probabilities via the
+  regularized upper incomplete gamma (Numerical Recipes 6.2, ~1e-10).
+  Clustering present ⇒ the block bootstrap is essential and vol
+  targeting likely matters; absent ⇒ it likely will not help.
+- **Counterfactual caveat** (printed on output): same-fill
+  linear-scaling assumption — identical entries/exits at scaled size;
+  ignores sub-contract granularity, margin, and larger-size psychology.
+- NOT adopted from the video: its downloadable Claude skill / Pine
+  indicator (unvetted third-party code), GARCH-first estimation at
+  trade-log sample sizes, and any "extra return" framing.

@@ -185,5 +185,64 @@ def render_reality(rc: Any, console: Console) -> None:
             hc_table.add_row(*row)
         console.print(hc_table)
 
+    if rc.clustering is not None:
+        cl = rc.clustering
+        cl_table = Table(title="Volatility clustering (daily PnL)")
+        cl_table.add_column("Test")
+        cl_table.add_column("Statistic", justify="right")
+        cl_table.add_column("p-value", justify="right")
+        cl_table.add_row(
+            f"ARCH-LM ({cl.arch_lm_lags} lags)", f"{cl.arch_lm_stat:.2f}", f"{cl.arch_lm_p:.4f}"
+        )
+        cl_table.add_row(
+            f"McLeod-Li ({cl.mcleod_li_lags} lags)",
+            f"{cl.mcleod_li_stat:.2f}",
+            f"{cl.mcleod_li_p:.4f}",
+        )
+        cl_table.add_row(
+            "Verdict",
+            "[red]CLUSTERED[/red]" if cl.clustered else "[green]no clustering[/green]",
+            "",
+        )
+        console.print(cl_table)
+
+    if rc.voltarget is not None:
+        vt = rc.voltarget
+        vt_table = Table(
+            title=f"Vol-target counterfactual (lambda={vt.lam:g}, "
+            f"clip [{vt.clip_lo:g}, {vt.clip_hi:g}], avg weight {vt.avg_weight:.2f})"
+        )
+        vt_table.add_column("Metric")
+        vt_table.add_column("Fixed size", justify="right")
+        vt_table.add_column("Vol-targeted", justify="right")
+        vt_table.add_row("Net PnL", money(vt.fixed["net"]), money(vt.targeted["net"]))
+        vt_table.add_row(
+            "Daily Sharpe (ann.)",
+            f"{vt.fixed['daily_sharpe_ann']:.2f}",
+            f"{vt.targeted['daily_sharpe_ann']:.2f}",
+        )
+        vt_table.add_row(
+            "Max drawdown", money(vt.fixed["max_drawdown"]), money(vt.targeted["max_drawdown"])
+        )
+        vt_table.add_row(
+            "Worst month", money(vt.fixed["worst_month"]), money(vt.targeted["worst_month"])
+        )
+        if vt.mc_fixed is not None and vt.mc_targeted is not None:
+            vt_table.add_row(
+                "MC pass prob", pct(vt.mc_fixed["pass_prob"]), pct(vt.mc_targeted["pass_prob"])
+            )
+            vt_table.add_row(
+                "MC expected net",
+                money(vt.mc_fixed["expected_net"]),
+                money(vt.mc_targeted["expected_net"]),
+            )
+            vt_table.add_row(
+                "MC risk of ruin",
+                pct(vt.mc_fixed["risk_of_ruin_funded"]),
+                pct(vt.mc_targeted["risk_of_ruin_funded"]),
+            )
+        console.print(vt_table)
+        console.print(f"[dim]{vt.assumption}[/dim]")
+
     for warning in rc.warnings:
         console.print(Panel(warning, style="yellow", title="warning"))
