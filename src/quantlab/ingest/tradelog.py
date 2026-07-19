@@ -82,9 +82,17 @@ def _to_ns(series: pd.Series) -> pd.Series:
 
 def _scalar_stamp(value: object, fmt: str | None) -> pd.Timestamp:
     try:
-        return pd.to_datetime(str(value), format=fmt)
+        stamp = pd.to_datetime(str(value), format=fmt)
     except (ValueError, TypeError):
         return pd.NaT  # type: ignore[return-value]
+    if pd.isna(stamp):
+        return pd.NaT
+    # Same out-of-ns-range contract as _to_ns: a year-9999 sentinel must
+    # drop with a reason whichever rescue path its batch happens to take.
+    naive = stamp.tz_convert(None) if stamp.tzinfo is not None else stamp
+    if naive < pd.Timestamp.min.ceil("us") or naive > pd.Timestamp.max.floor("us"):
+        return pd.NaT  # type: ignore[return-value]
+    return stamp
 
 
 def _attach_tz(stamp: Any, tzinfo: ZoneInfo) -> dt.datetime:

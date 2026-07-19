@@ -199,3 +199,23 @@ class TestMixedUtcOffsets:
         log, report = load_trade_log(csv)
         assert report.rows_dropped == 0
         assert len(log) == 3
+
+
+class TestSentinelInScalarRescueBatch:
+    """Pass-5 regression: a year-9999 sentinel sharing a rescue batch with
+    mixed-UTC-offset rows slipped past the range mask via the scalar path
+    and loaded as a fake trade."""
+
+    def test_sentinel_drops_on_every_rescue_path(self, tmp_path: Path) -> None:
+        csv = tmp_path / "mix9999.csv"
+        csv.write_text(
+            "Exit DateTime,Symbol,Net P/L\n"
+            "2026-01-05 09:31:00,MNQ,100\n"
+            "2026-03-06 10:15:00-06:00,MNQ,-50\n"
+            "2026-03-09 11:00:00-05:00,MNQ,25\n"
+            "9999-12-31 00:00:00,MNQ,-25\n"
+        )
+        log, report = load_trade_log(csv)
+        assert len(log) == 3
+        assert report.rows_dropped == 1
+        assert report.dropped[0][0] == 3

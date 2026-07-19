@@ -139,3 +139,28 @@ class TestMultiTransitionFolds:
         assert report.bars_kept == 7
         assert report.duplicate_timestamps == 0
         assert list(frame["open"]) == [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]
+
+
+class TestNonHourFoldWidth:
+    """Pass-5 regression: the second-pass shift hardcoded 1 hour, giving
+    wrong UTC instants for zones with 30-minute folds (and colliding with
+    real later bars, which the dedupe then deleted)."""
+
+    def test_lord_howe_thirty_minute_fold(self, tmp_path: Path) -> None:
+        csv = _write(
+            tmp_path,
+            "Date,Open,High,Low,Close,Volume\n"
+            "2024-04-07 01:15,1,2,0,1,1\n"
+            "2024-04-07 01:45,2,3,1,2,1\n"  # DST pass (+11:00)
+            "2024-04-07 01:45,3,4,2,3,1\n"  # standard pass (+10:30)
+            "2024-04-07 02:15,4,5,3,4,1\n",
+        )
+        frame, report = load_ohlcv(csv, tz="Australia/Lord_Howe")
+        assert report.bars_kept == 4
+        assert list(frame["open"]) == [1.0, 2.0, 3.0, 4.0]
+        assert [t.strftime("%H:%M") for t in frame["datetime"]] == [
+            "14:15",
+            "14:45",
+            "15:15",
+            "15:45",
+        ]

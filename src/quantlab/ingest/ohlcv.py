@@ -73,22 +73,25 @@ def load_ohlcv(path: Path | str, tz: str = "UTC") -> tuple[pd.DataFrame, OhlcvRe
         frame = frame.iloc[::-1]
         stamps = stamps.iloc[::-1]
     if getattr(stamps.dt, "tz", None) is None:
-        # DST fall-back folds: bars in the repeated hour are real data, and
+        # DST fall-back folds: bars in the repeated span are real data, and
         # a blanket ambiguous=True would stamp both passes with the same
         # UTC instant (the dedupe below silently deletes the second pass).
-        # Label every fold daylight time, then shift the SECOND occurrence
-        # of each duplicated wall time forward one hour — that pass is the
-        # standard-time replay. This is per-fold inference: lone fold
-        # stamps simply keep the DST label (bar preserved), where pandas'
-        # ambiguous="infer" raises for the whole column. Only the UTC
-        # instants are published, so the offset label itself is moot.
-        # Nonexistent spring-forward stamps shift forward instead of
-        # deleting an hour every transition.
+        # Label every fold daylight time, then relabel the SECOND
+        # occurrence of each duplicated wall time as standard time — that
+        # pass is the replay, and taking the ambiguous=False localization
+        # (rather than adding a constant hour) yields the exact fold width
+        # for any zone (Lord Howe folds 30 minutes, Troll 2 hours). This
+        # is per-fold inference: lone fold stamps simply keep the DST
+        # label (bar preserved), where pandas' ambiguous="infer" raises
+        # for the whole column. Only the UTC instants are published, so
+        # the offset label itself is moot. Nonexistent spring-forward
+        # stamps shift forward instead of deleting an hour per transition.
         localized = stamps.dt.tz_localize(tzinfo, nonexistent="shift_forward", ambiguous=True)
         probe = stamps.dt.tz_localize(tzinfo, nonexistent="shift_forward", ambiguous="NaT")
         second_pass = probe.isna() & stamps.notna() & stamps.duplicated(keep="first")
         if second_pass.any():
-            localized = localized + pd.to_timedelta(second_pass.astype(int), unit="h")
+            standard = stamps.dt.tz_localize(tzinfo, nonexistent="shift_forward", ambiguous=False)
+            localized = localized.where(~second_pass, standard)
         stamps = localized
     out["datetime"] = stamps.dt.tz_convert("UTC")
     for name in ("open", "high", "low", "close"):
