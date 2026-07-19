@@ -197,12 +197,16 @@ def _regime_dependence(regime) -> OverfitFlag:
         )
     shares = ", ".join(f"{r.regime} {r.net:+.0f}" for r in regime.regimes)
     if regime.regime_dependent:
+        eroding = min(regime.regimes, key=lambda r: r.net)
+        pointer = (
+            " (see the worst-regime stress row)" if eroding.regime == regime.worst_regime else ""
+        )
         return OverfitFlag(
             "regime_dependent_edge",
             True,
-            f"net by vol regime: {shares} — the {regime.worst_regime} regime erases "
+            f"net by vol regime: {shares} — the {eroding.regime} regime erases "
             "a material share of the profit; if that state persists the strategy "
-            "bleeds (see the worst-regime stress row)",
+            f"bleeds{pointer}",
         )
     return OverfitFlag("regime_dependent_edge", False, f"net by vol regime: {shares}")
 

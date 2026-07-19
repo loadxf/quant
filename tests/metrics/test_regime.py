@@ -165,3 +165,66 @@ class TestRealityIntegration:
         payload = rc.to_json_dict()
         assert payload["regime"] is not None
         assert payload["regime"]["tested"]
+
+
+class TestDependenceSensitivity:
+    """Fix-audit regression: the dependence trigger must key on the
+    most-eroding regime BY NET, not the stress regime (worst per day) —
+    otherwise diverging tercile counts silently weaken the flag."""
+
+    def _analysis(self, regimes) -> RegimeAnalysis:
+        from quantlab.metrics.regime import RegimeAnalysis, RegimeStats
+
+        stats = [
+            RegimeStats(
+                regime=name,
+                n_days=n,
+                n_trades=n,
+                net=net,
+                day_expectancy=net / n,
+                trade_win_rate=0.5,
+                persistence=0.5,
+            )
+            for name, n, net in regimes
+        ]
+        total = sum(r.net for r in stats)
+        worst = min(stats, key=lambda r: r.day_expectancy)
+        worst_by_net = min(stats, key=lambda r: r.net)
+        return RegimeAnalysis(
+            method="pnl_vol_terciles",
+            lam=0.94,
+            burn_in=20,
+            n_days=sum(r.n_days for r in stats),
+            n_classified=sum(r.n_days for r in stats),
+            tested=True,
+            regimes=stats,
+            worst_regime=worst.regime,
+            regime_dependent=worst_by_net.net < 0 and -worst_by_net.net >= 0.2 * total,
+        )
+
+    def test_diverging_worst_definitions_still_flag(self) -> None:
+        # low_vol erases 50% of profit but high_vol is worst per day: the
+        # flag must still trigger, name low_vol, and NOT cite the stress
+        # row (which conditions on high_vol).
+        from quantlab.metrics.overfit import _regime_dependence
+
+        rg = self._analysis(
+            [("low_vol", 120, -600.0), ("mid_vol", 60, 2000.0), ("high_vol", 30, -200.0)]
+        )
+        assert rg.worst_regime == "high_vol"
+        assert rg.regime_dependent
+        flag = _regime_dependence(rg)
+        assert flag.triggered
+        assert "low_vol" in flag.explanation.split("—")[1]
+        assert "stress row" not in flag.explanation
+
+    def test_coincident_worst_cites_stress_row(self) -> None:
+        from quantlab.metrics.overfit import _regime_dependence
+
+        rg = self._analysis(
+            [("low_vol", 60, 1500.0), ("mid_vol", 60, 500.0), ("high_vol", 60, -900.0)]
+        )
+        assert rg.worst_regime == "high_vol"
+        flag = _regime_dependence(rg)
+        assert flag.triggered
+        assert "stress row" in flag.explanation
