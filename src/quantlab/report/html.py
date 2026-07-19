@@ -1,0 +1,191 @@
+"""Self-contained single-file HTML report (plotly.js inlined once)."""
+
+from __future__ import annotations
+
+from importlib import resources
+from pathlib import Path
+
+import numpy as np
+import plotly.io as pio
+from jinja2 import Environment
+
+from quantlab import __version__
+from quantlab.metrics.core import Metrics
+from quantlab.metrics.scorecard import Verdict
+from quantlab.prop.outcomes import MonteCarloReport
+from quantlab.prop.registry import load_firm
+from quantlab.report import charts
+from quantlab.schema.trade import TradeLog
+
+
+def _money(value: float) -> str:
+    if value == float("inf"):
+        return "inf"
+    sign = "-" if value < 0 else ""
+    return f"{sign}${abs(value):,.2f}"
+
+
+def _pct(value: float) -> str:
+    return f"{value:.1%}"
+
+
+def _fig_html(fig, include_js: bool) -> str:
+    return pio.to_html(
+        fig,
+        full_html=False,
+        include_plotlyjs="inline" if include_js else False,
+        default_height=380,
+        config={"displayModeBar": False, "responsive": True},
+    )
+
+
+def _metric_rows(m: Metrics) -> list[tuple[str, str]]:
+    return [
+        ("Trades / trading days", f"{m.trade_count} / {m.trading_days}"),
+        ("Net profit", _money(m.net_profit)),
+        ("Win rate", _pct(m.win_rate)),
+        ("Avg win / avg loss", f"{_money(m.avg_win)} / {_money(m.avg_loss)}"),
+        ("Payoff ratio", f"{m.payoff_ratio:.2f}"),
+        (
+            "Expectancy (95% CI)",
+            f"{_money(m.expectancy)}  [{_money(m.expectancy_ci95[0])}, "
+            f"{_money(m.expectancy_ci95[1])}]",
+        ),
+        ("Profit factor", f"{m.profit_factor:.2f}"),
+        ("Max drawdown", f"{_money(m.max_drawdown)} ({_pct(m.max_drawdown_pct)})"),
+        ("Sharpe / Sortino (daily, ann.)", f"{m.sharpe:.2f} / {m.sortino:.2f}"),
+        ("MAR", f"{m.mar:.2f}"),
+        ("Longest losing streak", str(m.longest_losing_streak)),
+        ("Best day share of net", _pct(m.best_day_share)),
+    ]
+
+
+def _prop_context(mc: MonteCarloReport) -> dict:
+    eco = mc.economics
+    firm = load_firm(mc.firm_name)
+    challenge_rows: list[tuple[str, str]] = []
+    for ph in mc.phases:
+        challenge_rows.append((f"{ph.phase}: pass probability", _pct(float(np.mean(ph.passed)))))
+        for rule, frac in ph.fail_breakdown().items():
+            challenge_rows.append((f"— failed by {rule}", _pct(frac)))
+    challenge_rows.append(("overall pass probability", _pct(eco.pass_prob)))
+    challenge_rows.append(
+        ("Wilson 95% CI", f"{_pct(eco.pass_prob_ci[0])} to {_pct(eco.pass_prob_ci[1])}")
+    )
+    if eco.time_to_pass_quantiles:
+        q = eco.time_to_pass_quantiles
+        challenge_rows.append(
+            (
+                "trading days to pass (p25/p50/p75)",
+                f"{q['p25']:.0f} / {q['p50']:.0f} / {q['p75']:.0f}",
+            )
+        )
+
+    funded_rows = [
+        ("probability of >=1 payout", _pct(eco.p_payout)),
+        ("risk of ruin (blown before any payout)", _pct(eco.risk_of_ruin_funded)),
+    ]
+    for rule, frac in mc.funded.fail_breakdown().items():
+        funded_rows.append((f"— failed by {rule}", _pct(frac)))
+    if eco.days_to_first_payout_quantiles:
+        funded_rows.append(
+            (
+                "trading days to first payout (p50)",
+                f"{eco.days_to_first_payout_quantiles['p50']:.0f}",
+            )
+        )
+
+    econ_rows = [
+        ("expected eval fees per attempt", _money(eco.expected_fees_per_attempt)),
+        ("expected cost to get funded", _money(eco.expected_cost_to_funded)),
+        ("expected payout value per funded account", _money(eco.expected_gross_payout)),
+        ("expected net (single attempt)", _money(eco.expected_net)),
+        ("P(net > 0)", _pct(eco.p_net_positive)),
+        ("VaR 95% / CVaR 95%", f"{_money(eco.var_95)} / {_money(eco.cvar_95)}"),
+    ]
+    econ_rows += [
+        (f"campaign EV, up to {k} attempt(s)", _money(ev)) for k, ev in eco.ev_with_resets.items()
+    ]
+
+    prop_charts = [
+        _fig_html(
+            charts.fig_fan(mc.phases[0], f"Challenge equity paths — {mc.phases[0].phase}"), False
+        ),
+        _fig_html(charts.fig_end_day_hist(mc.phases[0], "Challenge resolution days"), False),
+        _fig_html(charts.fig_fan(mc.funded, "Funded equity paths"), False),
+    ]
+    if mc.funded.total_withdrawn is not None:
+        received = mc.funded.total_withdrawn * firm.payout.profit_split
+        prop_charts.append(_fig_html(charts.fig_payout_hist(received), False))
+    prop_charts.append(_fig_html(charts.fig_ev_waterfall(eco, firm.fees.activation), False))
+
+    rules_lines = [f"account size: ${firm.account_size:,.0f}"]
+    for phase_cfg in [*firm.phases, firm.funded]:
+        rules_lines.append(f"\n[{phase_cfg.name}]")
+        if phase_cfg.profit_target is not None:
+            rules_lines.append(f"  profit target: ${phase_cfg.profit_target:,.0f}")
+        for spec in phase_cfg.rules:
+            rules_lines.append(f"  {spec.model_dump(exclude_none=True)}")
+    return {
+        "firm_display": mc.firm_display,
+        "firm_name": mc.firm_name,
+        "verified_as_of": firm.verified_as_of,
+        "sources": firm.sources,
+        "rules_text": "\n".join(rules_lines),
+        "sim_meta": (
+            f"{mc.n_paths:,} paths, {mc.bootstrap} bootstrap, seed {mc.seed}, "
+            f"challenge scale x{mc.scale_challenge:g}, funded scale x{mc.scale_funded:g}"
+        ),
+        "challenge_rows": challenge_rows,
+        "funded_rows": funded_rows,
+        "econ_rows": econ_rows,
+        "charts": prop_charts,
+    }
+
+
+def build_html_report(
+    log: TradeLog,
+    metrics: Metrics,
+    verdict: Verdict,
+    out_path: Path,
+    mc: MonteCarloReport | None = None,
+    title: str = "Strategy report",
+) -> Path:
+    template_text = (
+        resources.files("quantlab.report") / "templates" / "report.html.j2"
+    ).read_text()
+    template = Environment(autoescape=True).from_string(template_text)
+
+    fidelity_note = (
+        "MAE/MFE-refined intraday checks"
+        if log.has_excursions
+        else "trade-close only — intraday-sensitive prop rules are OPTIMISTIC"
+    )
+    warnings = list(mc.warnings) if mc else []
+
+    strategy_charts = [
+        _fig_html(charts.fig_equity_curve(log, metrics.starting_equity), include_js=True),
+        _fig_html(charts.fig_daily_pnl_hist(log), include_js=False),
+    ]
+
+    html = template.render(
+        title=title,
+        subtitle=(
+            f"{metrics.trade_count} trades over {metrics.trading_days} trading days "
+            f"(source: {log.source}, currency {log.account_currency})"
+        ),
+        fidelity_note=fidelity_note,
+        warnings=warnings,
+        verdict=verdict,
+        metric_rows=_metric_rows(metrics),
+        strategy_charts=strategy_charts,
+        prop=_prop_context(mc) if mc else None,
+        version=__version__,
+        reproducibility=(
+            f"seed {mc.seed}, {mc.n_paths:,} paths, {mc.bootstrap} bootstrap"
+            if mc
+            else "no simulation in this report"
+        ),
+    )
+    out_path.write_text(html)
+    return out_path

@@ -12,6 +12,7 @@ from quantlab import __version__
 from quantlab.cli.ingest_cmds import ingest_app
 from quantlab.cli.metrics_cmds import register_metrics_commands
 from quantlab.cli.prop_cmds import prop_app
+from quantlab.cli.report_cmds import register_report_commands
 from quantlab.errors import QuantLabError
 
 app = typer.Typer(
@@ -23,6 +24,7 @@ app = typer.Typer(
 app.add_typer(ingest_app, name="ingest", help="Convert user CSVs into canonical formats.")
 app.add_typer(prop_app, name="prop", help="Prop-firm evaluation and Monte Carlo simulation.")
 register_metrics_commands(app)
+register_report_commands(app)
 
 
 @app.callback()
