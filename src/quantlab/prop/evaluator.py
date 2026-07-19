@@ -30,6 +30,7 @@ from quantlab.prop.config import (
     TimeLimitSpec,
     TrailingDrawdownSpec,
 )
+from quantlab.prop.dayprofile import trade_points
 from quantlab.prop.rules import (
     BreachEvent,
     ConsistencyGate,
@@ -63,17 +64,6 @@ class EvaluationResult:
     timeline: pd.DataFrame
     advisories: list[str] = field(default_factory=list)
     days_consumed: int = 0  # trading days used from the log (for phase chaining)
-
-
-def _day_points(trade: Trade, base: float) -> tuple[float, float, float]:
-    """(high, low, close) equity for one trade, relative day base included."""
-    if trade.mae is not None and trade.mfe is not None:
-        low = base + trade.mae
-        high = base + trade.mfe
-    else:
-        low = base + min(0.0, trade.pnl)
-        high = base + max(0.0, trade.pnl)
-    return high, low, base + trade.pnl
 
 
 def evaluate(
@@ -192,8 +182,7 @@ def _evaluate_days(
 
         for trade_index, trade in enumerate(trades):
             max_qty = max(max_qty, trade.quantity)
-            base = day_open + day_cum
-            high, low, close = _day_points(trade, base)
+            high, low, close = trade_points(trade, day_open + day_cum)
 
             for tr_rule in trailing:
                 tr_rule.observe_high(high)
