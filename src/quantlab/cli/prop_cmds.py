@@ -93,6 +93,13 @@ def evaluate_cmd(
         help="Evaluate one phase (e.g. challenge, verification, funded). "
         "Default: chain all phases through the log.",
     ),
+    equity_csv: Path | None = typer.Option(
+        None,
+        "--equity-csv",
+        help="Mark-to-market equity CSV (datetime,equity — e.g. from "
+        "`quant cloud results --chart`): cross-checks intraday-sensitive "
+        "rules against TRUE open equity, not just fills.",
+    ),
 ) -> None:
     """Deterministically replay a trade log against a firm's rules."""
     log = read_trade_log(trades)
@@ -104,10 +111,50 @@ def evaluate_cmd(
     )
     console.print(f"[bold]{firm.display_name or firm.name}[/bold]  (fidelity: {fidelity})")
     if phase is not None:
-        _print_result(evaluate(log, firm, phase))
-        return
-    for result in evaluate_sequence(log, firm):
-        _print_result(result)
+        first = evaluate(log, firm, phase)
+        _print_result(first)
+    else:
+        results = evaluate_sequence(log, firm)
+        for result in results:
+            _print_result(result)
+        first = results[0]
+    if equity_csv is not None:
+        from quantlab.prop.equity_check import check_equity_curve, load_equity_csv
+
+        check = check_equity_curve(
+            load_equity_csv(equity_csv), firm, phase_name=phase or firm.phases[0].name
+        )
+        _print_equity_check(check, first)
+
+
+def _print_equity_check(check, trade_log_result: EvaluationResult) -> None:
+    console.print(
+        f"[bold]mark-to-market cross-check[/bold] ({check.n_marks} equity marks, "
+        f"{check.n_sessions} sessions, "
+        f"{'intraday' if check.intraday_marks else '~daily'} resolution)"
+    )
+    log_breached = trade_log_result.outcome == "breached"
+    if check.first_breach is not None:
+        b = check.first_breach
+        console.print(f"  [red]open-equity breach[/red]: {b.rule} at {b.when}: {b.detail}")
+        if not log_breached:
+            console.print(
+                "  [red]DISCREPANCY[/red]: the trade-log replay said "
+                f"{trade_log_result.outcome.upper()} — true open equity breached where "
+                "fill-level fidelity saw nothing. Trust the equity curve."
+            )
+    else:
+        console.print("  no open-equity breach of trailing/static/daily-loss rules")
+        if log_breached:
+            console.print(
+                "  note: the trade-log replay breached but the sampled equity marks "
+                "never crossed — likely an excursion between marks; the trade-log "
+                "verdict stands (MAE/MFE sees inside bars, sampled marks may not)."
+            )
+    for hit in check.daily_loss_hits:
+        console.print(f"  [yellow]daily-loss crossing[/yellow] {hit.when}: {hit.detail}")
+    for w in check.warnings:
+        console.print(f"  [yellow]note[/yellow]: {w}")
 
 
 @prop_app.command("simulate")

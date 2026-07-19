@@ -60,6 +60,12 @@ def results_cmd(
     with_chart: bool = typer.Option(
         False, "--chart", help="Also fetch the Strategy Equity chart series."
     ),
+    firm: str | None = typer.Option(
+        None,
+        "--firm",
+        help="With --chart: cross-check the TRUE mark-to-market equity "
+        "against this firm's trailing/static/daily-loss rules.",
+    ),
 ) -> None:
     """Download full backtest results via the REST API -> canonical trades.parquet.
 
@@ -90,3 +96,24 @@ def results_cmd(
         chart_path = output.with_suffix(".equity.csv")
         curve.to_series().rename("equity").to_csv(chart_path, index_label="datetime")
         console.print(f"equity chart: {len(curve.points)} points -> {chart_path}")
+        if firm is not None:
+            from quantlab.prop.equity_check import check_equity_curve
+            from quantlab.prop.registry import load_firm
+
+            check = check_equity_curve(curve, load_firm(firm))
+            if check.first_breach is not None:
+                b = check.first_breach
+                console.print(
+                    f"[red]open-equity breach[/red] ({check.phase}): {b.rule} at "
+                    f"{b.when}: {b.detail}"
+                )
+            else:
+                console.print(
+                    f"open-equity check ({check.phase}): no trailing/static/daily-loss "
+                    f"breach across {check.n_marks} marks"
+                )
+            for w in check.warnings:
+                console.print(f"[yellow]note[/yellow]: {w}")
+            console.print(
+                f"deep check: quant prop evaluate {output} --firm {firm} --equity-csv {chart_path}"
+            )
