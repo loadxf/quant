@@ -1,5 +1,5 @@
 ---
-status: draft round 0
+status: agreed round 1 (adversary-fixed)
 topic: llm_creativity
 ---
 
@@ -38,9 +38,10 @@ Confidence: high
 up to 2.2202** (via an A(24,17) admissible set), described as the largest improvement to this
 asymptotic lower bound in ~20 years; the known upper bound is C ≤ 2.756.
 Evidence: capacity table — "2.2180 I(11,7) (Tyrrell, 2022) / 2.2184 I(12,7) FunSearch / 2.2194
-I(15,10) FunSearch / 2.2202 A(24,17) FunSearch"; "The breakthrough result of [32] established an
-upper bound of C ≤ 2.756." Author text: "the largest increase in the size of cap sets in the
-past 20 years."
+I(15,10) FunSearch / 2.2202 A(24,17) FunSearch"; "result of [32] established an
+upper bound of C ≤ 2.756." Author text (of this lower-bound gain): "this is the largest
+improvement to the lower bound in the last 20 years" (abstract: "the largest improvement in 20
+years to the asymptotic lower bound").
 Source: same Nature PDF as C2; https://deepmind.google/blog/funsearch-making-new-discoveries-in-mathematical-sciences-using-large-language-models/
 Confidence: high
 
@@ -251,9 +252,9 @@ artifacts that are both novel and learnable from an observer's perspective**, an
 foundation-model-based open-ended systems are a path to novel, human-relevant discovery — the
 published articulation that a fixed-weight model embedded in a search/evaluation loop can be
 epistemically open.
-Evidence: "A system is considered open-ended if it produces a sequence of artifacts that are both
-novel and learnable from the perspective of an observer"; the ingredients "are now in place to
-achieve open-endedness … built on top of foundation models, capable of making novel,
+Evidence (verbatim, Sec. 2.1): "From the perspective of an observer, a system is open-ended if
+and only if the sequence of artifacts it produces is both novel and learnable"; abstract: "a path
+towards ASI via open-ended systems built on top of foundation models, capable of making novel,
 human-relevant discoveries."
 Source: https://arxiv.org/abs/2406.04268
 Confidence: high
