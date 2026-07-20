@@ -103,6 +103,38 @@ class EwmaSizer:
         self.day_index += 1
 
 
+@dataclass(frozen=True, slots=True)
+class CushionParams:
+    """Buffer-aware (cushion) sizing: weight = clip(cushion/cushion_0).
+
+    cushion_0 is the phase's initial drawdown allowance (balance_0 minus
+    the day-0 floor), so the weight starts at exactly 1 and shrinks as
+    equity approaches the floor — the prop-native de-risking heuristic.
+    ONE kernel serves both engines (float in the evaluator, (P,) array in
+    the Monte Carlo), the EwmaSizer pattern."""
+
+    cushion_0: float
+    clip_lo: float = 0.25
+    clip_hi: float = 1.5
+
+    def __post_init__(self) -> None:
+        if not 0.0 < self.clip_lo <= self.clip_hi:
+            raise ValueError(
+                f"cushion clip bounds must satisfy 0 < lo <= hi "
+                f"(got {self.clip_lo}, {self.clip_hi})"
+            )
+        if self.cushion_0 <= 0.0:
+            raise ValueError(f"cushion_0 must be positive (got {self.cushion_0})")
+
+
+def cushion_weight(cushion: float | np.ndarray, params: CushionParams):
+    """Day-start sizing weight from the live buffer above the floor;
+    broadcast-polymorphic (scalar evaluator / vectorized Monte Carlo)."""
+    raw = np.maximum(cushion, 0.0) / params.cushion_0
+    clipped = np.clip(raw, params.clip_lo, params.clip_hi)
+    return float(clipped) if np.ndim(clipped) == 0 else clipped
+
+
 def auto_target_vol(day_pnl: np.ndarray, lam: float = DEFAULT_LAMBDA, burn_in: int = 20) -> float:
     """Median of the log's own EWMA sigma path -> median weight 1 pre-clip."""
     sigma = np.array(ewma_sigma_path(day_pnl, lam=lam, burn_in=burn_in).sigma)

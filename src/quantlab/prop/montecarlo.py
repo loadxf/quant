@@ -50,7 +50,13 @@ from quantlab.prop.outcomes import (
     PhaseOutcome,
 )
 from quantlab.prop.rules.base import breached
-from quantlab.prop.voltarget import EwmaSizer, VolSizingParams, auto_target_vol
+from quantlab.prop.voltarget import (
+    CushionParams,
+    EwmaSizer,
+    VolSizingParams,
+    auto_target_vol,
+    cushion_weight,
+)
 from quantlab.schema.trade import TradeLog
 
 MIN_DAYS_FOR_BLOCKS = 30
@@ -112,12 +118,17 @@ class MCConfig:
     challenge_scale: float | None = None  # per-phase sizing what-ifs
     funded_scale: float | None = None
     sample_paths_kept: int = 200
-    # Dynamic vol-targeted sizing (M9): weight_t = clip(target/sigma_t)
-    # with a per-path EWMA forecast of the strategy's per-unit day PnL.
-    sizing: str = "fixed"  # "fixed" | "vol_target"
+    # Dynamic sizing (M9 vol_target, M11 cushion):
+    # vol_target: weight_t = clip(target/sigma_t) from a per-path EWMA
+    #   forecast of the strategy's per-unit day PnL.
+    # cushion: weight_t = clip(cushion_t/cushion_0) from the live buffer
+    #   above the trailing/static floor — the prop-native heuristic that
+    #   de-risks toward the floor and re-risks as the buffer grows.
+    sizing: str = "fixed"  # "fixed" | "vol_target" | "cushion"
     vol_lambda: float = 0.94  # RiskMetrics 1996 daily decay
     vol_target: float | None = None  # None -> median EWMA sigma of the profile
     vol_clip: tuple[float, float] = (0.5, 1.5)  # Moreira-Muir 1.5x cap
+    cushion_clip: tuple[float, float] = (0.25, 1.5)
 
 
 @dataclass
@@ -278,12 +289,36 @@ def _simulate_phase(
     sample_paths: int,
     sessions_per_week: float = DEFAULT_SESSIONS_PER_WEEK,
     sizing: VolSizingParams | None = None,
+    cushion_clip: tuple[float, float] | None = None,
 ) -> PhaseOutcome:
     n_paths, horizon = idx.shape
     initial = phase.resolved_initial(firm.account_size)
     rules = _resolve_rules(phase, firm, initial, sessions_per_week)
     target = phase.profit_target
     is_funded = target is None
+
+    cushion: CushionParams | None = None
+    if cushion_clip is not None:
+        # cushion_0 = the phase's initial drawdown allowance: distance
+        # from the starting balance to the tightest day-0 floor.
+        floor_0 = -np.inf
+        for tr in rules.trailing:
+            floor_0 = max(floor_0, min(initial - tr.amount, tr.cap))
+        for st in rules.static:
+            floor_0 = max(floor_0, st.value)
+        if not np.isfinite(floor_0) or floor_0 >= initial:
+            raise QuantLabError(
+                f"cushion sizing needs a trailing/static drawdown rule below the "
+                f"initial balance in phase {phase.name!r}"
+            )
+        try:
+            cushion = CushionParams(
+                cushion_0=float(initial - floor_0),
+                clip_lo=cushion_clip[0],
+                clip_hi=cushion_clip[1],
+            )
+        except ValueError as exc:
+            raise QuantLabError(str(exc)) from None
 
     balance = np.full(n_paths, float(initial))
     outcome = np.full(n_paths, OUTCOME_ACTIVE, dtype=np.int8)
@@ -326,9 +361,19 @@ def _simulate_phase(
         day_open = balance.copy()
         locked = np.zeros(n_paths, dtype=bool)
         k_max = int(day_n[alive].max())
-        # Day weight from PRIOR days' unscaled PnL only (strict t-1 info);
-        # +/-inf padding survives the positive multiply unchanged.
+        # Day weight from DAY-START information only (strict t-1 info):
+        # the EWMA forecast uses prior days' unscaled PnL; the cushion
+        # weight uses the day-open balance vs the current floor. +/-inf
+        # padding survives the positive multiply unchanged.
         w = sizer.weight() if sizer is not None else None
+        if cushion is not None:
+            floor_t = np.full(n_paths, -np.inf)
+            for r, tr in enumerate(rules.trailing):
+                floor_t = np.maximum(floor_t, np.minimum(hwms[r] - tr.amount, tr.cap))
+            for st in rules.static:
+                floor_t = np.maximum(floor_t, st.value)
+            w_cushion = cushion_weight(balance - floor_t, cushion)
+            w = w_cushion if w is None else w * w_cushion
 
         for i in range(k_max):
             stepping = alive & ~locked & (i < day_n) & (outcome == OUTCOME_ACTIVE)
@@ -627,9 +672,9 @@ def _run_from_profile(
 
     def _make_sizing(p: DayProfile) -> VolSizingParams | None:
         if cfg.sizing != "vol_target":
-            if cfg.sizing != "fixed":
+            if cfg.sizing not in ("fixed", "cushion"):
                 raise QuantLabError(
-                    f"unknown sizing mode {cfg.sizing!r}: choose fixed or vol_target"
+                    f"unknown sizing mode {cfg.sizing!r}: choose fixed, vol_target, or cushion"
                 )
             return None
         dp = p.day_pnl
@@ -654,6 +699,7 @@ def _run_from_profile(
 
     challenge_sizing = _make_sizing(challenge_profile)
     funded_sizing = _make_sizing(funded_profile)
+    cushion_clip = cfg.cushion_clip if cfg.sizing == "cushion" else None
 
     if cfg.n_paths < 1:
         raise QuantLabError("n_paths must be >= 1")
@@ -671,6 +717,7 @@ def _run_from_profile(
                 sample_paths=cfg.sample_paths_kept,
                 sessions_per_week=sessions_per_week,
                 sizing=challenge_sizing,
+                cushion_clip=cushion_clip,
             )
         )
 
@@ -690,6 +737,7 @@ def _run_from_profile(
         sample_paths=cfg.sample_paths_kept,
         sessions_per_week=sessions_per_week,
         sizing=funded_sizing,
+        cushion_clip=cushion_clip,
     )
 
     return summarize(

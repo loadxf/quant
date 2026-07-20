@@ -43,6 +43,20 @@ class MCConfigProtocol(Protocol):
     block_len: int | None
 
 
+def _sizing_block(cfg: MCConfigProtocol) -> dict:
+    mode = getattr(cfg, "sizing", "fixed")
+    if mode == "vol_target":
+        return {
+            "mode": mode,
+            "vol_lambda": getattr(cfg, "vol_lambda", None),
+            "vol_target": getattr(cfg, "vol_target", None),
+            "vol_clip": list(getattr(cfg, "vol_clip", (0.5, 1.5))),
+        }
+    if mode == "cushion":
+        return {"mode": mode, "cushion_clip": list(getattr(cfg, "cushion_clip", (0.25, 1.5)))}
+    return {"mode": "fixed"}
+
+
 def wilson_ci(successes: int, n: int, z: float = 1.96) -> tuple[float, float]:
     if n == 0:
         return (0.0, 1.0)
@@ -306,12 +320,5 @@ def summarize(
         funded=funded,
         economics=economics,
         warnings=warnings,
-        sizing={
-            "mode": getattr(cfg, "sizing", "fixed"),
-            "vol_lambda": getattr(cfg, "vol_lambda", None),
-            "vol_target": getattr(cfg, "vol_target", None),
-            "vol_clip": list(getattr(cfg, "vol_clip", (0.5, 1.5))),
-        }
-        if getattr(cfg, "sizing", "fixed") == "vol_target"
-        else {"mode": "fixed"},
+        sizing=_sizing_block(cfg),
     )

@@ -33,7 +33,7 @@ EQUIV_OUTCOME = {
 }
 
 
-def identity_phase_run(log, firm, phase_name, sizing=None):
+def identity_phase_run(log, firm, phase_name, sizing=None, cushion_clip=None):
     """Run the vectorized engine on ONE path that replays the log verbatim."""
     boundary = DayBoundary(firm.day_boundary.tz, firm.day_boundary.cutoff_hour)
     profile = DayProfile.from_log(log, boundary)
@@ -42,7 +42,14 @@ def identity_phase_run(log, firm, phase_name, sizing=None):
         (p for p in [*firm.phases, firm.funded] if p.name == phase_name), firm.phases[0]
     )
     return _simulate_phase(
-        profile, idx, phase_cfg, firm, payout=None, sample_paths=1, sizing=sizing
+        profile,
+        idx,
+        phase_cfg,
+        firm,
+        payout=None,
+        sample_paths=1,
+        sizing=sizing,
+        cushion_clip=cushion_clip,
     )
 
 

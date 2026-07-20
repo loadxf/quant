@@ -41,7 +41,7 @@ from quantlab.prop.rules import (
     TimeLimitGate,
     TrailingDrawdownRule,
 )
-from quantlab.prop.voltarget import EwmaSizer, VolSizingParams
+from quantlab.prop.voltarget import CushionParams, EwmaSizer, VolSizingParams, cushion_weight
 from quantlab.schema.trade import Trade, TradeLog
 
 Outcome = Literal["passed", "breached", "expired", "incomplete", "survived"]
@@ -74,35 +74,50 @@ def evaluate(
     phase: str = "challenge",
     start_day: int = 0,
     sizing: VolSizingParams | None = None,
+    cushion_clip: tuple[float, float] | None = None,
 ) -> EvaluationResult:
     """Replay `log` (from trading-day index `start_day`) against one phase.
 
     `sizing`: optional vol-targeted dynamic sizing — the same EwmaSizer
-    recursion the Monte Carlo uses (golden equivalence by construction)."""
+    recursion the Monte Carlo uses (golden equivalence by construction).
+    `cushion_clip`: optional buffer-aware sizing — the same cushion_weight
+    kernel the Monte Carlo uses."""
     phase_cfg = _find_phase(firm, phase)
     days = log.daily_groups(firm.day_boundary.to_boundary())[start_day:]
-    return _evaluate_days(days, firm, phase_cfg, fidelity_from(log), sizing=sizing)
+    return _evaluate_days(
+        days, firm, phase_cfg, fidelity_from(log), sizing=sizing, cushion_clip=cushion_clip
+    )
 
 
 def evaluate_sequence(
-    log: TradeLog, firm: FirmConfig, sizing: VolSizingParams | None = None
+    log: TradeLog,
+    firm: FirmConfig,
+    sizing: VolSizingParams | None = None,
+    cushion_clip: tuple[float, float] | None = None,
 ) -> list[EvaluationResult]:
     """Chain phases over the log: each eval phase consumes trading days until
     it resolves; the funded phase replays whatever remains.
 
     `sizing` applies per phase with FRESH EWMA state (matching the Monte
-    Carlo, which re-seeds each simulated phase)."""
+    Carlo, which re-seeds each simulated phase); `cushion_clip` re-anchors
+    per phase on that phase's own drawdown allowance."""
     all_days = log.daily_groups(firm.day_boundary.to_boundary())
     fidelity = fidelity_from(log)
     results: list[EvaluationResult] = []
     cursor = 0
     for phase_cfg in firm.phases:
-        result = _evaluate_days(all_days[cursor:], firm, phase_cfg, fidelity, sizing=sizing)
+        result = _evaluate_days(
+            all_days[cursor:], firm, phase_cfg, fidelity, sizing=sizing, cushion_clip=cushion_clip
+        )
         results.append(result)
         cursor += result.days_consumed
         if not result.passed:
             return results
-    results.append(_evaluate_days(all_days[cursor:], firm, firm.funded, fidelity, sizing=sizing))
+    results.append(
+        _evaluate_days(
+            all_days[cursor:], firm, firm.funded, fidelity, sizing=sizing, cushion_clip=cushion_clip
+        )
+    )
     return results
 
 
@@ -128,6 +143,7 @@ def _evaluate_days(
     phase_cfg: PhaseConfig,
     fidelity: str,
     sizing: VolSizingParams | None = None,
+    cushion_clip: tuple[float, float] | None = None,
 ) -> EvaluationResult:
     initial = phase_cfg.resolved_initial(firm.account_size)
     account = firm.account_size
@@ -170,6 +186,23 @@ def _evaluate_days(
 
     balance = initial
     sizer = EwmaSizer(sizing) if sizing is not None else None
+    cushion: CushionParams | None = None
+    if cushion_clip is not None:
+        # Identical cushion_0 convention to the vectorized engine: the
+        # distance from the starting balance to the tightest day-0 floor.
+        floor_0 = float("-inf")
+        for tr_rule in trailing:
+            floor_0 = max(floor_0, tr_rule.threshold)
+        for st_rule in static:
+            floor_0 = max(floor_0, st_rule.floor)
+        if floor_0 == float("-inf") or floor_0 >= initial:
+            raise ConfigError(
+                f"cushion sizing needs a trailing/static drawdown rule below the "
+                f"initial balance in phase {phase_cfg.name!r}"
+            )
+        cushion = CushionParams(
+            cushion_0=initial - floor_0, clip_lo=cushion_clip[0], clip_hi=cushion_clip[1]
+        )
     best_day_completed = 0.0
     lockout_days = 0
     max_qty = 0.0
@@ -190,9 +223,16 @@ def _evaluate_days(
         # also a trading day — one counter serves both.
         days_consumed += 1
         day_open = balance
-        # Day weight from PRIOR days' unscaled PnL only (strict t-1 info) —
-        # identical recursion to the vectorized engine's (P,) sizer.
+        # Day weight from DAY-START information only (strict t-1 info) —
+        # identical recursions/kernels to the vectorized engine.
         w = float(sizer.weight()) if sizer is not None else 1.0  # scalar engine
+        if cushion is not None:
+            floor_t = float("-inf")
+            for tr_rule in trailing:
+                floor_t = max(floor_t, tr_rule.threshold)
+            for st_rule in static:
+                floor_t = max(floor_t, st_rule.floor)
+            w *= cushion_weight(balance - floor_t, cushion)
         for rule in (*daily_fail, *daily_lockout):
             rule.day_start(day_open)
         day_cum = 0.0

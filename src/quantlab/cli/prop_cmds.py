@@ -175,7 +175,8 @@ def simulate_cmd(
     sizing: str = typer.Option(
         "fixed",
         "--sizing",
-        help="fixed | vol_target (dynamic per-path EWMA vol-targeted sizing, M9).",
+        help="fixed | vol_target (per-path EWMA vol targeting) | cushion "
+        "(size by the live buffer above the drawdown floor).",
     ),
     vol_lambda: float = typer.Option(
         0.94, "--vol-lambda", help="EWMA decay (RiskMetrics daily 0.94)."
@@ -185,6 +186,12 @@ def simulate_cmd(
     ),
     vol_clip_lo: float = typer.Option(0.5, "--vol-clip-lo", help="Weight floor."),
     vol_clip_hi: float = typer.Option(1.5, "--vol-clip-hi", help="Weight cap (Moreira-Muir 1.5)."),
+    cushion_clip_lo: float = typer.Option(
+        0.25, "--cushion-clip-lo", help="Cushion-sizing weight floor."
+    ),
+    cushion_clip_hi: float = typer.Option(
+        1.5, "--cushion-clip-hi", help="Cushion-sizing weight cap."
+    ),
     extra_monthly: float = typer.Option(
         0.0, "--extra-monthly", help="Recurring $/mo overhead (data feed, platform) in the EV."
     ),
@@ -217,6 +224,7 @@ def simulate_cmd(
         vol_lambda=vol_lambda,
         vol_target=vol_target,
         vol_clip=(vol_clip_lo, vol_clip_hi),
+        cushion_clip=(cushion_clip_lo, cushion_clip_hi),
     )
     report = run_monte_carlo(log, firm, cfg)
     render_report(report, console)
