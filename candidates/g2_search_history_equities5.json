@@ -1,0 +1,44 @@
+[
+ {
+  "generation": 0,
+  "best_fitness": 0.6727244893433264,
+  "best_train_sr": 0.7127244893433264,
+  "best_expr": "(roll_mean rng 63)",
+  "evaluated": 77
+ },
+ {
+  "generation": 1,
+  "best_fitness": 0.6727244893433264,
+  "best_train_sr": 0.7127244893433264,
+  "best_expr": "(roll_mean rng 63)",
+  "evaluated": 129
+ },
+ {
+  "generation": 2,
+  "best_fitness": 0.6727244893433264,
+  "best_train_sr": 0.7127244893433264,
+  "best_expr": "(roll_mean rng 63)",
+  "evaluated": 183
+ },
+ {
+  "generation": 3,
+  "best_fitness": 0.7754179808989701,
+  "best_train_sr": 0.8154179808989701,
+  "best_expr": "(roll_std rng 63)",
+  "evaluated": 230
+ },
+ {
+  "generation": 4,
+  "best_fitness": 0.7754179808989701,
+  "best_train_sr": 0.8154179808989701,
+  "best_expr": "(roll_std rng 63)",
+  "evaluated": 273
+ },
+ {
+  "generation": 5,
+  "best_fitness": 0.7754179808989701,
+  "best_train_sr": 0.8154179808989701,
+  "best_expr": "(roll_std rng 63)",
+  "evaluated": 307
+ }
+]

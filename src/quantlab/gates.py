@@ -60,15 +60,26 @@ def _slice(series: pd.Series, start: str, end: str) -> pd.Series:
     return series[(series.index >= pd.Timestamp(start)) & (series.index <= pd.Timestamp(end))]
 
 
+def load_etf_fields(end: str | None = None, token: str | None = None) -> dict[str, pd.DataFrame]:
+    universe = json.loads((REPO_ROOT / "data" / "universe.json").read_text())
+    fields = {}
+    for f in ["open", "high", "low", "close", "adjclose", "volume"]:
+        panel = load_panel(field=f, end=end, _holdout_token=token)
+        etfs = [t for t in universe["etfs"] if t in panel.columns]
+        fields[f] = panel[etfs]
+    return fields
+
+
 def evaluate_candidate(candidate_id: str, fields: dict[str, pd.DataFrame]) -> dict:
     module = load_signal_module(candidate_id)
     hold = int(getattr(module, "HOLD", 1))
     quantile = float(getattr(module, "QUANTILE", 0.1))
     min_names = int(getattr(module, "MIN_NAMES", 20))
+    base_cost = 5.0 if getattr(module, "UNIVERSE", "equities") == "etfs" else 10.0
 
     signal = module.compute_signal(fields)
 
-    def bt(split_name: str, cost_bps: float = 10.0, sig=None, cid=None):
+    def bt(split_name: str, cost_bps: float = base_cost, sig=None, cid=None):
         return run_backtest(
             sig if sig is not None else signal,
             fields["adjclose"],
@@ -181,9 +192,17 @@ def main() -> None:
     ids = sys.argv[1:]
     if not ids:
         ids = sorted(p.name for p in CANDIDATES_DIR.iterdir() if (p / "signal.py").exists())
-    fields = load_equity_fields()
+    eq_fields = load_equity_fields()
+    etf_fields = None
     family_returns = {}
     for cid in ids:
+        module = load_signal_module(cid)
+        if getattr(module, "UNIVERSE", "equities") == "etfs":
+            if etf_fields is None:
+                etf_fields = load_etf_fields()
+            fields = etf_fields
+        else:
+            fields = eq_fields
         res = evaluate_candidate(cid, fields)
         family_returns[cid] = res.pop("_returns_net")
         v = res["validation"]
@@ -193,7 +212,12 @@ def main() -> None:
             f"gate2={'PASS' if res['gate2']['pass'] else 'fail'}"
         )
     panel = pd.DataFrame(family_returns)
-    panel.to_parquet(CANDIDATES_DIR / "family_returns_train_val.parquet")
+    prev_path = CANDIDATES_DIR / "family_returns_train_val.parquet"
+    if prev_path.exists():
+        prev = pd.read_parquet(prev_path)
+        keep = [c for c in prev.columns if c not in panel.columns]
+        panel = prev[keep].join(panel, how="outer")
+    panel.to_parquet(prev_path)
 
 
 if __name__ == "__main__":
