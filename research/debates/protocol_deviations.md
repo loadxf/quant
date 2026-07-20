@@ -63,3 +63,29 @@ generations; equities5 fitness computed on the 2010-2018 train subwindow and a
 deterministic stride-sampled 252-name subuniverse. Gate evaluations are unchanged (full
 universe, full periods). Interrupted-run ledger rows are retained, overcounting N in the
 DSR's disfavor.
+
+## D3 — Loop 3 declared as DIAGNOSTIC loop; holdout stays sealed (pre-declared)
+
+**Date:** 2026-07-20, after loop-2 gate results, before any loop-3 computation.
+
+**Loop-2 evidence:** C013 val SR +0.10, C014 -0.27, C016 +0.22 (all Gate-1 fail); C015
+(range-volatility family, convergently found by both independent searches) val SR +0.66,
+t=1.63 — passes all Gate-2 robustness checks but fails Gate 1's |t|>2, repeating C010's
+profile. 18 gated candidates over two loops: zero Gate-1 passes.
+
+**Loop-3 plan:** generation is STOPPED (a third generation round would select for flukes —
+pre-declared risk R8). Loop 3 is diagnostics for the report:
+1. The pre-registered family-wide Reality Check (protocol §6) on all candidates'
+   validation net returns.
+2. Deflated Sharpe Ratio of the best candidate (C015) with the FULL ledger N — the
+   multiple-testing arithmetic the report must show.
+3. Survivorship autopsy of the range-volatility family: long-leg vs short-leg return
+   decomposition, the same construct on the ETF universe (current ETF list has no
+   equity-style survivorship deletion), and sub-period stability. Purpose: test the
+   declared suspicion in C015's spec.
+4. Phase D prior-art attack on the range-vol family (diagnostic, NOT promotion — the
+   family failed Gate 1 and remains failed regardless of the attack's outcome).
+
+**Holdout:** remains SEALED. No candidate met the pre-registered Gate-1+2 bar, so no
+holdout shot is fired in this experiment. The one-shot design's integrity is preserved:
+an unfired holdout is itself a reportable result.
