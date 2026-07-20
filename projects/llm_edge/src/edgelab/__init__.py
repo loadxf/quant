@@ -1,4 +1,4 @@
-"""quantlab: empirical harness for the LLM-novelty trading-edge experiment.
+"""edgelab: empirical harness for the LLM-novelty trading-edge experiment.
 
 All backtests route through backtest.run_backtest, which writes every evaluation
 to the append-only trials ledger (candidates/trials_ledger.csv). The Deflated

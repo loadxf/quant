@@ -7,9 +7,7 @@ research/prior_art/multiple_testing.md).
 import numpy as np
 import pandas as pd
 import pytest
-from scipy import stats as sps
-
-from quantlab.stats import (
+from edgelab.stats import (
     deflated_sharpe_ratio,
     expected_max_sharpe,
     newey_west_tstat,
@@ -18,6 +16,7 @@ from quantlab.stats import (
     sharpe_ratio,
     stationary_bootstrap_indices,
 )
+from scipy import stats as sps
 
 
 def test_sharpe_known_value():

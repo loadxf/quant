@@ -4,11 +4,10 @@ data without a token."""
 
 import json
 
+import edgelab.data as qdata
+import edgelab.holdout_gate as gate
 import pandas as pd
 import pytest
-
-import quantlab.data as qdata
-import quantlab.holdout_gate as gate
 
 
 def test_load_panel_refuses_post_validation_without_token(monkeypatch, tmp_path):
@@ -54,9 +53,7 @@ def test_gate_refuses_tampered_spec(monkeypatch, tmp_path):
     spec_dir.mkdir()
     (spec_dir / "spec.md").write_text("original spec")
     original_hash = gate.spec_sha256(spec_dir / "spec.md")
-    (tmp_path / "registry.json").write_text(
-        json.dumps({"C001": {"spec_sha256": original_hash}})
-    )
+    (tmp_path / "registry.json").write_text(json.dumps({"C001": {"spec_sha256": original_hash}}))
     (spec_dir / "spec.md").write_text("tampered spec")
     with pytest.raises(RuntimeError, match="hash mismatch"):
         gate.authorize("C001")

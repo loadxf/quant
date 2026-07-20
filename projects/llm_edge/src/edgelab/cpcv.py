@@ -22,9 +22,7 @@ import pandas as pd
 from .stats import sharpe_ratio
 
 
-def cpcv_paths(
-    dates: pd.DatetimeIndex, n_blocks: int = 8, n_test: int = 2
-) -> list[dict]:
+def cpcv_paths(dates: pd.DatetimeIndex, n_blocks: int = 8, n_test: int = 2) -> list[dict]:
     """Enumerate CPCV paths: each is {'test_mask': bool Series, 'blocks': (i, j)}."""
     blocks = np.array_split(np.arange(len(dates)), n_blocks)
     paths = []
@@ -61,7 +59,7 @@ def cpcv_sharpe_distribution(
             srs.append(sharpe_ratio(test_r))
     srs = pd.Series(srs, dtype=float).dropna()
     return {
-        "n_paths": int(len(srs)),
+        "n_paths": len(srs),
         "median_sr": float(srs.median()) if len(srs) else float("nan"),
         "q25_sr": float(srs.quantile(0.25)) if len(srs) else float("nan"),
         "min_sr": float(srs.min()) if len(srs) else float("nan"),

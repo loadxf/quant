@@ -20,7 +20,7 @@ from pathlib import Path
 
 from . import CANDIDATES_DIR, REGISTRY_PATH, REPO_ROOT
 
-_HOLDOUT_SECRET = "quantlab-holdout-gate-v1"
+_HOLDOUT_SECRET = "edgelab-holdout-gate-v1"
 _ISSUED: dict[str, str] = {}  # token -> scope: "holdout:<candidate_id>" | "g1_generation"
 
 
@@ -42,10 +42,13 @@ def _registry_committed() -> bool:
         text=True,
         check=True,
     ).stdout.strip()
-    committed = subprocess.run(
-        ["git", "-C", str(REPO_ROOT), "cat-file", "-e", "HEAD:candidates/registry.json"],
-        capture_output=True,
-    ).returncode == 0
+    committed = (
+        subprocess.run(
+            ["git", "-C", str(REPO_ROOT), "cat-file", "-e", "HEAD:candidates/registry.json"],
+            capture_output=True,
+        ).returncode
+        == 0
+    )
     return committed and out == ""
 
 
@@ -64,8 +67,8 @@ def authorize(candidate_id: str) -> str:
     expected = registry[candidate_id]["spec_sha256"]
     if actual != expected:
         raise RuntimeError(
-            f"{candidate_id} spec hash mismatch: registered {expected[:12]}, actual {actual[:12]} — "
-            "the spec was modified after registration"
+            f"{candidate_id} spec hash mismatch: registered {expected[:12]}, "
+            f"actual {actual[:12]} — the spec was modified after registration"
         )
     results_path = CANDIDATES_DIR / candidate_id / "holdout_results.json"
     if results_path.exists():
@@ -98,9 +101,9 @@ def authorize_g1_generation() -> str:
     log = json.loads(log_path.read_text()) if log_path.exists() else []
     log.append(
         {
-            "granted_utc": __import__("datetime").datetime.now(
-                __import__("datetime").timezone.utc
-            ).isoformat(timespec="seconds"),
+            "granted_utc": __import__("datetime")
+            .datetime.now(__import__("datetime").timezone.utc)
+            .isoformat(timespec="seconds"),
             "window_start": POST_CUTOFF_START,
         }
     )

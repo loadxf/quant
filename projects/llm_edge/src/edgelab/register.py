@@ -5,7 +5,7 @@ is the post-cutoff slice; see research/debates/protocol_deviations.md D1).
 The registration only becomes effective for the holdout gate once this file is
 COMMITTED — holdout_gate refuses uncommitted registries.
 
-Usage: python -m quantlab.register C001 C002 ...
+Usage: python -m edgelab.register C001 C002 ...
 """
 
 from __future__ import annotations
@@ -31,11 +31,13 @@ def register(candidate_ids: list[str]) -> dict:
             raise RuntimeError(f"{cid} already registered — registration is append-only")
         entry = {
             "spec_sha256": spec_sha256(spec_path),
-            "registered_utc": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
+            "registered_utc": _dt.datetime.now(_dt.UTC).isoformat(timespec="seconds"),
         }
         if cid in G1_CANDIDATES:
             entry["holdout_end"] = G1_HOLDOUT_END
-            entry["holdout_note"] = "G1 candidate: holdout excludes the post-cutoff generation window (D1)"
+            entry["holdout_note"] = (
+                "G1 candidate: holdout excludes the post-cutoff generation window (D1)"
+            )
         registry[cid] = entry
     REGISTRY_PATH.write_text(json.dumps(registry, indent=1, sort_keys=True))
     return registry

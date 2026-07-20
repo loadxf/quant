@@ -1,7 +1,6 @@
 import numpy as np
 import pandas as pd
-
-from quantlab.grammar import (
+from edgelab.grammar import (
     MAX_DEPTH,
     MAX_NODES,
     TERMINALS,
@@ -22,7 +21,8 @@ def make_panels(n_days=300, n_names=30, seed=4):
     cols = [f"S{i:02d}" for i in range(n_names)]
     close = pd.DataFrame(
         100 * np.exp(np.cumsum(rng.normal(0, 0.02, (n_days, n_names)), axis=0)),
-        index=dates, columns=cols,
+        index=dates,
+        columns=cols,
     )
     open_ = close * (1 + rng.normal(0, 0.005, close.shape))
     high = np.maximum(open_, close) * (1 + rng.uniform(0, 0.01, close.shape))

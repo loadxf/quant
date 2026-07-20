@@ -28,7 +28,7 @@ research/methodology/        frozen novelty scale + pre-registered protocol
 research/prior_art/          literature sweeps + machine-readable factor database
 research/debates/            adversarial-review transcripts for every phase
 data/                        universe, download manifest (parquet cache gitignored)
-src/quantlab/                data pipeline, backtester, statistics, holdout gate, signal DSL
+src/edgelab/                 data pipeline, backtester, statistics, holdout gate, signal DSL
 tests/                       no-lookahead test, statistics pinned to paper values
 candidates/                  specs, registry (pre-registration hashes), trials ledger, results
 ```
@@ -38,5 +38,5 @@ candidates/                  specs, registry (pre-registration hashes), trials l
 ```bash
 pip install -r requirements.txt
 python -m pytest tests/            # no-lookahead + stats pins must be green
-python -m quantlab.data download   # populate data/cache/ from Yahoo (browser UA required)
+python -m edgelab.data download   # populate data/cache/ from Yahoo (browser UA required)
 ```

@@ -69,7 +69,7 @@ def fitness_of(
             sr = result.sharpe_net
             if result.meta["n_obs"] < 500:
                 sr = float("nan")
-        except Exception:  # noqa: BLE001 - degenerate expressions score nan
+        except Exception:
             sr = float("nan")
         cache[key] = sr
     fit = (sr if np.isfinite(sr) else -9.0) - COMPLEXITY_PENALTY * n_nodes
@@ -116,9 +116,15 @@ def evolve(
     for gen in range(start_gen, generations):
         scored = [
             fitness_of(
-                e, terminals, adjclose, gen, cache,
-                holding_days=holding_days, cost_bps=cost_bps,
-                quantile=quantile, split=split,
+                e,
+                terminals,
+                adjclose,
+                gen,
+                cache,
+                holding_days=holding_days,
+                cost_bps=cost_bps,
+                quantile=quantile,
+                split=split,
             )
             for e in pop
         ]
@@ -128,8 +134,13 @@ def evolve(
         scored.sort(key=lambda s: s.fitness, reverse=True)
         best = scored[0]
         history.append(
-            {"generation": gen, "best_fitness": best.fitness, "best_train_sr": best.train_sharpe,
-             "best_expr": best.expr_str, "evaluated": len(cache)}
+            {
+                "generation": gen,
+                "best_fitness": best.fitness,
+                "best_train_sr": best.train_sharpe,
+                "best_expr": best.expr_str,
+                "evaluated": len(cache),
+            }
         )
         rng = np.random.default_rng([seed, gen + 1])
         n_elite = max(2, int(population * elite_frac))
@@ -146,10 +157,16 @@ def evolve(
                 children.append(random_expr(rng))
         pop = children
         if ckpt is not None:
-            ckpt.write_text(json.dumps(
-                {"gen": gen + 1, "pop": [to_string(e) for e in pop],
-                 "cache": cache, "history": history}
-            ))
+            ckpt.write_text(
+                json.dumps(
+                    {
+                        "gen": gen + 1,
+                        "pop": [to_string(e) for e in pop],
+                        "cache": cache,
+                        "history": history,
+                    }
+                )
+            )
 
     # On resume, earlier generations' bests live only in cache/history; rebuild
     # result objects for every cached expression so ranking sees the full run.

@@ -2,8 +2,7 @@
 
 import numpy as np
 import pandas as pd
-
-from quantlab.grammar import build_terminals
+from edgelab.grammar import build_terminals
 
 EPISODE_Z = 2.0
 LOOKBACK = 10
@@ -14,8 +13,12 @@ MIN_NAMES = 4
 
 def compute_signal(fields: dict[str, pd.DataFrame]) -> pd.DataFrame:
     terms = build_terminals(
-        fields["open"], fields["high"], fields["low"],
-        fields["close"], fields["adjclose"], fields["volume"],
+        fields["open"],
+        fields["high"],
+        fields["low"],
+        fields["close"],
+        fields["adjclose"],
+        fields["volume"],
     )
     volz = terms["volz"]
     ret1 = terms["ret1"]

@@ -1,9 +1,7 @@
 """C001: reversal conditioned on volume-shock recession speed (see spec.md)."""
 
-import numpy as np
 import pandas as pd
-
-from quantlab.grammar import build_terminals
+from edgelab.grammar import build_terminals
 
 SPIKE_Z = 1.5
 POST_DAYS = 5
@@ -13,8 +11,12 @@ MIN_SPIKES = 3
 
 def compute_signal(fields: dict[str, pd.DataFrame]) -> pd.DataFrame:
     terms = build_terminals(
-        fields["open"], fields["high"], fields["low"],
-        fields["close"], fields["adjclose"], fields["volume"],
+        fields["open"],
+        fields["high"],
+        fields["low"],
+        fields["close"],
+        fields["adjclose"],
+        fields["volume"],
     )
     volz = terms["volz"]
     ret5 = terms["ret5"]

@@ -59,16 +59,17 @@ def quantile_weights(
     short_mask = ranks.le(quantile)
     n_long = long_mask.sum(axis=1).replace(0, np.nan)
     n_short = short_mask.sum(axis=1).replace(0, np.nan)
-    weights = (
-        long_mask.astype(float).div(n_long, axis=0)
-        - short_mask.astype(float).div(n_short, axis=0)
+    weights = long_mask.astype(float).div(n_long, axis=0) - short_mask.astype(float).div(
+        n_short, axis=0
     )
     weights.loc[valid < min_names] = 0.0
     return weights.fillna(0.0)
 
 
 def _params_hash(payload: dict) -> str:
-    return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()[:16]
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()[
+        :16
+    ]
 
 
 def _append_ledger(row: dict) -> None:
@@ -128,13 +129,13 @@ def run_backtest(
             "quantile": quantile,
             "holding_days": holding_days,
             "cost_bps": cost_bps,
-            "n_obs": int(len(net)),
+            "n_obs": len(net),
         },
     )
     if ledger:
         _append_ledger(
             {
-                "timestamp": _dt.datetime.now(_dt.timezone.utc).isoformat(timespec="seconds"),
+                "timestamp": _dt.datetime.now(_dt.UTC).isoformat(timespec="seconds"),
                 "candidate_id": candidate_id,
                 "params_hash": _params_hash(result.meta),
                 "split": split,

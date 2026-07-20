@@ -24,10 +24,17 @@ from .data import load_g1_window
 from .grammar import build_terminals
 
 SECTOR_ETFS = {
-    "XLB": "Materials", "XLC": "Communication Services", "XLE": "Energy",
-    "XLF": "Financials", "XLI": "Industrials", "XLK": "Information Technology",
-    "XLP": "Consumer Staples", "XLRE": "Real Estate", "XLU": "Utilities",
-    "XLV": "Health Care", "XLY": "Consumer Discretionary",
+    "XLB": "Materials",
+    "XLC": "Communication Services",
+    "XLE": "Energy",
+    "XLF": "Financials",
+    "XLI": "Industrials",
+    "XLK": "Information Technology",
+    "XLP": "Consumer Staples",
+    "XLRE": "Real Estate",
+    "XLU": "Utilities",
+    "XLV": "Health Care",
+    "XLY": "Consumer Discretionary",
 }
 
 
@@ -67,16 +74,23 @@ def _single_sort(cond: pd.DataFrame, fwd: pd.DataFrame, q: int = 5) -> pd.Series
 
 
 def compute_panels() -> dict:
-    fields = {f: load_g1_window(field=f) for f in ["open", "high", "low", "close", "adjclose", "volume"]}
+    fields = {
+        f: load_g1_window(field=f) for f in ["open", "high", "low", "close", "adjclose", "volume"]
+    }
     universe = json.loads((REPO_ROOT / "data" / "universe.json").read_text())
     eq_cols = [t for t in universe["equities"] if t in fields["adjclose"].columns]
     eq = {k: v[eq_cols] for k, v in fields.items()}
-    terms = build_terminals(eq["open"], eq["high"], eq["low"], eq["close"], eq["adjclose"], eq["volume"])
+    terms = build_terminals(
+        eq["open"], eq["high"], eq["low"], eq["close"], eq["adjclose"], eq["volume"]
+    )
     ret1 = terms["ret1"]
     fwd1 = ret1.shift(-1)  # response: next-day return
 
-    panels: dict = {"window": [str(ret1.index.min().date()), str(ret1.index.max().date())],
-                    "n_days": int(len(ret1)), "n_names": int(ret1.shape[1])}
+    panels: dict = {
+        "window": [str(ret1.index.min().date()), str(ret1.index.max().date())],
+        "n_days": len(ret1),
+        "n_names": int(ret1.shape[1]),
+    }
 
     # 1. Cross-sectional lag-response profile (Spearman, mean across days)
     lag_profile = {}
@@ -89,7 +103,9 @@ def compute_panels() -> dict:
     panels["cs_lag_response"] = lag_profile
 
     # 2. Overnight gap x intraday move -> next-day return (bps)
-    panels["gap_x_intraday"] = _quintile_double_sort(terms["gap"], terms["intraday"], fwd1).round(1).to_dict()
+    panels["gap_x_intraday"] = (
+        _quintile_double_sort(terms["gap"], terms["intraday"], fwd1).round(1).to_dict()
+    )
 
     # 3. Volume z x prior return -> next-day return
     panels["volz_x_ret1"] = _quintile_double_sort(terms["volz"], ret1, fwd1).round(1).to_dict()
@@ -122,7 +138,10 @@ def compute_panels() -> dict:
         sector_fwd = ret1[members].mean(axis=1).shift(-1)
         own = etf_ret[etf]
         corr = own.corr(sector_fwd)
-        lead_lag[etf] = {"n_members": len(members), "etf_to_members_next_day_corr": round(float(corr), 4)}
+        lead_lag[etf] = {
+            "n_members": len(members),
+            "etf_to_members_next_day_corr": round(float(corr), 4),
+        }
     panels["sector_etf_lead_lag"] = lead_lag
 
     # 9. Cross-sectional dispersion dynamics

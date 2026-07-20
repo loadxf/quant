@@ -16,7 +16,6 @@ import hashlib
 import json
 import sys
 import time
-from pathlib import Path
 
 import pandas as pd
 import requests
@@ -62,13 +61,16 @@ def fetch_daily(ticker: str, retries: int = 3, throttle: float = 0.5) -> pd.Data
                     "adjclose": adj,
                     "volume": quote["volume"],
                 },
-                index=pd.to_datetime(ts, unit="s", utc=True).tz_convert("America/New_York").normalize().tz_localize(None),
+                index=pd.to_datetime(ts, unit="s", utc=True)
+                .tz_convert("America/New_York")
+                .normalize()
+                .tz_localize(None),
             )
             df.index.name = "date"
             df = df[~df.index.duplicated(keep="last")].dropna(subset=["close"])
             time.sleep(throttle)
             return df
-        except Exception as err:  # noqa: BLE001 - retry any transport/parse failure
+        except Exception as err:
             last_err = err
             time.sleep(2**attempt)
     raise RuntimeError(f"failed to fetch {ticker}: {last_err}")
@@ -171,7 +173,7 @@ def main() -> None:
         if result["failed"]:
             print("failed:", ",".join(result["failed"]))
     else:
-        print("usage: python -m quantlab.data download")
+        print("usage: python -m edgelab.data download")
 
 
 if __name__ == "__main__":

@@ -43,7 +43,7 @@ def build_terminals(
     ret1 = adjclose.pct_change(fill_method=None)
     logvol = np.log(volume.where(volume > 0))
     volz = (logvol - logvol.rolling(63).mean()) / logvol.rolling(63).std()
-    span = (high - low)
+    span = high - low
     return {
         "ret1": ret1,
         "ret5": adjclose.pct_change(5, fill_method=None),
@@ -98,9 +98,9 @@ def evaluate(expr, terminals: dict[str, pd.DataFrame]) -> pd.DataFrame:
 def to_string(expr) -> str:
     if isinstance(expr, str):
         return expr
-    return "(" + " ".join(
-        to_string(e) if isinstance(e, (tuple, str)) else str(e) for e in expr
-    ) + ")"
+    return (
+        "(" + " ".join(to_string(e) if isinstance(e, (tuple, str)) else str(e) for e in expr) + ")"
+    )
 
 
 def parse_expr(s: str):
@@ -169,7 +169,7 @@ def _subtrees(expr, path=()):
     if not isinstance(expr, str):
         for i, child in enumerate(expr[1:], start=1):
             if isinstance(child, (tuple, str)):
-                yield from _subtrees(child, path + (i,))
+                yield from _subtrees(child, (*path, i))
 
 
 def _replace(expr, path, new):

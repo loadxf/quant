@@ -7,8 +7,7 @@ case, and checks turnover-cost accounting.
 import numpy as np
 import pandas as pd
 import pytest
-
-from quantlab.backtest import quantile_weights, run_backtest
+from edgelab.backtest import quantile_weights, run_backtest
 
 
 def make_prices(n_days=400, n_names=50, seed=11):
@@ -65,9 +64,7 @@ def test_hand_built_timing_convention():
 def test_costs_charged_on_turnover():
     prices = make_prices(n_days=300)
     rng = np.random.default_rng(3)
-    signal = pd.DataFrame(
-        rng.normal(size=prices.shape), index=prices.index, columns=prices.columns
-    )
+    signal = pd.DataFrame(rng.normal(size=prices.shape), index=prices.index, columns=prices.columns)
     free = run_backtest(signal, prices, "test_cost0", "unit", cost_bps=0.0, ledger=False)
     paid = run_backtest(signal, prices, "test_cost25", "unit", cost_bps=25.0, ledger=False)
     implied = free.returns_gross - paid.returns_net
@@ -80,9 +77,7 @@ def test_first_day_entry_charges_turnover():
     """Entering the book from flat must be charged full turnover, not zero."""
     prices = make_prices(n_days=60)
     rng = np.random.default_rng(8)
-    signal = pd.DataFrame(
-        rng.normal(size=prices.shape), index=prices.index, columns=prices.columns
-    )
+    signal = pd.DataFrame(rng.normal(size=prices.shape), index=prices.index, columns=prices.columns)
     result = run_backtest(signal, prices, "test_entry", "unit", cost_bps=10.0, ledger=False)
     first_live = result.turnover.index[0]
     gross_book = result.weights.loc[first_live].abs().sum()
@@ -91,7 +86,7 @@ def test_first_day_entry_charges_turnover():
 
 
 def test_ledger_row_written(tmp_path, monkeypatch):
-    import quantlab.backtest as bt
+    import edgelab.backtest as bt
 
     monkeypatch.setattr(bt, "LEDGER_PATH", tmp_path / "ledger.csv")
     prices = make_prices(n_days=120)

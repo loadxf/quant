@@ -1,8 +1,7 @@
 """C013: volume-recession-conditioned monthly reversal, held 21 days (spec.md)."""
 
 import pandas as pd
-
-from quantlab.grammar import build_terminals
+from edgelab.grammar import build_terminals
 
 SPIKE_Z = 1.5
 POST_DAYS = 5
@@ -13,8 +12,12 @@ HOLD = 21
 
 def compute_signal(fields: dict[str, pd.DataFrame]) -> pd.DataFrame:
     terms = build_terminals(
-        fields["open"], fields["high"], fields["low"],
-        fields["close"], fields["adjclose"], fields["volume"],
+        fields["open"],
+        fields["high"],
+        fields["low"],
+        fields["close"],
+        fields["adjclose"],
+        fields["volume"],
     )
     volz = terms["volz"]
 

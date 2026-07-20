@@ -75,9 +75,7 @@ def expected_max_sharpe(n_trials: int, var_sr: float) -> float:
     )
 
 
-def deflated_sharpe_ratio(
-    returns: pd.Series, n_trials: int, var_sr_trials: float
-) -> dict:
+def deflated_sharpe_ratio(returns: pd.Series, n_trials: int, var_sr_trials: float) -> dict:
     """DSR = PSR evaluated at the expected-max-SR benchmark.
 
     ``var_sr_trials`` is the variance of ANNUALIZED net SRs across all ledger
@@ -93,7 +91,7 @@ def deflated_sharpe_ratio(
     return {
         "sr_annualized": sharpe_ratio(r),
         "sr_daily": sr_daily,
-        "n_obs": int(len(r)),
+        "n_obs": len(r),
         "n_trials": int(n_trials),
         "var_sr_trials_annualized": float(var_sr_trials),
         "sr0_daily_benchmark": sr0,
@@ -101,9 +99,7 @@ def deflated_sharpe_ratio(
     }
 
 
-def stationary_bootstrap_indices(
-    n: int, mean_block: float, rng: np.random.Generator
-) -> np.ndarray:
+def stationary_bootstrap_indices(n: int, mean_block: float, rng: np.random.Generator) -> np.ndarray:
     """Politis-Romano stationary bootstrap index sequence of length n:
     geometric block lengths with mean ``mean_block``, wrapping circularly."""
     p = 1.0 / mean_block

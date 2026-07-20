@@ -22,7 +22,9 @@ from .stats import (
 
 
 def _val(s: pd.Series) -> pd.Series:
-    return s[(s.index >= pd.Timestamp(VALIDATION_START)) & (s.index <= pd.Timestamp(VALIDATION_END))]
+    return s[
+        (s.index >= pd.Timestamp(VALIDATION_START)) & (s.index <= pd.Timestamp(VALIDATION_END))
+    ]
 
 
 def main() -> None:
@@ -61,7 +63,7 @@ def main() -> None:
         "long_leg_sr": sharpe_ratio(_val(long_leg)),
         "short_leg_sr": sharpe_ratio(_val(short_leg)),
         "note": "if the premium lives in the long (high-vol) leg beating the market on "
-                "current constituents, survivorship inflation is the prime suspect",
+        "current constituents, survivorship inflation is the prime suspect",
     }
 
     # ETF-universe replication (no deletion-style survivorship in current ETF list).
@@ -69,20 +71,31 @@ def main() -> None:
     etf_rng = (etf["high"] - etf["low"]) / etf["close"]
     etf_sig = etf_rng.rolling(63, min_periods=31).std()
     etf_bt = run_backtest(
-        etf_sig, etf["adjclose"], candidate_id="diag_rangevol_etf",
-        split="diag_val", cost_bps=5.0, quantile=0.2, holding_days=5, min_names=30,
+        etf_sig,
+        etf["adjclose"],
+        candidate_id="diag_rangevol_etf",
+        split="diag_val",
+        cost_bps=5.0,
+        quantile=0.2,
+        holding_days=5,
+        min_names=30,
     )
     v = _val(etf_bt.returns_net)
     out["rangevol_on_etfs_validation"] = {
         "sr_net": sharpe_ratio(v),
         "nw_t": newey_west_tstat(v),
-        "n_obs": int(len(v)),
+        "n_obs": len(v),
     }
 
     # Sub-period stability on equities (train halves + validation).
     eq_bt = run_backtest(
-        sig, eq["adjclose"], candidate_id="diag_rangevol_eq",
-        split="diag_full", cost_bps=10.0, quantile=0.1, holding_days=5,
+        sig,
+        eq["adjclose"],
+        candidate_id="diag_rangevol_eq",
+        split="diag_full",
+        cost_bps=10.0,
+        quantile=0.1,
+        holding_days=5,
     )
     r = eq_bt.returns_net
     out["rangevol_equities_subperiods"] = {

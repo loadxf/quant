@@ -101,14 +101,16 @@ def evaluate_candidate(candidate_id: str, fields: dict[str, pd.DataFrame]) -> di
         "train": {
             "sr_net": sharpe_ratio(train_net),
             "nw_t": newey_west_tstat(train_net),
-            "n_obs": int(len(train_net)),
+            "n_obs": len(train_net),
         },
         "validation": {
             "sr_net": sharpe_ratio(val_net),
             "sr_gross": sharpe_ratio(_slice(full.returns_gross, VALIDATION_START, VALIDATION_END)),
             "nw_t": newey_west_tstat(val_net),
-            "n_obs": int(len(val_net)),
-            "mean_daily_turnover": float(_slice(full.turnover, VALIDATION_START, VALIDATION_END).mean()),
+            "n_obs": len(val_net),
+            "mean_daily_turnover": float(
+                _slice(full.turnover, VALIDATION_START, VALIDATION_END).mean()
+            ),
         },
     }
 
@@ -158,7 +160,7 @@ def evaluate_candidate(candidate_id: str, fields: dict[str, pd.DataFrame]) -> di
                     perturb_srs[f"{attr}x{factor}"] = sharpe_ratio(
                         _slice(pres.returns_net, VALIDATION_START, VALIDATION_END)
                     )
-                except Exception as err:  # noqa: BLE001
+                except Exception as err:
                     perturb_srs[f"{attr}x{factor}"] = f"error: {err}"
                 finally:
                     setattr(module, attr, base_val)
