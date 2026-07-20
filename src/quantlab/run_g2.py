@@ -25,11 +25,17 @@ TOP_K = 12
 
 VARIANTS = {
     "equities1": {"universe": "equities", "holding_days": 1, "cost_bps": 10.0,
-                  "quantile": 0.1, "seed": 20260719},
+                  "quantile": 0.1, "seed": 20260719, "population": 120,
+                  "generations": 8, "train_start": None, "subsample": None},
+    # loop-2 variants (D2 addendum): search fitness on the 2010-2018 train
+    # subwindow and a stride-sampled 252-name subuniverse for speed and
+    # restart-resilience; gates still evaluate on the FULL universe/period.
     "equities5": {"universe": "equities", "holding_days": 5, "cost_bps": 10.0,
-                  "quantile": 0.1, "seed": 20260720},
+                  "quantile": 0.1, "seed": 20260720, "population": 100,
+                  "generations": 6, "train_start": "2010-01-01", "subsample": 2},
     "etf5": {"universe": "etfs", "holding_days": 5, "cost_bps": 5.0,
-             "quantile": 0.2, "seed": 20260721},
+             "quantile": 0.2, "seed": 20260721, "population": 100,
+             "generations": 6, "train_start": None, "subsample": None},
 }
 
 
@@ -50,6 +56,11 @@ def main() -> None:
         fields = load_equity_fields(end=TRAIN_END)
     else:
         fields = load_etf_fields(end=TRAIN_END)
+    if cfg["subsample"]:
+        cols = sorted(fields["adjclose"].columns)[:: cfg["subsample"]]
+        fields = {k: v[[c for c in cols if c in v.columns]] for k, v in fields.items()}
+    if cfg["train_start"]:
+        fields = {k: v.loc[v.index >= pd.Timestamp(cfg["train_start"])] for k, v in fields.items()}
     terms = build_terminals(
         fields["open"], fields["high"], fields["low"],
         fields["close"], fields["adjclose"], fields["volume"],
@@ -57,14 +68,15 @@ def main() -> None:
     results = evolve(
         terms,
         fields["adjclose"],
-        population=120,
-        generations=8,
+        population=cfg["population"],
+        generations=cfg["generations"],
         seed=cfg["seed"],
         log_path=f"candidates/g2_search_history_{name}.json",
         holding_days=cfg["holding_days"],
         cost_bps=cfg["cost_bps"],
         quantile=cfg["quantile"],
         split=f"train_g2_{name}",
+        checkpoint_path=f"candidates/g2_checkpoint_{name}.json",
     )
     finite = [r for r in results if pd.notna(r.train_sharpe)]
     survivors = []

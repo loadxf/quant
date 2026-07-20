@@ -1,5 +1,5 @@
 ---
-status: draft round 2
+status: agreed round 3
 topic: strategy_families
 ---
 
@@ -30,7 +30,7 @@ Confidence: medium (practitioner-database backtest, not peer-reviewed; verified 
 
 **C4. Short-term reversal (Jegadeesh 1990; Lehmann 1990): last month's (or week's) losers beat winners; the monthly extreme-decile spread was about 2.5% per month in 1934–1987, and weekly contrarian profits exceeded 2% per month.**
 Evidence: Jegadeesh (JF 45, 881–898) found "negative first-order serial correlation in monthly stock returns"; "the difference between abnormal returns on the extreme decile portfolios over 1934–1987 was 2.49 percent per month." Lehmann (QJE 105, 1–28): winners/losers one week "experience sizeable return reversals the next week" with contrarian abnormal returns of over 2% per month (the standard literature characterization, not a verbatim abstract quote) surviving bid-ask and plausible cost corrections.
-Source: https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1540-6261.1990.tb05110.x ; https://ideas.repec.org/a/bla/jfinan/v45y1990i3p881-98.html (Jegadeesh 2.49%/month verbatim) ; https://academic.oup.com/qje/article-abstract/105/1/1/1928416 ; https://finance.martinsewell.com/stylized-facts/dependence/Lehmann1990.pdf (NYSE/AMEX, July 1962–Dec 1986: winner portfolios averaged −0.35 to −0.55%/week the next week, loser portfolios +0.86 to +1.24%/week)
+Source: https://onlinelibrary.wiley.com/doi/abs/10.1111/j.1540-6261.1990.tb05110.x ; https://ideas.repec.org/a/bla/jfinan/v45y1990i3p881-98.html (Jegadeesh 2.49%/month verbatim) ; https://academic.oup.com/qje/article-abstract/105/1/1/1928416 ; https://finance.martinsewell.com/stylized-facts/dependence/Lehmann1990.pdf (published-version scan; image-only, no text layer) ; https://www.nber.org/system/files/working_papers/w2533/w2533.pdf (NBER WP 2533 full text — the verbatim source of the weekly ranges: NYSE/AMEX, July 1962–Dec 1986, winner portfolios averaged −0.35 to −0.55%/week the next week, loser portfolios +0.86 to +1.24%/week)
 Confidence: high (both magnitudes verified against primary/abstract sources in adversarial round 1)
 
 **C5. Long-term reversal (De Bondt–Thaler 1985): 3–5-year loser portfolios beat winner portfolios by roughly 25% over the subsequent 36 months (NYSE, 1926–1982), with the effect concentrated in January.**
@@ -153,7 +153,7 @@ Evidence: Journal of Empirical Finance 18(2), 271–288: "the price impact from 
 Source: https://www.petajisto.net/papers/petajisto%202011%20jef%20-%20hidden%20cost%20for%20index%20funds.pdf
 Confidence: high
 
-**C29. The index effect has decayed (Greenwood–Sammon 2025): the abnormal return on S&P 500 additions fell from an average of 7.4% in the 1990s to 0.3% in the most recent decade, and deletion effects shrank to −0.1%-scale, despite growth in indexed assets.**
+**C29. The index effect has decayed (Greenwood–Sammon 2025): the abnormal return on S&P 500 additions fell from an average of 7.4% in the 1990s to 0.3% in the most recent decade, and deletion effects shrank to a 0.1% magnitude (abstract states the figure without sign), despite growth in indexed assets.**
 Evidence: Journal of Finance 80(2), 657–698: "The abnormal return associated with a stock being added to the S&P 500 has fallen from an average of 7.4% in the 1990s to 0.3% over the past decade. A similar pattern has occurred for index deletions... only 0.1% between 2010 and 2020."
 Source: https://onlinelibrary.wiley.com/doi/abs/10.1111/jofi.13410
 Confidence: high
@@ -273,3 +273,24 @@ Audit nitpicks (not objections) also applied:
 
 No claims were renumbered or removed. Status advanced to "draft round 2"; not marked agreed
 (adversary/judge decision).
+
+## Revision log round 3 (final verification)
+
+Final adversarial verification (research/debates/strategy_families_round3.md, 2026-07-20; the
+prior round-3 pass crashed before ruling). The single outstanding round-2 objection (C12 study
+year/authors) was re-verified independently — Emerald CFR article page and the CFR-hosted PDF
+both confirm Ko AND Yang, CFR 13(3-4), 531–538, published 2024 (PDF vintage June 2021) — the
+round-2 fix stands as written. All four claims whose wording changed in the round-2 revision
+(C1, C2, C4, C16) were re-verified against primary full texts, and five additional load-bearing
+numeric claims (C6, C7, C17, C28, C29) were spot-checked from primary sources. Two
+precision-level edits applied by the verifier:
+
+- **C29 (precision).** Header "deletion effects shrank to −0.1%-scale" softened to "a 0.1%
+  magnitude (abstract states the figure without sign)": the published JF abstract reads "only
+  0.1% between 2010 and 2020" and does not give the sign of the recent-decade deletion return.
+- **C4 (provenance).** The martinsewell Lehmann1990.pdf is an image-only scan (no extractable
+  text); added NBER WP 2533 full text as the verbatim source of the weekly reversal ranges
+  (−0.35 to −0.55%/week winners, +0.86 to +1.24%/week losers, NYSE/AMEX July 1962–Dec 1986),
+  re-verified word-for-word in this round.
+
+No substantive numbers changed. Status advanced to "agreed round 3".

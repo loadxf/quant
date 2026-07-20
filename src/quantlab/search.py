@@ -22,6 +22,7 @@ from .grammar import (
     crossover,
     evaluate,
     mutate,
+    parse_expr,
     random_expr,
     to_string,
 )
@@ -87,16 +88,32 @@ def evolve(
     cost_bps: float = 10.0,
     quantile: float = 0.1,
     split: str = "train_g2",
+    checkpoint_path: str | None = None,
 ) -> list[SearchResult]:
     """Run the evolutionary search; returns all evaluated results sorted by
-    fitness. Deterministic under the fixed seed."""
-    rng = np.random.default_rng(seed)
+    fitness. Deterministic under the fixed seed. With ``checkpoint_path`` the
+    state (population, fitness cache, history) is saved after every generation
+    and a killed run resumes at the start of the interrupted generation —
+    already-scored expressions replay from the cache without new ledger rows.
+    Per-generation RNG streams (seeded by [seed, gen]) keep breeding
+    deterministic across resumes.
+    """
+    ckpt = REPO_ROOT / checkpoint_path if checkpoint_path else None
     cache: dict[str, float] = {}
-    pop = [random_expr(rng) for _ in range(population)]
+    history: list[dict] = []
+    start_gen = 0
+    if ckpt is not None and ckpt.exists():
+        state = json.loads(ckpt.read_text())
+        cache = {k: float(v) for k, v in state["cache"].items()}
+        history = state["history"]
+        start_gen = state["gen"]
+        pop = [parse_expr(s) for s in state["pop"]]
+    else:
+        init_rng = np.random.default_rng([seed, 0])
+        pop = [random_expr(init_rng) for _ in range(population)]
     all_results: dict[str, SearchResult] = {}
-    history = []
 
-    for gen in range(generations):
+    for gen in range(start_gen, generations):
         scored = [
             fitness_of(
                 e, terminals, adjclose, gen, cache,
@@ -114,6 +131,7 @@ def evolve(
             {"generation": gen, "best_fitness": best.fitness, "best_train_sr": best.train_sharpe,
              "best_expr": best.expr_str, "evaluated": len(cache)}
         )
+        rng = np.random.default_rng([seed, gen + 1])
         n_elite = max(2, int(population * elite_frac))
         elites = [s.expr for s in scored[:n_elite]]
         children = list(elites)
@@ -127,6 +145,19 @@ def evolve(
             else:
                 children.append(random_expr(rng))
         pop = children
+        if ckpt is not None:
+            ckpt.write_text(json.dumps(
+                {"gen": gen + 1, "pop": [to_string(e) for e in pop],
+                 "cache": cache, "history": history}
+            ))
+
+    # On resume, earlier generations' bests live only in cache/history; rebuild
+    # result objects for every cached expression so ranking sees the full run.
+    for key, sr in cache.items():
+        if key not in all_results:
+            expr = parse_expr(key)
+            fit = (sr if np.isfinite(sr) else -9.0) - COMPLEXITY_PENALTY * count_nodes(expr)
+            all_results[key] = SearchResult(expr, key, sr, fit, count_nodes(expr))
 
     if log_path:
         (REPO_ROOT / log_path).write_text(json.dumps(history, indent=1))

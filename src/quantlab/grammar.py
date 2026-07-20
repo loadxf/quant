@@ -103,6 +103,31 @@ def to_string(expr) -> str:
     ) + ")"
 
 
+def parse_expr(s: str):
+    """Inverse of to_string: parse '(op child .. )' S-expressions back to tuples."""
+    tokens = s.replace("(", " ( ").replace(")", " ) ").split()
+    pos = 0
+
+    def parse():
+        nonlocal pos
+        tok = tokens[pos]
+        pos += 1
+        if tok == "(":
+            items = []
+            while tokens[pos] != ")":
+                items.append(parse())
+            pos += 1
+            return tuple(items)
+        if tok.lstrip("-").isdigit():
+            return int(tok)
+        return tok
+
+    result = parse()
+    if pos != len(tokens):
+        raise ValueError(f"trailing tokens in expression: {s}")
+    return result
+
+
 def count_nodes(expr) -> int:
     if isinstance(expr, str):
         return 1

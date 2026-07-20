@@ -52,3 +52,14 @@ survivors, pivot the rest):**
 **Multiple-testing accounting:** unchanged — every loop-2 evaluation (search fitness calls
 included) appends to the trials ledger and inflates the DSR's N. No loop-1 result is
 re-interpreted; C010 remains failed at Gate 1.
+
+## D2 addendum — loop-2 search made restart-resilient (infrastructure, pre-results)
+
+The execution environment repeatedly restarted mid-search, killing loop-2 runs. Changes,
+made before any loop-2 variant completed: (a) evolutionary search checkpoints per
+generation and resumes deterministically (per-generation RNG streams; cached fitness
+replays without new ledger rows); (b) loop-2 search-FITNESS economy: population 100 x 6
+generations; equities5 fitness computed on the 2010-2018 train subwindow and a
+deterministic stride-sampled 252-name subuniverse. Gate evaluations are unchanged (full
+universe, full periods). Interrupted-run ledger rows are retained, overcounting N in the
+DSR's disfavor.
