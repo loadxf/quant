@@ -49,7 +49,7 @@ cd quant
 python -m venv .venv && source .venv/bin/activate
 
 pip install -e .          # core: everything except QuantConnect Cloud
-pip install -e ".[qc]"    # + the lean CLI, only needed for `quant cloud`
+pip install -e ".[qc]"    # + the lean CLI, for `quant cloud push`/`backtest` only
 pip install -e ".[dev]"   # + pytest/ruff/mypy, for contributors
 
 quant --version           # sanity check
@@ -351,8 +351,10 @@ The honesty layer. Sections, in order:
 - **Permutation drawdowns** — trade-order-shuffled max-drawdown
   distribution; `--ruin-capital` adds P(ruin) at your capital.
 
-All overhead knobs (`--extra-monthly`, `--per-payout-fee`,
-`--payout-haircut`) apply here too; `--json` for machine output. Methods
+The overhead knobs (`--extra-monthly`, `--per-payout-fee`,
+`--payout-haircut`) apply here too, but — like the MC pass-prob columns
+they feed — only when `--firm` is given; without a firm there is no EV to
+fold them into and they are ignored. `--json` for machine output. Methods
 and thresholds are literature-anchored — citations in
 [docs/research-notes.md](docs/research-notes.md).
 
@@ -389,9 +391,12 @@ the reality-check section, `--outer/--inner-paths` for the sampling band,
 
 ### `quant cloud` — QuantConnect Cloud backtests
 
-Cloud backtests run on QC's servers — no Docker anywhere. Requires
-`pip install -e ".[qc]"` and the `QC_USER_ID`/`QC_API_TOKEN` environment
-variables ([§1](#1-setup-from-scratch)).
+Cloud backtests run on QC's servers — no Docker anywhere. All three
+commands need the `QC_USER_ID`/`QC_API_TOKEN` environment variables
+([§1](#1-setup-from-scratch)); `push` and `backtest` additionally need the
+lean CLI (`pip install -e ".[qc]"`), while `results` talks to the REST API
+directly and works with the core install — you can download and analyze
+results on a machine that never installed lean.
 
 ```bash
 # Using QC's built-in data (ES/NQ futures, full US equities, FX — free for cloud backtesting):
