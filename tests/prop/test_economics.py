@@ -181,3 +181,40 @@ class TestSemanticsReviewFixes:
         eco = run_monte_carlo(log, firm, MCConfig(n_paths=100, seed=5)).economics
         assert eco.overhead is not None
         assert "expected_funded_overhead_per_funded" in eco.overhead
+
+
+class TestPayoutHaircut:
+    """M11.d: user-supplied counterparty assumption."""
+
+    def test_haircut_scales_payout_value_linearly(self) -> None:
+        from quantlab.prop.config import with_fee_overrides
+
+        from ..conftest import random_log
+
+        firm = load_firm("topstep_50k")
+        log = random_log(n_days=100, mean=40.0, std=300.0, seed=7)
+        cfg = MCConfig(n_paths=300, seed=5)
+        base = run_monte_carlo(log, firm, cfg).economics
+        cut = run_monte_carlo(log, with_fee_overrides(firm, payout_haircut=0.2), cfg).economics
+        assert cut.expected_gross_payout == pytest.approx(0.8 * base.expected_gross_payout)
+        assert cut.expected_net < base.expected_net
+
+    def test_haircut_warning_states_assumption(self) -> None:
+        from quantlab.prop.config import with_fee_overrides
+
+        from ..conftest import random_log
+
+        firm = with_fee_overrides(load_firm("topstep_50k"), payout_haircut=0.1)
+        log = random_log(n_days=60, mean=40.0, std=300.0, seed=7)
+        report = run_monte_carlo(log, firm, MCConfig(n_paths=100, seed=5))
+        assert any("USER-SUPPLIED" in w for w in report.warnings)
+
+    def test_haircut_validation(self) -> None:
+        from quantlab.errors import ConfigError
+        from quantlab.prop.config import with_fee_overrides
+
+        firm = load_firm("topstep_50k")
+        with pytest.raises(ConfigError, match="payout-haircut"):
+            with_fee_overrides(firm, payout_haircut=1.0)
+        with pytest.raises(ConfigError, match="payout-haircut"):
+            with_fee_overrides(firm, payout_haircut=-0.1)

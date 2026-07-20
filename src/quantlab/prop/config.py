@@ -215,6 +215,11 @@ class FeeSchedule(_RuleBase):
     # subscriptions and payout processing costs.
     extra_monthly: float = 0.0  # recurring overhead billed while trading (eval AND funded)
     per_payout: float = 0.0  # processing cost deducted from each payout
+    # USER-SUPPLIED counterparty assumption (0-1): expected fraction of
+    # payout value lost to denials/delays/firm failure. The tool has no
+    # data on denial rates — this knob exists so users can price their
+    # own trust level; presets stay 0 and output states the assumption.
+    payout_haircut: float = 0.0
 
     @model_validator(mode="after")
     def _exclusive(self) -> FeeSchedule:
@@ -268,16 +273,23 @@ class FirmConfig(_RuleBase):
 
 
 def with_fee_overrides(
-    firm: FirmConfig, extra_monthly: float = 0.0, per_payout: float = 0.0
+    firm: FirmConfig,
+    extra_monthly: float = 0.0,
+    per_payout: float = 0.0,
+    payout_haircut: float = 0.0,
 ) -> FirmConfig:
-    """Copy of `firm` with user-side overhead knobs applied (CLI path)."""
-    if extra_monthly <= 0 and per_payout <= 0:
+    """Copy of `firm` with user-side overhead/assumption knobs applied."""
+    if not 0.0 <= payout_haircut < 1.0:
+        raise ConfigError(f"--payout-haircut must be in [0, 1) (got {payout_haircut})")
+    if extra_monthly <= 0 and per_payout <= 0 and payout_haircut <= 0:
         return firm
     updates: dict[str, float] = {}
     if extra_monthly > 0:
         updates["extra_monthly"] = extra_monthly
     if per_payout > 0:
         updates["per_payout"] = per_payout
+    if payout_haircut > 0:
+        updates["payout_haircut"] = payout_haircut
     return firm.model_copy(update={"fees": firm.fees.model_copy(update=updates)})
 
 

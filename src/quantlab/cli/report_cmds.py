@@ -84,6 +84,11 @@ def register_report_commands(app: typer.Typer) -> None:
         per_payout_fee: float = typer.Option(
             0.0, "--per-payout-fee", help="Processing cost deducted from each payout."
         ),
+        payout_haircut: float = typer.Option(
+            0.0,
+            "--payout-haircut",
+            help="Counterparty assumption (0-1): payout fraction lost to denials/failure.",
+        ),
         ohlcv: Path | None = typer.Option(
             None, "--ohlcv", help="Market bars CSV — adds the trend x vol market-regime table."
         ),
@@ -93,7 +98,9 @@ def register_report_commands(app: typer.Typer) -> None:
         from quantlab.prop.config import with_fee_overrides
 
         log = read_trade_log(trades)
-        firm = with_fee_overrides(load_firm(firm_name), extra_monthly, per_payout_fee)
+        firm = with_fee_overrides(
+            load_firm(firm_name), extra_monthly, per_payout_fee, payout_haircut
+        )
         bars = None
         if ohlcv is not None:
             from quantlab.ingest.ohlcv import load_ohlcv

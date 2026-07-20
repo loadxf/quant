@@ -215,6 +215,11 @@ def simulate_cmd(
     per_payout_fee: float = typer.Option(
         0.0, "--per-payout-fee", help="Processing cost deducted from each payout."
     ),
+    payout_haircut: float = typer.Option(
+        0.0,
+        "--payout-haircut",
+        help="Counterparty assumption (0-1): payout fraction lost to denials/failure.",
+    ),
     accounts: str | None = typer.Option(
         None,
         "--accounts",
@@ -226,7 +231,7 @@ def simulate_cmd(
     from quantlab.prop.config import with_fee_overrides
 
     log = read_trade_log(trades)
-    firm = with_fee_overrides(load_firm(firm_name), extra_monthly, per_payout_fee)
+    firm = with_fee_overrides(load_firm(firm_name), extra_monthly, per_payout_fee, payout_haircut)
     cfg = MCConfig(
         n_paths=paths,
         seed=seed,

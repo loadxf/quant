@@ -131,8 +131,16 @@ def summarize(
     assert funded.first_payout_day is not None
     # received_gross stays E[withdrawn * split] — the documented meaning of
     # expected_gross_payout; processing costs reduce only the NET figures
-    # (funded_value, payout_quantiles, the reactivation fresh value).
+    # (funded_value, payout_quantiles, the reactivation fresh value). The
+    # payout-trust haircut is different: denial risk is value never
+    # received AT ALL, so it scales gross and net alike.
     received_gross = funded.total_withdrawn * payout.profit_split
+    if fees.payout_haircut > 0:
+        received_gross = received_gross * (1.0 - fees.payout_haircut)
+        warnings.append(
+            f"payout values haircut {fees.payout_haircut:.0%} for counterparty "
+            "risk — a USER-SUPPLIED assumption, not firm data"
+        )
     received = received_gross
     if fees.per_payout > 0:
         received = received_gross - fees.per_payout * funded.payout_count

@@ -70,6 +70,11 @@ def register_stress_commands(app: typer.Typer) -> None:
         per_payout_fee: float = typer.Option(
             0.0, "--per-payout-fee", help="Processing cost deducted from each payout."
         ),
+        payout_haircut: float = typer.Option(
+            0.0,
+            "--payout-haircut",
+            help="Counterparty assumption (0-1): payout fraction lost to denials/failure.",
+        ),
         json_out: bool = typer.Option(False, "--json", help="Machine-readable output."),
     ) -> None:
         """Cost stress, edge decay, and deflated statistics for a trade log.
@@ -84,7 +89,7 @@ def register_stress_commands(app: typer.Typer) -> None:
         log = read_trade_log(trades)
         firm_cfg = load_firm(firm) if firm else None
         if firm_cfg is not None:
-            firm_cfg = with_fee_overrides(firm_cfg, extra_monthly, per_payout_fee)
+            firm_cfg = with_fee_overrides(firm_cfg, extra_monthly, per_payout_fee, payout_haircut)
         bars = None
         if ohlcv is not None:
             from quantlab.ingest.ohlcv import load_ohlcv
