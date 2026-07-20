@@ -310,3 +310,31 @@ far noisier, adversarial, weakly-gradable evaluator than a cap-set checker, so a
 system *can* in principle originate something genuinely new, but only as strongly as its external
 evaluator can certify it — which is exactly why the locked holdout and multiple-testing harness,
 not the model's fluency, must carry any novelty verdict.
+
+## Revision log round 1
+
+Adversarial round-1 review independently re-fetched every load-bearing number and every named-
+system/paper claim from primary sources (FunSearch cap-set/capacity/bin-packing figures extracted
+directly from the Nature accepted-version PDF this session; AlphaEvolve, AlphaDev, Sakana, Beel,
+Creativity Index, Kirk, Padmakumar, Si/Yang/Hashimoto + 2025 follow-up, Doshi/Hauser, Anderson/
+Shah/Kreminski, Bender, Kambhampati, Hughes, co-scientist all re-verified). Result: **25/25 claims
+CONFIRMED; 0 WRONG, 0 OVERSTATED.** Full audit: `research/debates/llm_creativity_round1.md`.
+
+Only quote-fidelity tightening was applied (no factual claim changed):
+- **C3:** the "author text" evidence quote had used the DeepMind *blog's* phrasing about cap-set
+  *size* ("largest increase in the size of cap sets in the past 20 years") to support a claim about
+  the *capacity lower bound*. Retargeted to the paper's actual lower-bound sentence ("the largest
+  improvement to the lower bound in the last 20 years"). Also removed the unsupported word
+  "breakthrough" before "result of [32]." Underlying numbers (2.2180→2.2202, A(24,17), C ≤ 2.756)
+  were already exact and are unchanged.
+- **C24:** the quoted open-endedness definition was a re-ordered paraphrase inside quotation marks;
+  replaced with the paper's verbatim Sec. 2.1 sentence ("From the perspective of an observer, a
+  system is open-ended if and only if the sequence of artifacts it produces is both novel and
+  learnable").
+- **C1** (noted, not edited): the sub-quote "searches for programs that describe how to solve a
+  problem, rather than what the solution is" is a faithful paraphrase of the blog's "outputs
+  programs that reveal how its solutions are constructed, rather than just what the solutions are";
+  meaning preserved, not load-bearing.
+
+Status advanced to "agreed round 1 (adversary-fixed)" as nothing load-bearing remained wrong after
+these fixes.
