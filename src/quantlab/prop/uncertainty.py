@@ -113,6 +113,9 @@ def source_uncertainty(
             sessions_per_week=sessions_per_week,
             source_trades=len(log),
             warnings=[],
+            base_contracts=(
+                cfg.base_contracts if cfg.base_contracts is not None else log.max_abs_quantity()
+            ),
         )
         pass_probs[b] = report.economics.pass_prob
         nets[b] = report.economics.expected_net

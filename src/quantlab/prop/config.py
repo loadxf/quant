@@ -118,6 +118,45 @@ class ContractLimitSpec(_RuleBase):
     micros_multiplier: float = 10.0  # micros allowed at Nx the mini limit
 
 
+class ScalingTier(_RuleBase):
+    min_balance: float
+    max_contracts: float
+
+
+class ScalingPlanSpec(_RuleBase):
+    """Balance-tiered position-size caps, ENFORCED in simulation (M11).
+
+    Exactly one form:
+    - tiers: allowed contracts by balance tier, looked up at day start
+      from the prior close (Topstep Scaling Plan convention: limits never
+      increase mid-session).
+    - half_until_safety_net: half the max contracts until the END-OF-DAY
+      balance reaches the payout safety-net floor, then full size unlocks
+      permanently — even if the balance later drops (Apex 4.0 PA).
+
+    Simulation maps contracts to a PnL weight via base_contracts (the
+    log's max observed position by default, `--base-contracts` to
+    override): cap_weight = allowed / base — the same-fill linear-scaling
+    assumption.
+    """
+
+    type: Literal["scaling_plan"] = "scaling_plan"
+    tiers: list[ScalingTier] = Field(default_factory=list)
+    half_until_safety_net: bool = False
+
+    @model_validator(mode="after")
+    def _one_form(self) -> ScalingPlanSpec:
+        if bool(self.tiers) == self.half_until_safety_net:
+            raise ConfigError("scaling_plan: set exactly one of `tiers` or `half_until_safety_net`")
+        if self.tiers:
+            mins = [t.min_balance for t in self.tiers]
+            if mins != sorted(mins) or len(set(mins)) != len(mins):
+                raise ConfigError("scaling_plan tiers must have strictly increasing min_balance")
+            if any(t.max_contracts <= 0 for t in self.tiers):
+                raise ConfigError("scaling_plan tiers need positive max_contracts")
+        return self
+
+
 RuleSpec = Annotated[
     TrailingDrawdownSpec
     | StaticMaxLossSpec
@@ -125,7 +164,8 @@ RuleSpec = Annotated[
     | ConsistencySpec
     | MinTradingDaysSpec
     | TimeLimitSpec
-    | ContractLimitSpec,
+    | ContractLimitSpec
+    | ScalingPlanSpec,
     Field(discriminator="type"),
 ]
 

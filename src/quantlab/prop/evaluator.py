@@ -27,6 +27,7 @@ from quantlab.prop.config import (
     FirmConfig,
     MinTradingDaysSpec,
     PhaseConfig,
+    ScalingPlanSpec,
     StaticMaxLossSpec,
     TimeLimitSpec,
     TrailingDrawdownSpec,
@@ -85,7 +86,13 @@ def evaluate(
     phase_cfg = _find_phase(firm, phase)
     days = log.daily_groups(firm.day_boundary.to_boundary())[start_day:]
     return _evaluate_days(
-        days, firm, phase_cfg, fidelity_from(log), sizing=sizing, cushion_clip=cushion_clip
+        days,
+        firm,
+        phase_cfg,
+        fidelity_from(log),
+        sizing=sizing,
+        cushion_clip=cushion_clip,
+        base_contracts=log.max_abs_quantity(),
     )
 
 
@@ -103,11 +110,18 @@ def evaluate_sequence(
     per phase on that phase's own drawdown allowance."""
     all_days = log.daily_groups(firm.day_boundary.to_boundary())
     fidelity = fidelity_from(log)
+    base = log.max_abs_quantity()
     results: list[EvaluationResult] = []
     cursor = 0
     for phase_cfg in firm.phases:
         result = _evaluate_days(
-            all_days[cursor:], firm, phase_cfg, fidelity, sizing=sizing, cushion_clip=cushion_clip
+            all_days[cursor:],
+            firm,
+            phase_cfg,
+            fidelity,
+            sizing=sizing,
+            cushion_clip=cushion_clip,
+            base_contracts=base,
         )
         results.append(result)
         cursor += result.days_consumed
@@ -115,7 +129,13 @@ def evaluate_sequence(
             return results
     results.append(
         _evaluate_days(
-            all_days[cursor:], firm, firm.funded, fidelity, sizing=sizing, cushion_clip=cushion_clip
+            all_days[cursor:],
+            firm,
+            firm.funded,
+            fidelity,
+            sizing=sizing,
+            cushion_clip=cushion_clip,
+            base_contracts=base,
         )
     )
     return results
@@ -144,6 +164,7 @@ def _evaluate_days(
     fidelity: str,
     sizing: VolSizingParams | None = None,
     cushion_clip: tuple[float, float] | None = None,
+    base_contracts: float | None = None,
 ) -> EvaluationResult:
     initial = phase_cfg.resolved_initial(firm.account_size)
     account = firm.account_size
@@ -159,6 +180,7 @@ def _evaluate_days(
     time_limit: TimeLimitGate | None = None
     advisories: list[str] = []
     max_contracts_spec: ContractLimitSpec | None = None
+    scaling_spec: ScalingPlanSpec | None = None
 
     for spec in phase_cfg.rules:
         if isinstance(spec, TrailingDrawdownSpec):
@@ -178,6 +200,8 @@ def _evaluate_days(
             time_limit = TimeLimitGate(spec)
         elif isinstance(spec, ContractLimitSpec):
             max_contracts_spec = spec
+        elif isinstance(spec, ScalingPlanSpec):
+            scaling_spec = spec
         else:  # pragma: no cover - exhaustiveness guard for future rule types
             raise ConfigError(
                 f"Rule type {type(spec).__name__} is not handled by the evaluator — "
@@ -203,6 +227,32 @@ def _evaluate_days(
         cushion = CushionParams(
             cushion_0=initial - floor_0, clip_lo=cushion_clip[0], clip_hi=cushion_clip[1]
         )
+    # Scaling plan (M11): identical semantics to the vectorized engine —
+    # tier lookup on the prior close, Apex half-size until the sticky
+    # safety-net unlock, caps never scale a weight UP.
+    scaling_tiers: list[tuple[float, float]] | None = None
+    half_cap_weight: float | None = None
+    safety_net: float | None = None
+    unlocked = False
+    capped_days = 0
+    if scaling_spec is not None:
+        if base_contracts is None or base_contracts <= 0:
+            raise ConfigError(
+                f"phase {phase_cfg.name!r} has a scaling plan but the log carries no "
+                "positive quantities — cannot derive the base contract size"
+            )
+        if scaling_spec.tiers:
+            scaling_tiers = [(t.min_balance, t.max_contracts) for t in scaling_spec.tiers]
+        if scaling_spec.half_until_safety_net:
+            safety_net = firm.payout.safety_net_floor
+            if safety_net is None:
+                raise ConfigError(
+                    "scaling_plan.half_until_safety_net needs payout.safety_net_floor"
+                )
+            full_allowance = (
+                max_contracts_spec.max_contracts if max_contracts_spec else base_contracts
+            )
+            half_cap_weight = 0.5 * full_allowance / base_contracts
     best_day_completed = 0.0
     lockout_days = 0
     max_qty = 0.0
@@ -233,6 +283,19 @@ def _evaluate_days(
             for st_rule in static:
                 floor_t = max(floor_t, st_rule.floor)
             w *= cushion_weight(balance - floor_t, cushion)
+        cap_t = float("inf")
+        if scaling_tiers is not None:
+            assert base_contracts is not None
+            allowed = scaling_tiers[0][1]
+            for min_balance, max_contracts in scaling_tiers:
+                if balance >= min_balance:
+                    allowed = max_contracts
+            cap_t = allowed / base_contracts
+        if half_cap_weight is not None and not unlocked:
+            cap_t = min(cap_t, half_cap_weight)
+        if cap_t < w:
+            w = cap_t
+            capped_days += 1
         for rule in (*daily_fail, *daily_lockout):
             rule.day_start(day_open)
         day_cum = 0.0
@@ -335,6 +398,8 @@ def _evaluate_days(
         if sizer is not None:
             # Advance the forecast with the day's UNSCALED per-unit PnL.
             sizer.update(float(sum(t.pnl for t in trades)))
+        if safety_net is not None and balance >= safety_net:
+            unlocked = True  # sticky: full size persists even if balance drops
         for tr_rule in trailing:
             tr_rule.day_close(balance)
 
@@ -357,6 +422,12 @@ def _evaluate_days(
             f"max position {max_qty:g} exceeds the {max_contracts_spec.max_contracts:g}-contract "
             f"limit (micros typically allowed at {max_contracts_spec.micros_multiplier:g}x) — "
             "sizing is advisory only and not enforced in simulation"
+        )
+    if scaling_spec is not None and capped_days:
+        advisories.append(
+            f"scaling plan capped position size on {capped_days} day(s) "
+            f"(base {base_contracts:g} contracts = the log's max position; "
+            "same-fill linear scaling)"
         )
 
     return EvaluationResult(

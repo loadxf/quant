@@ -42,11 +42,13 @@ def make_firm(
 
 def day_trades(
     daily: Sequence[Sequence[tuple[float, float | None, float | None]]],
+    quantity: float = 1,
 ) -> TradeLog:
     """Build a log from per-day lists of (pnl, mae, mfe) tuples.
 
     Trades land at 09:00 + k*30min CT on consecutive weekdays.
     mae/mfe of None means no excursion data for that trade.
+    `quantity` applies to every trade (scaling-plan tests).
     """
     trades: list[Trade] = []
     date = BASE_DAY
@@ -63,7 +65,7 @@ def day_trades(
                     exit_time=entry + dt.timedelta(minutes=20),
                     symbol="MNQ",
                     side=Side.LONG,
-                    quantity=1,
+                    quantity=quantity,
                     pnl=pnl,
                     mae=mae,
                     mfe=mfe,

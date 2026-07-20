@@ -36,6 +36,17 @@ funded:
   initial_balance: 0
   rules:
     - {type: trailing_drawdown, amount: 4500, ratchet: eod, threshold_cap: 0}
+    # XFA Scaling Plan (article 8284223): tier thresholds from convergent
+    # secondaries capped at the 150K Combine max (15); official table is
+    # an image - re-verify before relying at size.
+    - type: scaling_plan
+      tiers:
+        - {min_balance: 0, max_contracts: 3}
+        - {min_balance: 1500, max_contracts: 4}
+        - {min_balance: 2000, max_contracts: 5}
+        - {min_balance: 3000, max_contracts: 10}
+        - {min_balance: 4500, max_contracts: 15}
+    - {type: contract_limit, max_contracts: 15}
 fees:
   monthly: 199
   reset: 199

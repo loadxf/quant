@@ -33,7 +33,7 @@ EQUIV_OUTCOME = {
 }
 
 
-def identity_phase_run(log, firm, phase_name, sizing=None, cushion_clip=None):
+def identity_phase_run(log, firm, phase_name, sizing=None, cushion_clip=None, base_contracts=None):
     """Run the vectorized engine on ONE path that replays the log verbatim."""
     boundary = DayBoundary(firm.day_boundary.tz, firm.day_boundary.cutoff_hour)
     profile = DayProfile.from_log(log, boundary)
@@ -41,6 +41,8 @@ def identity_phase_run(log, firm, phase_name, sizing=None, cushion_clip=None):
     phase_cfg = next(
         (p for p in [*firm.phases, firm.funded] if p.name == phase_name), firm.phases[0]
     )
+    if base_contracts is None:
+        base_contracts = log.max_abs_quantity()
     return _simulate_phase(
         profile,
         idx,
@@ -50,6 +52,7 @@ def identity_phase_run(log, firm, phase_name, sizing=None, cushion_clip=None):
         sample_paths=1,
         sizing=sizing,
         cushion_clip=cushion_clip,
+        base_contracts=base_contracts,
     )
 
 
@@ -190,7 +193,7 @@ class TestPayoutMechanics:
 
         gates = _resolve_rules(firm.funded, firm, 0.0).payout_gate_pcts
         payout = _resolve_payout(firm, 0.0, gates)
-        outcome = _simulate_phase(profile, idx, firm.funded, firm, payout, 1)
+        outcome = _simulate_phase(profile, idx, firm.funded, firm, payout, 1, base_contracts=1)
         assert outcome.first_payout_day is not None and outcome.first_payout_day[0] == 4
         assert outcome.total_withdrawn is not None
         # day5 balance 1000 -> withdraw 500; subsequent payouts every 5 days
@@ -210,7 +213,7 @@ class TestPayoutMechanics:
 
         gates = _resolve_rules(firm.funded, firm, 50_000.0).payout_gate_pcts
         payout = _resolve_payout(firm, 50_000.0, gates)
-        outcome = _simulate_phase(profile, idx, firm.funded, firm, payout, 1)
+        outcome = _simulate_phase(profile, idx, firm.funded, firm, payout, 1, base_contracts=1)
         assert int(outcome.outcome[0]) == OUTCOME_RETIRED
         assert int(outcome.payout_count[0]) == 6  # type: ignore[index]
         assert float(outcome.total_withdrawn[0]) <= 13_000  # verified ladder total

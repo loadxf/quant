@@ -266,6 +266,11 @@ def _worst_regime_stress(
         sessions_per_week=observed_sessions_per_week(log, boundary, days=days),
         source_trades=len(log),
         warnings=[],
+        base_contracts=(
+            getattr(cfg, "base_contracts", None)
+            if getattr(cfg, "base_contracts", None) is not None
+            else log.max_abs_quantity()
+        ),
     )
     eco = report.economics
     return {

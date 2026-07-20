@@ -39,6 +39,10 @@ funded:
     - {type: trailing_drawdown, amount: 1000, ratchet: eod, threshold_cap: 25100}
     - {type: daily_loss_limit, amount: 500, effect: lockout}
     - {type: consistency, max_best_day_pct: 50, basis: total_profit, effect: gate_payout}
+    # PA contract scaling (4.0): HALF the max contracts until the EOD
+    # balance reaches the safety net (start + DD + $100); full size then
+    # unlocks permanently, even if the balance later drops.
+    - {type: scaling_plan, half_until_safety_net: true}
 fees:
   one_time: 177
   activation: 89
@@ -51,6 +55,7 @@ payout:
   max_lifetime_payouts: 6
   safety_net_floor: 26100
 notes: |
-  Sticker prices shown; Apex runs near-constant 80-90% promo codes. PA
-  contract scaling by balance tier and conduct rules (flat by 4:59 PM ET,
-  stop-loss requirement, prohibited activities) are not simulated.
+  Sticker prices shown; Apex runs near-constant 80-90% promo codes.
+  PA contract scaling (half size until the safety net) IS simulated
+  (M11); conduct rules (flat by 4:59 PM ET, stop-loss requirement,
+  prohibited activities) are not.

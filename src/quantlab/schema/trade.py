@@ -155,3 +155,9 @@ class TradeLog:
         if days is None:
             days = self.daily_groups(boundary)
         return np.array([sum(t.pnl for t in trades) for _, trades in days], dtype=float)
+
+    def max_abs_quantity(self) -> float | None:
+        """Largest absolute position in the log — the scaling-plan
+        contracts->weight conversion base (None if no quantities)."""
+        quantities = [abs(t.quantity) for t in self.trades if t.quantity]
+        return max(quantities) if quantities else None

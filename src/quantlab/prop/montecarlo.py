@@ -33,6 +33,7 @@ from quantlab.prop.config import (
     FirmConfig,
     MinTradingDaysSpec,
     PhaseConfig,
+    ScalingPlanSpec,
     StaticMaxLossSpec,
     TimeLimitSpec,
     TrailingDrawdownSpec,
@@ -118,6 +119,10 @@ class MCConfig:
     challenge_scale: float | None = None  # per-phase sizing what-ifs
     funded_scale: float | None = None
     sample_paths_kept: int = 200
+    # Scaling-plan cap conversion: the log's max observed |quantity| unless
+    # overridden — "your log trades your full allowance" is the default
+    # assumption, stated on output.
+    base_contracts: float | None = None
     # Dynamic sizing (M9 vol_target, M11 cushion):
     # vol_target: weight_t = clip(target/sigma_t) from a per-path EWMA
     #   forecast of the strategy's per-unit day PnL.
@@ -164,6 +169,9 @@ class _PhaseRules:
     min_days: int
     time_limit_td: int | None
     rule_names: list[str]  # fail-code order: trailing, static, daily_fail
+    scaling_tiers: list[tuple[float, float]] | None = None  # (min_balance, max_contracts) asc
+    scaling_half_until_net: bool = False  # Apex: half size until safety-net unlock
+    contract_limit: float | None = None  # full allowance (ContractLimitSpec)
 
 
 def _resolve_rules(
@@ -180,6 +188,9 @@ def _resolve_rules(
     payout_gate_pcts: list[float] = []
     min_days = 0
     time_limit_td: int | None = None
+    scaling_tiers: list[tuple[float, float]] | None = None
+    scaling_half = False
+    contract_limit: float | None = None
     for spec in phase.rules:
         if isinstance(spec, TrailingDrawdownSpec):
             trailing.append(
@@ -217,7 +228,12 @@ def _resolve_rules(
         elif isinstance(spec, TimeLimitSpec):
             time_limit_td = calendar_to_trading_days(spec.max_calendar_days, sessions_per_week)
         elif isinstance(spec, ContractLimitSpec):
-            pass  # advisory-only; reported by the deterministic evaluator
+            contract_limit = spec.max_contracts  # full allowance; advisory sizing check
+        elif isinstance(spec, ScalingPlanSpec):
+            if spec.tiers:
+                scaling_tiers = [(t.min_balance, t.max_contracts) for t in spec.tiers]
+            else:
+                scaling_half = True
         else:  # pragma: no cover - exhaustiveness guard for future rule types
             raise ConfigError(
                 f"Rule type {type(spec).__name__} is not handled by the Monte Carlo "
@@ -236,6 +252,9 @@ def _resolve_rules(
         min_days=min_days,
         time_limit_td=time_limit_td,
         rule_names=rule_names,
+        scaling_tiers=scaling_tiers,
+        scaling_half_until_net=scaling_half,
+        contract_limit=contract_limit,
     )
 
 
@@ -290,12 +309,41 @@ def _simulate_phase(
     sessions_per_week: float = DEFAULT_SESSIONS_PER_WEEK,
     sizing: VolSizingParams | None = None,
     cushion_clip: tuple[float, float] | None = None,
+    base_contracts: float | None = None,
 ) -> PhaseOutcome:
     n_paths, horizon = idx.shape
     initial = phase.resolved_initial(firm.account_size)
     rules = _resolve_rules(phase, firm, initial, sessions_per_week)
     target = phase.profit_target
     is_funded = target is None
+
+    # Contract scaling plan (M11): allowed contracts -> a weight cap via
+    # base_contracts (the log's max observed position unless overridden).
+    tier_mins = tier_allowed = None
+    half_cap_weight: float | None = None
+    unlocked = None
+    safety_net = None
+    if rules.scaling_tiers is not None or rules.scaling_half_until_net:
+        if base_contracts is None or base_contracts <= 0:
+            raise QuantLabError(
+                f"phase {phase.name!r} has a scaling plan but no usable base "
+                "contract size — the log carries no positive quantities; pass "
+                "--base-contracts"
+            )
+        if rules.scaling_tiers is not None:
+            tier_mins = np.array([m for m, _ in rules.scaling_tiers])
+            tier_allowed = np.array([c for _, c in rules.scaling_tiers])
+        if rules.scaling_half_until_net:
+            safety_net = firm.payout.safety_net_floor
+            if safety_net is None:
+                raise QuantLabError(
+                    "scaling_plan.half_until_safety_net needs payout.safety_net_floor"
+                )
+            full_allowance = (
+                rules.contract_limit if rules.contract_limit is not None else base_contracts
+            )
+            half_cap_weight = 0.5 * full_allowance / base_contracts
+            unlocked = np.zeros(n_paths, dtype=bool)
 
     cushion: CushionParams | None = None
     if cushion_clip is not None:
@@ -374,6 +422,21 @@ def _simulate_phase(
                 floor_t = np.maximum(floor_t, st.value)
             w_cushion = cushion_weight(balance - floor_t, cushion)
             w = w_cushion if w is None else w * w_cushion
+        # Scaling-plan cap LAST: no sizing mode may exceed the firm's
+        # allowed size. Tier lookup uses the PRIOR-day close (= day_open;
+        # Topstep: limits never increase mid-session); the Apex half-size
+        # cap applies until the sticky safety-net unlock.
+        if tier_mins is not None:
+            assert tier_allowed is not None and base_contracts is not None
+            tier_idx = np.maximum(np.searchsorted(tier_mins, balance, side="right") - 1, 0)
+            cap_t = tier_allowed[tier_idx] / base_contracts
+            # A cap never scales UP: fixed sizing stays at 1 even when the
+            # tier would allow more contracts than the log ever used.
+            w = np.minimum(np.ones(n_paths) if w is None else w, cap_t)
+        if half_cap_weight is not None:
+            assert unlocked is not None
+            cap_t = np.where(unlocked, np.inf, half_cap_weight)
+            w = np.minimum(np.ones(n_paths) if w is None else w, cap_t)
 
         for i in range(k_max):
             stepping = alive & ~locked & (i < day_n) & (outcome == OUTCOME_ACTIVE)
@@ -487,6 +550,10 @@ def _simulate_phase(
             # PnL — the strategy's own volatility, independent of the
             # weight that was applied to the account.
             sizer.update(profile.day_pnl[d])
+        if unlocked is not None:
+            # Apex: full size unlocks when the CLOSING balance reaches the
+            # safety net, and stays unlocked even if it later drops.
+            unlocked = unlocked | (balance >= safety_net)
         for r, tr in enumerate(rules.trailing):
             if not tr.intraday:
                 hwms[r] = np.where(alive, np.maximum(hwms[r], balance), hwms[r])
@@ -635,6 +702,15 @@ def run_monte_carlo(
             "are OPTIMISTIC"
         )
 
+    base_contracts = cfg.base_contracts
+    if base_contracts is None:
+        base_contracts = log.max_abs_quantity()
+    if _firm_has_scaling(firm) and base_contracts is not None:
+        warnings.append(
+            f"scaling plan enforced assuming the log's max position "
+            f"({base_contracts:g} contracts) IS the full allowance — pass "
+            "--base-contracts if you traded below your limit"
+        )
     return _run_from_profile(
         profile,
         firm,
@@ -646,6 +722,15 @@ def run_monte_carlo(
         sessions_per_week=sessions_per_week,
         source_trades=len(log),
         warnings=warnings,
+        base_contracts=base_contracts,
+    )
+
+
+def _firm_has_scaling(firm: FirmConfig) -> bool:
+    return any(
+        isinstance(spec, ScalingPlanSpec)
+        for phase in [*firm.phases, firm.funded]
+        for spec in phase.rules
     )
 
 
@@ -660,6 +745,7 @@ def _run_from_profile(
     sessions_per_week: float,
     source_trades: int,
     warnings: list[str],
+    base_contracts: float | None = None,
 ) -> MonteCarloReport:
     """Simulation core once a DayProfile exists — run_monte_carlo's second
     half, split out so the sampling-uncertainty outer bootstrap can rerun
@@ -718,6 +804,7 @@ def _run_from_profile(
                 sessions_per_week=sessions_per_week,
                 sizing=challenge_sizing,
                 cushion_clip=cushion_clip,
+                base_contracts=base_contracts,
             )
         )
 
@@ -738,6 +825,7 @@ def _run_from_profile(
         sessions_per_week=sessions_per_week,
         sizing=funded_sizing,
         cushion_clip=cushion_clip,
+        base_contracts=base_contracts,
     )
 
     return summarize(

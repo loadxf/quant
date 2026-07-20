@@ -54,7 +54,7 @@ class TestPayoutTrailingInteraction:
         idx = np.arange(profile.n_days)[None, :]
         gates = _resolve_rules(firm.funded, firm, 0.0).payout_gate_pcts
         payout = _resolve_payout(firm, 0.0, gates)
-        outcome = _simulate_phase(profile, idx, firm.funded, firm, payout, 1)
+        outcome = _simulate_phase(profile, idx, firm.funded, firm, payout, 1, base_contracts=1)
         assert float(outcome.max_drawdown[0]) == 0.0
         assert outcome.payout_count is not None and outcome.payout_count[0] >= 1
 
@@ -240,7 +240,7 @@ class TestPayoutUncappedTrailNotStranded:
         idx = np.arange(profile.n_days)[None, :]
         gates = _resolve_rules(firm.funded, firm, 100_000.0).payout_gate_pcts
         payout = _resolve_payout(firm, 100_000.0, gates)
-        outcome = _simulate_phase(profile, idx, firm.funded, firm, payout, 1)
+        outcome = _simulate_phase(profile, idx, firm.funded, firm, payout, 1, base_contracts=1)
         assert outcome.outcome[0] != OUTCOME_BREACHED
         assert outcome.total_withdrawn is not None
         # 6 payout cycles x 20k profit each; the old bound capped the total

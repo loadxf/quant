@@ -192,6 +192,12 @@ def simulate_cmd(
     cushion_clip_hi: float = typer.Option(
         1.5, "--cushion-clip-hi", help="Cushion-sizing weight cap."
     ),
+    base_contracts: float | None = typer.Option(
+        None,
+        "--base-contracts",
+        help="Your full contract allowance for scaling-plan caps "
+        "(default: the log's max position).",
+    ),
     extra_monthly: float = typer.Option(
         0.0, "--extra-monthly", help="Recurring $/mo overhead (data feed, platform) in the EV."
     ),
@@ -225,6 +231,7 @@ def simulate_cmd(
         vol_target=vol_target,
         vol_clip=(vol_clip_lo, vol_clip_hi),
         cushion_clip=(cushion_clip_lo, cushion_clip_hi),
+        base_contracts=base_contracts,
     )
     report = run_monte_carlo(log, firm, cfg)
     render_report(report, console)
