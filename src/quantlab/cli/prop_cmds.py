@@ -198,6 +198,17 @@ def simulate_cmd(
         help="Your full contract allowance for scaling-plan caps "
         "(default: the log's max position).",
     ),
+    payout_policy: str = typer.Option(
+        "asap", "--payout-policy", help="asap | keep_buffer (leave --keep-buffer $ working)."
+    ),
+    keep_buffer: float = typer.Option(
+        0.0, "--keep-buffer", help="$ cushion left above the payout floor (keep_buffer policy)."
+    ),
+    extract_weight: float | None = typer.Option(
+        None,
+        "--extract-weight",
+        help="Cut size to this weight once the cycle's qualifying days are banked (0<w<=1).",
+    ),
     extra_monthly: float = typer.Option(
         0.0, "--extra-monthly", help="Recurring $/mo overhead (data feed, platform) in the EV."
     ),
@@ -232,6 +243,9 @@ def simulate_cmd(
         vol_clip=(vol_clip_lo, vol_clip_hi),
         cushion_clip=(cushion_clip_lo, cushion_clip_hi),
         base_contracts=base_contracts,
+        payout_policy=payout_policy,
+        keep_buffer=keep_buffer,
+        extract_weight=extract_weight,
     )
     report = run_monte_carlo(log, firm, cfg)
     render_report(report, console)
@@ -326,6 +340,52 @@ def frontier_cmd(
         console.print(f"chart written to {chart}")
     if json_out is not None:
         json_out.write_text(json.dumps(sanitize(payload), indent=2))
+        console.print(f"JSON summary written to {json_out}")
+
+
+@prop_app.command("policies")
+def policies_cmd(
+    trades: Path = typer.Argument(..., exists=True, help="trades.parquet"),
+    firm_name: str = typer.Option(..., "--firm", help="Preset name or firm YAML path."),
+    paths: int = typer.Option(2000, "--paths", help="MC paths per grid cell."),
+    seed: int = typer.Option(42, "--seed"),
+    buffers: str = typer.Option(
+        "0,1000,2000,4000",
+        "--buffers",
+        help="keep_buffer levels ($ left working above the payout floor); 0 = asap.",
+    ),
+    extract: float | None = typer.Option(
+        0.5,
+        "--extract",
+        help="Extraction weight compared against no-extraction (0 disables the column).",
+    ),
+    sizing: str = typer.Option("fixed", "--sizing", help="fixed | vol_target | cushion."),
+    json_out: Path | None = typer.Option(None, "--json", help="Write JSON summary here."),
+) -> None:
+    """Compare funded-phase payout/extraction policies on your own log.
+
+    Withdraw-ASAP is a policy, not a law: leaving a buffer working above
+    the payout floor (and cutting size once the cycle's qualifying days
+    are banked) trades payout speed against survival. The grid shows the
+    trade on your distribution — mechanical comparison, not optimal
+    stopping.
+    """
+    from quantlab.prop.policies import compute_policy_grid
+    from quantlab.report.terminal import render_policies
+
+    log = read_trade_log(trades)
+    firm = load_firm(firm_name)
+    extracts: tuple[float | None, ...] = (None,) if not extract else (None, extract)
+    grid = compute_policy_grid(
+        log,
+        firm,
+        mc_cfg=MCConfig(n_paths=paths, seed=seed, sizing=sizing),
+        buffers=_parse_float_list(buffers, "--buffers"),
+        extract_weights=extracts,
+    )
+    render_policies(grid, console)
+    if json_out is not None:
+        json_out.write_text(json.dumps(sanitize(grid.to_json_dict()), indent=2))
         console.print(f"JSON summary written to {json_out}")
 
 

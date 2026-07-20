@@ -163,6 +163,38 @@ def render_multiaccount(ma: Any, console: Console) -> None:
     console.print(f"[dim]{ma.note}[/dim]")
 
 
+def render_policies(grid: Any, console: Console) -> None:
+    """Terminal rendering of a PolicyGrid (quant prop policies)."""
+    table = Table(title="Funded-phase policy grid (common random numbers)")
+    table.add_column("Policy")
+    table.add_column("Pass prob", justify="right")
+    table.add_column("Expected net", justify="right")
+    table.add_column("Funded ruin", justify="right")
+    table.add_column("P(payout)", justify="right")
+    table.add_column("E[payouts]", justify="right")
+    table.add_column("Days to 1st (p50)", justify="right")
+    for c in grid.cells:
+        style = "bold" if c.label == grid.best_net_label else ""
+        table.add_row(
+            c.label,
+            pct(c.pass_prob),
+            money(c.expected_net),
+            pct(c.risk_of_ruin_funded),
+            pct(c.p_payout),
+            money(c.expected_gross_payout),
+            f"{c.days_to_first_payout_p50:.0f}" if c.days_to_first_payout_p50 else "-",
+            style=style,
+        )
+    console.print(table)
+    console.print(
+        f"best EV: [bold]{grid.best_net_label}[/bold]; "
+        f"lowest funded ruin: [bold]{grid.lowest_ruin_label}[/bold]"
+    )
+    console.print(f"[dim]{grid.note}[/dim]")
+    for w in grid.warnings:
+        console.print(Panel(w, style="yellow", title="warning"))
+
+
 def render_reality(rc: Any, console: Console) -> None:
     """Terminal rendering of a RealityCheck (quant stress)."""
     costs = rc.costs

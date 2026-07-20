@@ -134,6 +134,18 @@ class MCConfig:
     vol_target: float | None = None  # None -> median EWMA sigma of the profile
     vol_clip: tuple[float, float] = (0.5, 1.5)  # Moreira-Muir 1.5x cap
     cushion_clip: tuple[float, float] = (0.25, 1.5)
+    # Funded-phase payout policy (M11): "asap" withdraws the maximum as
+    # soon as eligible (the pre-M11 hardcoded behavior); "keep_buffer"
+    # leaves `keep_buffer` dollars of cushion above the payout floor
+    # working in the account. The trade-off is real and log-dependent:
+    # the working buffer compounds (often higher long-run EV) but the
+    # first payout lands later, so ruin-before-any-payout can RISE.
+    payout_policy: str = "asap"  # "asap" | "keep_buffer"
+    keep_buffer: float = 0.0
+    # Extraction mode: once a path has banked its qualifying days for the
+    # current payout cycle, multiply the day weight by this (0 < w <= 1)
+    # until the payout lands — protect the banked cycle, then re-risk.
+    extract_weight: float | None = None
 
 
 @dataclass
@@ -269,6 +281,7 @@ class _PayoutParams:
     q_min_profit: float
     period_td: int
     gate_pcts: list[float]
+    keep_buffer: float = 0.0  # cushion left working above the payout floor
 
 
 def _resolve_payout(
@@ -276,6 +289,7 @@ def _resolve_payout(
     initial: float,
     gate_pcts: list[float],
     sessions_per_week: float = DEFAULT_SESSIONS_PER_WEEK,
+    keep_buffer: float = 0.0,
 ) -> _PayoutParams:
     p = firm.payout
     floor_candidates = [initial]
@@ -296,6 +310,7 @@ def _resolve_payout(
             calendar_to_trading_days(p.period_days, sessions_per_week) if p.period_days else 0
         ),
         gate_pcts=gate_pcts,
+        keep_buffer=keep_buffer,
     )
 
 
@@ -310,6 +325,7 @@ def _simulate_phase(
     sizing: VolSizingParams | None = None,
     cushion_clip: tuple[float, float] | None = None,
     base_contracts: float | None = None,
+    extract_weight: float | None = None,
 ) -> PhaseOutcome:
     n_paths, horizon = idx.shape
     initial = phase.resolved_initial(firm.account_size)
@@ -422,6 +438,12 @@ def _simulate_phase(
                 floor_t = np.maximum(floor_t, st.value)
             w_cushion = cushion_weight(balance - floor_t, cushion)
             w = w_cushion if w is None else w * w_cushion
+        if extract_weight is not None and payout is not None and payout.q_count > 0:
+            # Extraction: qualifying days banked for this cycle -> protect
+            # them at reduced size until the payout lands (qual_days reset
+            # on payout restores full size for the next cycle).
+            w_extract = np.where(qual_days >= payout.q_count, extract_weight, 1.0)
+            w = w_extract if w is None else w * w_extract
         # Scaling-plan cap LAST: no sizing mode may exceed the firm's
         # allowed size. Tier lookup uses the PRIOR-day close (= day_open;
         # Topstep: limits never increase mid-session); the Apex half-size
@@ -599,7 +621,9 @@ def _simulate_phase(
                 else:
                     thr = np.minimum(hwms[r] - tr.amount, tr.cap)
                     floor_eff = np.maximum(floor_eff, thr + PAYOUT_FLOOR_MARGIN)
-            amount = np.minimum(balance - floor_eff, cap)
+            # keep_buffer policy: leave that much cushion WORKING above
+            # the effective floor instead of withdrawing it.
+            amount = np.minimum(balance - floor_eff - payout.keep_buffer, cap)
             if payout.share_of_balance is not None:
                 amount = np.minimum(amount, payout.share_of_balance * balance)
             paying = eligible & (amount >= payout.min_payout)
@@ -787,6 +811,19 @@ def _run_from_profile(
     funded_sizing = _make_sizing(funded_profile)
     cushion_clip = cfg.cushion_clip if cfg.sizing == "cushion" else None
 
+    if cfg.payout_policy not in ("asap", "keep_buffer"):
+        raise QuantLabError(
+            f"unknown payout policy {cfg.payout_policy!r}: choose asap or keep_buffer"
+        )
+    keep_buffer = cfg.keep_buffer if cfg.payout_policy == "keep_buffer" else 0.0
+    if keep_buffer < 0:
+        raise QuantLabError(f"--keep-buffer must be >= 0 (got {keep_buffer})")
+    if cfg.extract_weight is not None and not 0.0 < cfg.extract_weight <= 1.0:
+        raise QuantLabError(
+            f"--extract-weight must be in (0, 1] — extraction protects banked "
+            f"qualifying days, it never levers up (got {cfg.extract_weight})"
+        )
+
     if cfg.n_paths < 1:
         raise QuantLabError("n_paths must be >= 1")
 
@@ -812,7 +849,11 @@ def _run_from_profile(
         firm.funded, firm, firm.funded.resolved_initial(firm.account_size)
     ).payout_gate_pcts
     payout_params = _resolve_payout(
-        firm, firm.funded.resolved_initial(firm.account_size), funded_gates, sessions_per_week
+        firm,
+        firm.funded.resolved_initial(firm.account_size),
+        funded_gates,
+        sessions_per_week,
+        keep_buffer=keep_buffer,
     )
     idx = sampler.sample(profile.n_days, cfg.n_paths, cfg.funded_horizon_days, rng)
     funded_outcome = _simulate_phase(
@@ -826,6 +867,7 @@ def _run_from_profile(
         sizing=funded_sizing,
         cushion_clip=cushion_clip,
         base_contracts=base_contracts,
+        extract_weight=cfg.extract_weight,
     )
 
     return summarize(
