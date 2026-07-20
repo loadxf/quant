@@ -212,7 +212,26 @@ selecting for flukes, risk R8).**
 
 ## 7. Novelty verdicts
 
-*(pending Phase D attack agents — filled in section-final form below)*
+Adversarial prior-art attacks (agents whose success criterion was *finding* prior art;
+full records: `candidates/C015/novelty_verdict.md`, `research/debates/g3_novelty_verdicts.md`)
+were run on every family that retained any interest after the gates. Verdict wording follows
+the frozen scale: "prior art found" is a kill; absence claims are always scoped.
+
+| Candidate(s) | Mechanism | Validation outcome | Novelty verdict | Provenance |
+|---|---|---|---|---|
+| C001/C013 — volume-recession conditioning | G3 | −1.20 / +0.10, fail | **T1** — Cooper (1999) trades the same volume-trend×reversal combination; Llorente et al. (2002) per-stock volume-return moderation; the hydrology framing itself has no finance footprint | P-ambiguous |
+| C002 — TOM phase-response interaction | G3 | −1.10, fail | **T1** — Graziani (2024) documents exactly the end-of-month shock-reversal interaction (with a mid-month placebo test); Etula et al. (2020) the flow mechanism | P-ambiguous |
+| C003 — MVT patch-abandonment timing | G3 | −1.17, fail | **T1** — the volume-dry-up entry is documented practitioner method (Wyckoff secondary test; VDU rules); academic anchors in Cooper (1999), Li-Yin-Zhao (2024) | P-ambiguous |
+| C007–C009 — post-cutoff panel hypotheses | G1 | −2.9 … −4.1, gross-negative | not attacked: falsified before novelty was binding; diagnosed as 115-day panel noise (C014, the one panel cell matching *documented* prior art, also failed) | **P-derived** (trace verifiable) |
+| C010/C015 — range-volatility family | G2 | +0.57/+0.66, Gate-2 pass, Gate-1 fail | **T1** — Baltussen et al. (2018) vol-of-vol (same construction, opposite sign); Blau-Whitby (2017) range sorts; WQ101 Alpha#40 contains the same `rank(stddev(high,·))` subexpression at the same horizon; the long-high sign is a survivorship artifact (§6) | **P-derived** (selection by data) |
+| C011/C012/C016 — other G2 winners | G2 | ≤ +0.48, fail | C012 is a T0 rediscovery of monthly reversal (the search finding a documented anomaly is itself informative); others not attacked (dead) | P-derived |
+| C004–C006, B002/B003 — controls/baselines | G4 | −0.6 … −2.2, fail | T0/T1 by construction | P-known |
+
+**Headline evidence-table result: nothing above T1.** Zero candidates reached T2 (novel with
+no prior art found); zero passed Gate 1; the holdout was never fired. The single most
+instructive pattern: every "creative" hypothesis that had any structure landed within one
+step of documented territory, and the one family with empirical life was a documented
+characteristic wearing a survivorship-flipped sign.
 
 ## 8. Limitations — and what each does to the conclusion
 
@@ -248,4 +267,64 @@ selecting for flukes, risk R8).**
 
 ## 9. Conclusion
 
-*(pending: written after Section 7 verdicts land, then two-mandate adversarial review)*
+**Direct answer to the question posed.** In this experiment, the LLM system did **not**
+create a genuinely novel trading edge. The evidence table is one-sided: 19 candidates over
+two generation loops, 2,000 ledgered trials, zero pre-registered gate passes; a family-wide
+Reality Check p of 0.171; a best-candidate Deflated Sharpe Ratio of ≈ 0; the best family
+revealed as a documented characteristic (T1) whose apparent premium matches the survivorship
+signature of the data; and a holdout that was never earned. Best (Tier, Provenance) pair
+achieved: **T1 / P-derived** — data-driven provenance was demonstrated, novelty was not.
+
+**The refined answer to the underlying theory.** The user's theory — "an LLM can only think
+about what it already knows, so it cannot create a never-before-seen edge" — is *supported
+in its weights-alone form and too strong in its systems form*, and this experiment sharpens
+where the boundary actually is:
+
+1. **Weights alone: supported.** Every hypothesis the model generated from its own priors
+   (G3's cross-domain transfers) turned out to be one step from documented territory: the
+   *framings* (streamflow recession, phase-response curves, foraging theory) have no finance
+   footprint, but the *signal structures* they mapped onto were already in the literature —
+   found not by the model knowing them, but by adversarial search after the fact. This is
+   combinational creativity with genuine surface novelty and no structural novelty, which is
+   precisely what the creativity-measurement literature predicts of LLM output.
+2. **The system is epistemically open — that part of the skeptic's argument fails.** The G1
+   mechanism generated hypotheses from statistics of provably post-training-cutoff data
+   (P-derived, trace-verified): the system demonstrably reasoned from inputs that were in no
+   training corpus. The FunSearch-class existence proofs stand: LLM+evaluator systems have
+   created verified new mathematics. "It can only know what it was trained on" is false of
+   the system.
+3. **But openness is not discovery: the binding constraint is the evaluator, not the
+   imagination.** Everything the open channels produced here died on contact with the data —
+   the post-cutoff panel patterns were noise (115 daily observations cannot seed
+   daily-frequency cross-sectional hypotheses), and the search mechanism's best product was
+   a rediscovery. Where FunSearch had a cheap, exact, instant oracle, markets offer a noisy,
+   expensive, adversarial one, strip-mined by thousands of prior searchers whose own mining
+   (Chen–Lopez-Lira–Zimmermann) already matches the published frontier. **The bottleneck of
+   novelty is not generation; it is verification.** An LLM can propose endlessly — this
+   project generated and tested more candidate signals than most published papers — but in a
+   domain where verification is the scarce resource, generation fluency adds little.
+4. **What this experiment cannot conclude.** It cannot rule out that the same system with
+   richer raw material — intraday or options data, point-in-time constituents, longer
+   provably-clean windows, live forward validation — would find something real (limitation
+   R1); daily bars on current S&P constituents are close to the worst possible arena for new
+   discovery. Nor is the negative specific to LLMs: a human quant restricted to this data,
+   these tools, and eight days would quite plausibly have fared no better — the experiment
+   lacks a human control arm, so "LLM vs human" is not what it measures. What it does
+   establish, with pre-registered rigor, is the *shape* of the limitation: no failure of
+   idea generation was ever the binding constraint; the pre-registered statistical bar was.
+5. **The honest positive findings.** The protocol itself behaved as designed — the controls
+   reproduced documented behavior, the deliberately-inverted control was near-worst, the
+   engine's costs reproduced the documented death of short-term reversal, and the
+   convergent rediscovery of a real documented characteristic (vol-of-range, C012's monthly
+   reversal) shows the pipeline detects true structure when it exists. And the system
+   audited itself: the survivorship suspicion on its own best candidate was declared in the
+   spec *before* the gates and confirmed by its own autopsy. An honest negative under a
+   pre-registered protocol is the anti-sycophantic answer the experiment was built to be
+   able to give.
+
+**One-sentence verdict:** *this experiment found that an LLM-with-tools system can generate
+hypotheses that are provably not memorized and superficially new, but — in the most-mined
+data arena in finance, under a pre-registered multiple-testing-corrected protocol — it
+created no validated novel edge, and the reason is not that the model can only repeat its
+training data, but that in markets the scarce resource is verification, which no amount of
+fluent generation can substitute for.*
