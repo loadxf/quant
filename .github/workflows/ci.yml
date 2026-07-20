@@ -32,3 +32,7 @@ jobs:
           # budgets instead of letting hardware variance flake the build.
           QUANTLAB_PERF_FACTOR: "3"
         run: pytest --cov --cov-report=term-missing
+      - name: Install llm_edge subproject
+        run: pip install -e projects/llm_edge
+      - name: Test llm_edge
+        run: pytest projects/llm_edge/tests -q -p no:cacheprovider

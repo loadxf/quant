@@ -1,0 +1,74 @@
+[
+ {
+  "expr": "(neg ret5)",
+  "train_sr_net": 0.3526746450922327,
+  "fitness": 0.3126746450922327,
+  "n_nodes": 2
+ },
+ {
+  "expr": "(roll_skew (abs_ (cs_rank volz)) 63)",
+  "train_sr_net": 0.38833768114075196,
+  "fitness": 0.30833768114075194,
+  "n_nodes": 4
+ },
+ {
+  "expr": "(roll_std (abs_ ret21) 63)",
+  "train_sr_net": 0.31258225712915744,
+  "fitness": 0.25258225712915744,
+  "n_nodes": 3
+ },
+ {
+  "expr": "(roll_std ret21 63)",
+  "train_sr_net": 0.24653727253128102,
+  "fitness": 0.206537272531281,
+  "n_nodes": 2
+ },
+ {
+  "expr": "(roll_mean (neg ret5) 3)",
+  "train_sr_net": 0.2585676569057415,
+  "fitness": 0.19856765690574152,
+  "n_nodes": 3
+ },
+ {
+  "expr": "(roll_std ret5 63)",
+  "train_sr_net": 0.22597287961358406,
+  "fitness": 0.18597287961358405,
+  "n_nodes": 2
+ },
+ {
+  "expr": "(lag (roll_std ret21 63) 10)",
+  "train_sr_net": 0.2280471157781523,
+  "fitness": 0.1680471157781523,
+  "n_nodes": 3
+ },
+ {
+  "expr": "(abs_ (lag (roll_std ret21 63) 10))",
+  "train_sr_net": 0.2280471157781523,
+  "fitness": 0.14804711577815227,
+  "n_nodes": 4
+ },
+ {
+  "expr": "rng",
+  "train_sr_net": 0.1380432903516424,
+  "fitness": 0.11804329035164239,
+  "n_nodes": 1
+ },
+ {
+  "expr": "(sub (roll_std ret5 21) gap)",
+  "train_sr_net": 0.18244338908724694,
+  "fitness": 0.10244338908724694,
+  "n_nodes": 4
+ },
+ {
+  "expr": "(mul rng (roll_std (cs_rank intraday) 21))",
+  "train_sr_net": 0.14807782861483249,
+  "fitness": 0.04807782861483248,
+  "n_nodes": 5
+ },
+ {
+  "expr": "(delta rng 21)",
+  "train_sr_net": -0.009386542150706102,
+  "fitness": -0.049386542150706106,
+  "n_nodes": 2
+ }
+]

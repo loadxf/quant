@@ -1,0 +1,40 @@
+{
+ "reality_check_validation": {
+  "p_value": 0.171,
+  "statistic": 0.026856393131596993,
+  "n_candidates": 18,
+  "n_obs": 1258,
+  "n_boot": 1000
+ },
+ "reality_check_note": "H0: best candidate of the gated family has zero mean net validation return; p-value from stationary-bootstrap max statistic (White 2000 style)",
+ "c015_dsr_full_ledger": {
+  "sr_annualized": 0.6561316029820972,
+  "sr_daily": 0.04133240592430464,
+  "n_obs": 1258,
+  "n_trials": 1998,
+  "var_sr_trials_annualized": 4.141736038124641,
+  "sr0_daily_benchmark": 0.4419110598422737,
+  "dsr": 2.334659004539767e-46
+ },
+ "c015_leg_decomposition_validation": {
+  "long_leg_minus_ew_sr": 0.7328059945540383,
+  "short_leg_minus_ew_sr": -0.6073740081149621,
+  "long_leg_sr": 0.9477255771430494,
+  "short_leg_sr": 0.803472191342172,
+  "note": "if the premium lives in the long (high-vol) leg beating the market on current constituents, survivorship inflation is the prime suspect"
+ },
+ "rangevol_on_etfs_validation": {
+  "sr_net": 0.47115506017597103,
+  "nw_t": 1.1485850489084222,
+  "n_obs": 1258
+ },
+ "rangevol_equities_subperiods": {
+  "2005_2011_sr": 0.7245327158713623,
+  "2012_2018_sr": 1.0051187908531818,
+  "2019_2023_sr": 0.6561316029820972
+ },
+ "ledger": {
+  "n_trials": 1998,
+  "var_sr_annualized": 4.141736038124641
+ }
+}

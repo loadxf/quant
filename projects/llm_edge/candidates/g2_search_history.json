@@ -1,0 +1,58 @@
+[
+ {
+  "generation": 0,
+  "best_fitness": 0.5955474448941556,
+  "best_train_sr": 0.6355474448941556,
+  "best_expr": "(neg ret21)",
+  "evaluated": 88
+ },
+ {
+  "generation": 1,
+  "best_fitness": 0.6365489239837061,
+  "best_train_sr": 0.6965489239837062,
+  "best_expr": "(roll_std (abs_ rng) 63)",
+  "evaluated": 146
+ },
+ {
+  "generation": 2,
+  "best_fitness": 0.6565489239837061,
+  "best_train_sr": 0.6965489239837062,
+  "best_expr": "(roll_std rng 63)",
+  "evaluated": 211
+ },
+ {
+  "generation": 3,
+  "best_fitness": 0.6565489239837061,
+  "best_train_sr": 0.6965489239837062,
+  "best_expr": "(roll_std rng 63)",
+  "evaluated": 269
+ },
+ {
+  "generation": 4,
+  "best_fitness": 0.6565489239837061,
+  "best_train_sr": 0.6965489239837062,
+  "best_expr": "(roll_std rng 63)",
+  "evaluated": 318
+ },
+ {
+  "generation": 5,
+  "best_fitness": 0.6565489239837061,
+  "best_train_sr": 0.6965489239837062,
+  "best_expr": "(roll_std rng 63)",
+  "evaluated": 356
+ },
+ {
+  "generation": 6,
+  "best_fitness": 0.6565489239837061,
+  "best_train_sr": 0.6965489239837062,
+  "best_expr": "(roll_std rng 63)",
+  "evaluated": 397
+ },
+ {
+  "generation": 7,
+  "best_fitness": 0.6565489239837061,
+  "best_train_sr": 0.6965489239837062,
+  "best_expr": "(roll_std rng 63)",
+  "evaluated": 430
+ }
+]

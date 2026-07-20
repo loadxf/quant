@@ -1,0 +1,47 @@
+{
+ "candidate_id": "C014",
+ "params": {
+  "hold": 21,
+  "quantile": 0.1,
+  "min_names": 20
+ },
+ "train": {
+  "sr_net": -0.5308008025130807,
+  "nw_t": -2.422874406494552,
+  "n_obs": 3523
+ },
+ "validation": {
+  "sr_net": -0.2744418771586355,
+  "sr_gross": 0.24136933819645393,
+  "nw_t": -0.7746486963959555,
+  "n_obs": 1258,
+  "mean_daily_turnover": 0.1689360430499865
+ },
+ "cpcv": {
+  "n_paths": 28,
+  "median_sr": 0.19846118009024633,
+  "q25_sr": -0.022531058819509904,
+  "min_sr": -0.718501594580961,
+  "frac_positive": 0.7142857142857143
+ },
+ "gate1": {
+  "val_sr_gt_0.5": false,
+  "abs_t_gt_2": false,
+  "sign_positive": false,
+  "cpcv_median_gt_0": true,
+  "pass": false
+ },
+ "gate2": {
+  "subhalf1_sr": -0.38911809638535866,
+  "subhalf2_sr": -0.10358862478649505,
+  "hivol_sr": 0.017631658324249164,
+  "lovol_sr": -0.9864264629288434,
+  "cost25_sr": -1.0482030216774834,
+  "perturbations": {
+   "SMOOTHx0.75": -0.28317259404816,
+   "SMOOTHx1.25": -0.20297661873653827
+  },
+  "pass": false
+ },
+ "strategy_returns_net_train_val": null
+}
