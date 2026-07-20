@@ -255,3 +255,47 @@ class TestInertExtractionWarning:
             extract_weights=(None, 0.5),
         )
         assert any("inert" in w for w in grid.warnings)
+
+    def test_pairing_keyed_on_weight_not_presence(self) -> None:
+        # Fix-audit finding: a boolean key collapsed multiple extract
+        # columns, comparing the base against only the LAST weight — a
+        # live intermediate column could be declared inert.
+        from quantlab.prop.policies import PolicyCell, _extraction_axis_inert
+
+        def cell(extract: float | None, net: float) -> PolicyCell:
+            return PolicyCell(
+                label="x",
+                keep_buffer=0.0,
+                extract_weight=extract,
+                pass_prob=0.5,
+                expected_net=net,
+                risk_of_ruin_funded=0.1,
+                p_payout=0.5,
+                expected_gross_payout=100.0,
+                days_to_first_payout_p50=None,
+            )
+
+        # 0.5 differs from base while 0.25 ties it: the axis is LIVE.
+        # The old boolean key kept only the 0.25 entry and called it inert.
+        live = [cell(None, 900.0), cell(0.5, 901.0), cell(0.25, 900.0)]
+        assert not _extraction_axis_inert(live)
+        inert = [cell(None, 900.0), cell(0.5, 900.0), cell(0.25, 900.0)]
+        assert _extraction_axis_inert(inert)
+        assert not _extraction_axis_inert([cell(None, 900.0)])  # no pairs to check
+
+
+class TestGridWarningPropagation:
+    def test_scaling_disclosure_reaches_grid_warnings(self) -> None:
+        # Fix-audit finding: every cell enforced the scaling plan with a
+        # log-derived base, but the disclosure lived only in the discarded
+        # per-cell reports.
+        firm = load_firm("apex40_50k_eod")
+        log = random_log(n_days=60, mean=40.0, std=300.0, seed=7)
+        grid = compute_policy_grid(
+            log,
+            firm,
+            mc_cfg=MCConfig(n_paths=50, seed=1),
+            buffers=(0.0,),
+            extract_weights=(None,),
+        )
+        assert any("scaling plan enforced" in w for w in grid.warnings)

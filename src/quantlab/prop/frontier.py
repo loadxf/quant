@@ -94,7 +94,8 @@ def compute_scale_frontier(
     cfg = ensure_crn_seed(mc_cfg or MCConfig())
     points = []
     base_report = None
-    for s in sorted(scales):
+    engine_warnings: list[str] = []
+    for i, s in enumerate(sorted(scales)):
         run = run_monte_carlo(
             log,
             firm,
@@ -102,6 +103,12 @@ def compute_scale_frontier(
             # scales would silently multiply with it.
             dataclasses.replace(cfg, scale=s, challenge_scale=None, funded_scale=None),
         )
+        if i == 0:
+            # Per-run engine disclosures (scaling-plan base assumption,
+            # bootstrap fallback, excursion fidelity) are identical across
+            # grid points — surface the first run's once at frontier level
+            # instead of silently discarding them.
+            engine_warnings = list(run.warnings)
         if s == 1.0:
             base_report = run
         eco = run.economics
@@ -120,7 +127,7 @@ def compute_scale_frontier(
     within = [p for p in points if p.risk_of_ruin_funded <= ruin_cap]
     best_within = max(within, key=lambda p: p.scale).scale if within else None
 
-    warnings: list[str] = []
+    warnings: list[str] = engine_warnings
     if best.scale == max(s.scale for s in points) and best.expected_net > 0:
         warnings.append(
             f"EV is still rising at the top of the grid (x{best.scale:g}) — the "

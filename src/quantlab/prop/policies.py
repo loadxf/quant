@@ -76,6 +76,28 @@ def _label(buffer: float, extract: float | None) -> str:
     return timing if extract is None else f"{timing} + extract {extract:g}x"
 
 
+def _extraction_axis_inert(cells: list[PolicyCell]) -> bool:
+    """True when EVERY extract column matches its same-buffer base column
+    (and at least one such pair exists). Keyed on the actual extract
+    weight — a boolean key would collapse multiple extract columns and
+    compare the base against only the last one."""
+    by_buffer: dict[float, dict[float | None, float]] = {}
+    for c in cells:
+        by_buffer.setdefault(c.keep_buffer, {})[c.extract_weight] = c.expected_net
+    checked = False
+    for nets in by_buffer.values():
+        if None not in nets:
+            continue
+        base = nets[None]
+        for extract, net in nets.items():
+            if extract is None:
+                continue
+            checked = True
+            if net != base:
+                return False
+    return checked
+
+
 def compute_policy_grid(
     log: TradeLog,
     firm: FirmConfig,
@@ -106,6 +128,12 @@ def compute_policy_grid(
                     extract_weight=extract,
                 ),
             )
+            if not cells:
+                # Cells differ only in policy knobs, so the engine
+                # disclosures (scaling-plan base assumption, bootstrap
+                # fallback, excursion fidelity) are identical — surface
+                # the first cell's once at grid level.
+                warnings.extend(run.warnings)
             eco = run.economics
             days = eco.days_to_first_payout_quantiles
             cells.append(
@@ -130,11 +158,7 @@ def compute_policy_grid(
         # An inert extraction axis (e.g. Topstep XFA: the payout lands the
         # same day the qualifying days complete, so extraction never
         # activates) would silently show duplicate columns.
-        by_buffer: dict[float, dict[bool, float]] = {}
-        for c in cells:
-            by_buffer.setdefault(c.keep_buffer, {})[c.extract_weight is not None] = c.expected_net
-        pairs = [v for v in by_buffer.values() if len(v) == 2]
-        if pairs and all(v[True] == v[False] for v in pairs):
+        if _extraction_axis_inert(cells):
             warnings.append(
                 "extraction is inert for this firm/log (payouts land the same "
                 "day the qualifying days complete) — the extract columns "

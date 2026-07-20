@@ -27,6 +27,16 @@ class TestScaleFrontier:
         assert point.pass_prob == plain.pass_prob
         assert point.expected_net == plain.expected_net
 
+    def test_engine_disclosures_reach_frontier_warnings(self) -> None:
+        # Fix-audit finding: every per-scale run enforced the scaling plan
+        # with a log-derived base, but the disclosure lived only in the
+        # discarded per-run reports — the frontier must surface it.
+        log = random_log(n_days=60, mean=40.0, std=300.0, seed=7)
+        fr = compute_scale_frontier(
+            log, load_firm("apex40_50k_eod"), mc_cfg=MCConfig(n_paths=50, seed=1), scales=(1.0,)
+        )
+        assert any("scaling plan enforced" in w for w in fr.warnings)
+
     def test_ruin_monotone_in_scale(self) -> None:
         # Bigger size can never make the funded account safer: with common
         # random numbers, funded ruin is non-decreasing in scale.
