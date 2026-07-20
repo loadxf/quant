@@ -161,7 +161,11 @@ class MCConfig:
     # Definitional edge (deliberate): if the payout never becomes
     # eligible (e.g. a consistency gate that reduced size makes slower to
     # clear), the path STAYS at extract_weight — a well-defined policy
-    # whose cost shows up honestly in the policies grid.
+    # whose cost shows up honestly in the policies grid. Note the gate
+    # interaction can self-reinforce: an Apex-style 50%-of-total gate
+    # clears as profit_since grows, and extraction slows that growth,
+    # so a dominant early day keeps the gate shut LONGER under
+    # extraction. The grid prices exactly this.
     extract_weight: float | None = None
 
 
@@ -591,7 +595,14 @@ def _simulate_phase(
             sizer.update(profile.day_pnl[d])
         if unlocked is not None:
             # Apex: full size unlocks when the CLOSING balance reaches the
-            # safety net, and stays unlocked even if it later drops.
+            # safety net, and stays unlocked even if it later drops. On
+            # the intraday variants this deliberately diverges from the
+            # trailing-floor freeze: the freeze keys on the intraday PEAK
+            # (the threshold trails live PnL) while the unlock keys on
+            # realized balance, per the firm's own rule texts — a path
+            # whose high touches the net but closes below it gets a
+            # frozen floor yet stays half-capped. Day-close balance is
+            # the conservative realized-balance proxy at day granularity.
             unlocked = unlocked | (balance >= safety_net)
         for r, tr in enumerate(rules.trailing):
             if not tr.intraday:
@@ -746,12 +757,6 @@ def run_monte_carlo(
     base_contracts = cfg.base_contracts
     if base_contracts is None:
         base_contracts = log.max_abs_quantity()
-    if _firm_has_scaling(firm) and base_contracts is not None:
-        warnings.append(
-            f"scaling plan enforced assuming the log's max position "
-            f"({base_contracts:g} contracts) IS the full allowance — pass "
-            "--base-contracts if you traded below your limit"
-        )
     return _run_from_profile(
         profile,
         firm,
@@ -792,6 +797,17 @@ def _run_from_profile(
     half, split out so the sampling-uncertainty outer bootstrap can rerun
     the engine on row-gathered resamples of the profile without rescanning
     the trade log."""
+    # The disclosure lives HERE (not in run_monte_carlo) so every entry
+    # point that enforces a scaling plan with a log-derived base — regime
+    # stress, the uncertainty band — carries it in its warnings. An
+    # explicit cfg.base_contracts is a user-supplied fact, not an
+    # assumption, so it draws no warning.
+    if _firm_has_scaling(firm) and base_contracts is not None and cfg.base_contracts is None:
+        warnings.append(
+            f"scaling plan enforced assuming the log's max position "
+            f"({base_contracts:g} contracts) IS the full allowance — pass "
+            "--base-contracts if you traded below your limit"
+        )
     challenge_scale = cfg.challenge_scale if cfg.challenge_scale is not None else cfg.scale
     funded_scale = cfg.funded_scale if cfg.funded_scale is not None else cfg.scale
     challenge_profile = profile.scaled(challenge_scale)

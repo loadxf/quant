@@ -399,7 +399,11 @@ def _evaluate_days(
             # Advance the forecast with the day's UNSCALED per-unit PnL.
             sizer.update(float(sum(t.pnl for t in trades)))
         if safety_net is not None and balance >= safety_net:
-            unlocked = True  # sticky: full size persists even if balance drops
+            # Sticky: full size persists even if balance drops. Keys on
+            # the CLOSING (realized) balance even for intraday-ratchet
+            # firms, matching the vector engine — see the divergence
+            # note on the unlock in montecarlo._simulate_phase.
+            unlocked = True
         for tr_rule in trailing:
             tr_rule.day_close(balance)
 

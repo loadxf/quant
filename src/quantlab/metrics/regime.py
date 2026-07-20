@@ -255,6 +255,7 @@ def _worst_regime_stress(
         block = optimal_block_length(profile.day_pnl)
     else:
         name, block = "iid_day", None
+    stress_warnings: list[str] = []
     report = _run_from_profile(
         profile,
         firm,
@@ -265,11 +266,9 @@ def _worst_regime_stress(
         block_len_used=block,
         sessions_per_week=observed_sessions_per_week(log, boundary, days=days),
         source_trades=len(log),
-        warnings=[],
+        warnings=stress_warnings,
         base_contracts=(
-            getattr(cfg, "base_contracts", None)
-            if getattr(cfg, "base_contracts", None) is not None
-            else log.max_abs_quantity()
+            cfg.base_contracts if cfg.base_contracts is not None else log.max_abs_quantity()
         ),
     )
     eco = report.economics
@@ -280,4 +279,4 @@ def _worst_regime_stress(
         "pass_prob": eco.pass_prob,
         "expected_net": eco.expected_net,
         "risk_of_ruin_funded": eco.risk_of_ruin_funded,
-    }, []
+    }, stress_warnings

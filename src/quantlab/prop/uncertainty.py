@@ -117,6 +117,11 @@ def source_uncertainty(
                 cfg.base_contracts if cfg.base_contracts is not None else log.max_abs_quantity()
             ),
         )
+        if b == 0:
+            # Inner runs share cfg/firm/base, so their engine-level
+            # disclosures (e.g. scaling-plan base assumption) are
+            # identical — surface the first run's once at band level.
+            warnings.extend(w for w in report.warnings if w not in warnings)
         pass_probs[b] = report.economics.pass_prob
         nets[b] = report.economics.expected_net
 

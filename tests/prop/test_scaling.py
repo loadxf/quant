@@ -126,6 +126,15 @@ class TestMonteCarloIntegration:
         report = run_monte_carlo(log, firm, MCConfig(n_paths=100, seed=1))
         assert any("scaling plan enforced" in w for w in report.warnings)
 
+    def test_explicit_base_contracts_draws_no_assumption_warning(self) -> None:
+        # An explicit --base-contracts is a user-supplied fact; the
+        # "assuming the log's max position IS the full allowance" text
+        # would misname the override as a log-derived guess.
+        firm = load_firm("apex40_50k_eod")
+        log = random_log(n_days=60, mean=40.0, std=300.0, seed=7)
+        report = run_monte_carlo(log, firm, MCConfig(n_paths=100, seed=1, base_contracts=10.0))
+        assert not any("scaling plan enforced" in w for w in report.warnings)
+
     def test_under_allowance_trader_not_halved(self) -> None:
         # M11 review fix: the real Apex rule is half of the FIRM max (10),
         # not half of the traded size. A 1-lot trader (well under the

@@ -229,6 +229,12 @@ class FeeSchedule(_RuleBase):
                 "one_time (single eval fee), not both — the EV math would "
                 "silently ignore the monthly fee."
             )
+        if not 0.0 <= self.payout_haircut < 1.0:
+            # Guard the YAML/direct-construction path too, not just the CLI
+            # override: h >= 1 flips every payout negative, h < 0 inflates.
+            raise ConfigError(
+                f"FeeSchedule.payout_haircut must be in [0, 1) (got {self.payout_haircut})"
+            )
         return self
 
 

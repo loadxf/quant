@@ -126,6 +126,18 @@ class TestConfigValidation:
         with pytest.raises(ConfigError, match="required"):
             resolved_amount(TrailingDrawdownSpec(), 1000)
 
+    def test_payout_haircut_range_enforced_at_model_level(self) -> None:
+        # The CLI validates --payout-haircut, but hand-authored YAMLs and
+        # direct construction reach FeeSchedule without it: h >= 1 would
+        # flip every payout negative, h < 0 would inflate them.
+        from quantlab.prop.config import FeeSchedule
+
+        with pytest.raises(ConfigError, match="payout_haircut"):
+            FeeSchedule(payout_haircut=1.5)
+        with pytest.raises(ConfigError, match="payout_haircut"):
+            FeeSchedule(payout_haircut=-0.3)
+        assert FeeSchedule(payout_haircut=0.35).payout_haircut == 0.35
+
 
 class TestConsistencyGateMath:
     def test_bases_agree_on_unified_formula(self) -> None:

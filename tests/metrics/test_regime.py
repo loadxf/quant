@@ -91,6 +91,16 @@ class TestComputeRegimes:
         # better than the whole-log baseline.
         assert rg.stress["expected_net"] <= baseline.expected_net
 
+    def test_stress_on_scaling_firm_surfaces_base_assumption(self) -> None:
+        # The worst-regime stress enforces the firm's scaling plan with a
+        # log-derived base, so the disclosure run_monte_carlo carries must
+        # reach RegimeResult.warnings too — not be silently dropped.
+        rg = compute_regimes(
+            _two_regime_log(), firm=load_firm("topstep_50k"), mc_cfg=MCConfig(n_paths=50, seed=6)
+        )
+        assert rg.stress is not None
+        assert any("scaling plan enforced" in w for w in rg.warnings)
+
     def test_json_serializable(self) -> None:
         import json
 

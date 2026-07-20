@@ -43,6 +43,16 @@ class TestSourceUncertainty:
         assert su.band_width_pp > 1.0
         assert su.pass_prob_quantiles["p5"] <= su.pass_prob_quantiles["p95"]
 
+    def test_scaling_firm_band_carries_base_assumption_warning(self) -> None:
+        # Inner runs enforce the scaling plan with a log-derived base;
+        # the disclosure must surface once at band level, not vanish
+        # with the discarded per-run reports.
+        log = random_log(n_days=60, mean=30.0, std=350.0, seed=5)
+        su = source_uncertainty(
+            log, load_firm("apex40_50k_eod"), mc_cfg=MCConfig(seed=2), n_outer=4, inner_paths=30
+        )
+        assert sum("scaling plan enforced" in w for w in su.warnings) == 1
+
     def test_quantiles_ordered_and_json(self) -> None:
         import json
 
