@@ -63,6 +63,17 @@ stress` and `quant report` — see `--help` for the full list):
   (e.g. a QC parameter sweep, one column each) and get the measured
   probability that picking your best backtest picked noise — the
   measured complement to the declared `--trials N`.
+- `--sizing cushion` — the prop-native heuristic: size by the live buffer
+  above your drawdown floor (auto de-risks toward the floor); contract
+  **scaling plans are enforced** (Topstep XFA balance tiers, Apex 4.0
+  half-size-until-safety-net) via `--base-contracts` mapping.
+- `quant prop policies trades.parquet --firm topstep_50k` — compare
+  funded-phase payout policies on your own log: withdraw-ASAP vs leaving
+  a buffer working above the payout floor (`--buffers`), with or without
+  cutting size once the cycle's qualifying days are banked
+  (`--extract`). Withdraw-ASAP is a policy, not a law.
+- `--payout-haircut 0.1` — price your own counterparty/denial risk into
+  every payout figure (a user-supplied assumption, clearly labeled).
 - `quant prop frontier trades.parquet --firm topstep_50k` — sweep
   position-size multiples and report EV/pass-prob/ruin vs scale, the
   EV-maximizing scale, and the risk-constrained pick; `--accounts 2,5`

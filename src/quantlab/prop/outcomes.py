@@ -105,12 +105,15 @@ class MonteCarloReport:
     economics: EconomicsSummary
     warnings: list[str] = field(default_factory=list)
     sizing: dict[str, Any] = field(default_factory=lambda: {"mode": "fixed"})
+    # Funded-phase decision knobs (M11): payout policy, extraction,
+    # scaling-plan base — recorded so a JSON consumer can reproduce a run.
+    policy: dict[str, Any] = field(default_factory=lambda: {"payout_policy": "asap"})
 
     def to_json_dict(self) -> dict[str, Any]:
         """Stable numeric summary (no per-path arrays)."""
         eco = self.economics
         return {
-            "schema_version": 3,  # v3: adds economics.overhead + economics.reactivation (M10)
+            "schema_version": 4,  # v4: adds the policy block (M11)
             "firm": self.firm_name,
             "account_size": self.account_size,
             "n_paths": self.n_paths,
@@ -118,6 +121,7 @@ class MonteCarloReport:
             "bootstrap": self.bootstrap,
             "block_len": self.block_len,
             "sizing": self.sizing,
+            "policy": self.policy,
             "fidelity": self.fidelity,
             "scale_challenge": self.scale_challenge,
             "scale_funded": self.scale_funded,

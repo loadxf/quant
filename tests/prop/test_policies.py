@@ -22,7 +22,10 @@ class TestKeepBuffer:
         b = run_monte_carlo(
             log, firm, MCConfig(n_paths=300, seed=2, payout_policy="keep_buffer", keep_buffer=0.0)
         ).to_json_dict()
-        b["sizing"] = a["sizing"]  # identical anyway; compare the rest wholesale
+        # The CONFIG record legitimately differs (policy block names the
+        # knobs); normalize it — the test pins behavioral identity.
+        b["sizing"] = a["sizing"]
+        b["policy"] = a["policy"]
         import json
 
         assert json.dumps(a, sort_keys=True) == json.dumps(b, sort_keys=True)
@@ -218,3 +221,25 @@ class TestCli:
         payload = jsonlib.loads(out.read_text())
         assert len(payload["cells"]) == 4
         assert "Funded-phase policy grid" in result.output
+
+
+class TestSchemaV4:
+    def test_policy_block_in_json(self) -> None:
+        firm = load_firm("topstep_50k")
+        log = random_log(n_days=50, mean=40.0, std=300.0, seed=7)
+        payload = run_monte_carlo(
+            log,
+            firm,
+            MCConfig(
+                n_paths=50,
+                seed=1,
+                payout_policy="keep_buffer",
+                keep_buffer=1500.0,
+                extract_weight=0.5,
+            ),
+        ).to_json_dict()
+        assert payload["schema_version"] == 4
+        assert payload["policy"]["payout_policy"] == "keep_buffer"
+        assert payload["policy"]["keep_buffer"] == 1500.0
+        assert payload["policy"]["extract_weight"] == 0.5
+        assert payload["policy"]["base_contracts"] == 1.0  # log's max position

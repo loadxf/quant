@@ -87,6 +87,7 @@ def summarize(
     warnings: list[str],
     sessions_per_week: float = BASELINE_SESSIONS_PER_WEEK,
     block_len_used: int | None = None,
+    base_contracts: float | None = None,
 ) -> MonteCarloReport:
     n = cfg.n_paths
     fees = firm.fees
@@ -329,4 +330,10 @@ def summarize(
         economics=economics,
         warnings=warnings,
         sizing=_sizing_block(cfg),
+        policy={
+            "payout_policy": getattr(cfg, "payout_policy", "asap"),
+            "keep_buffer": getattr(cfg, "keep_buffer", 0.0),
+            "extract_weight": getattr(cfg, "extract_weight", None),
+            "base_contracts": base_contracts,
+        },
     )

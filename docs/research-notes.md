@@ -247,3 +247,47 @@ audits + direct re-verification of every flagged defect).
   EV/VaR/CVaR scale by k, P(all fail) = P(one fails); the independence
   columns (p^k) exist only to display the illusion. No citation needed;
   it is arithmetic.
+
+## M11 — funded-phase decision layer + fidelity binding
+
+The "anything missing in prop-firm performance" review found the funded
+phase's DECISION levers hardcoded or absent. All four gaps built:
+
+- **Cushion sizing** (`--sizing cushion`): weight = clip(cushion/cushion_0,
+  0.25, 1.5) from the live buffer above the trailing/static floor — the
+  prop-native de-risking heuristic. No external citation claimed: it is
+  the discretionary practice ("risk a fraction of remaining drawdown")
+  made mechanical and testable; the acceptance test pins that it cuts
+  funded risk-of-ruin on account-busting logs.
+- **Contract scaling plans, enforced**: Topstep's Scaling Plan applies to
+  the Combine and XFA with limits set at session start from the prior
+  close and never raised mid-session (help.topstep.com article 8284223;
+  Live Funded uses Dynamic Live Risk Expansion instead — out of the
+  modeled funnel). 50K tiers (2 → 3 above $1,500 → 5 above $2,000)
+  corroborated across sources; 100K/150K thresholds from secondaries
+  capped at the verified Combine maxima and marked re-verify (the
+  official table ships as an image). Apex 4.0 PA: HALF max contracts
+  until the EOD balance reaches the safety net (start + DD + $100), then
+  a permanent unlock (proptradingvibes/traderssecondbrain 4.0 guides,
+  verified 2026-07-20). Contracts map to weights via the log's max
+  position (--base-contracts to override) — same-fill linear scaling.
+- **Payout policies** (`quant prop policies`): withdraw-max-ASAP was the
+  engine's hardcoded behavior; it is now one policy among several
+  (keep_buffer leaves $B working above the payout floor; extraction cuts
+  size once the cycle's qualifying days are banked). Framing: mechanical
+  policy comparison with common random numbers on the trader's own
+  distribution — NOT an optimal-stopping solution. Honest empirical
+  finding pinned in tests: a working buffer compounds (often higher
+  long-run EV) but delays the first payout, so ruin-before-any-payout
+  can RISE — the trade-off the grid exists to expose.
+- **Payout-trust haircut** (`--payout-haircut`): counterparty risk is
+  real (payout denials and firm failures are documented across the
+  industry) but unmeasurable from public data, so it is a user-supplied
+  assumption knob, validated to [0,1), always labeled as such in output,
+  and defaulting to 0 in every preset.
+
+Still documented-not-modeled: conduct rules (news blackouts, flat-by-
+close, stop-loss requirements — unknowable from a trade log), attempt-
+to-attempt psychology (campaign EV assumes identical retries), and
+Topstep's Live Funded Dynamic Live Risk Expansion (beyond the modeled
+eval → sim-funded funnel).

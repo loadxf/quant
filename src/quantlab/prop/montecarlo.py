@@ -884,4 +884,5 @@ def _run_from_profile(
         warnings=warnings,
         sessions_per_week=sessions_per_week,
         block_len_used=block_len_used,
+        base_contracts=base_contracts,
     )
