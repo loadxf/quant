@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# QuantConnect / LEAN credentials and local state — never commit
+.lean/
+lean.json
+**/backtests/
+**/.idea/
+credentials
+
+# Outputs
+*.parquet
+report*.html
+!tests/**/*.parquet
+
+# OS
+.DS_Store

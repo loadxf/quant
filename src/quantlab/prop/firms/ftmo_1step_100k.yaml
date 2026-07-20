@@ -1,0 +1,42 @@
+# FTMO Challenge 1-Step, $100K (launched 2026-02-06)
+# Verified 2026-07-19 against ftmo.com/en/comparison-table and
+# ftmo.com/en/trading-objectives. Differs materially from 2-Step:
+# - Single phase, 10% target; Max Daily Loss 3% of initial.
+# - Max Loss 10% is END-OF-DAY TRAILING: updates after 23:59:59 CE(S)T on
+#   the highest end-of-day balance, only rises (no cap during the
+#   challenge; resets on reward withdrawal when funded — approximated
+#   here as an uncapped EOD trail).
+# - Best Day Rule 50% (soft): applies in the challenge AND when funded.
+# - No minimum trading days; fee (~$499/EUR 439, secondary-sourced) is
+#   NOT refundable; 90/10 split from the first reward.
+name: ftmo_1step_100k
+display_name: "FTMO 1-Step 100K"
+firm: FTMO
+account_size: 100000
+day_boundary: {tz: Europe/Prague, cutoff_hour: 0}
+verified_as_of: "2026-07-19"
+sources:
+  - https://ftmo.com/en/comparison-table/
+  - https://ftmo.com/en/trading-objectives/
+  - https://ftmo.com/en/blog/introducing-the-1-step-ftmo-challenge/
+phases:
+  - name: challenge
+    profit_target: 10000
+    rules:
+      - {type: trailing_drawdown, pct: 10, ratchet: eod, inclusive: false}
+      - {type: daily_loss_limit, pct: 3, anchor: prev_midnight_balance, effect: fail, inclusive: false}
+      - {type: consistency, max_best_day_pct: 50, basis: total_profit, effect: raise_target}
+funded:
+  name: funded
+  rules:
+    - {type: trailing_drawdown, pct: 10, ratchet: eod, inclusive: false}
+    - {type: daily_loss_limit, pct: 3, anchor: prev_midnight_balance, effect: fail, inclusive: false}
+    - {type: consistency, max_best_day_pct: 50, basis: total_profit, effect: gate_payout}
+fees:
+  one_time: 499
+payout:
+  profit_split: 0.9
+  period_days: 14
+notes: |
+  The funded-phase trailing reset-on-withdrawal is approximated as a
+  continuous uncapped EOD trail. Standard account type only.

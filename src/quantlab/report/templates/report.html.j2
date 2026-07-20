@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ title }}</title>
+<style>
+  :root {
+    --surface: #fcfcfb; --page: #f9f9f7;
+    --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --border: rgba(11,11,11,0.10);
+    --good: #0ca30c; --warning: #fab219; --serious: #ec835a; --critical: #d03b3b;
+    --blue: #2a78d6; --red: #e34948;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.45;
+  }
+  main { max-width: 1080px; margin: 0 auto; padding: 32px 20px 64px; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  h2 { font-size: 1.1rem; margin: 40px 0 12px; border-bottom: 1px solid var(--grid); padding-bottom: 6px; }
+  .meta { color: var(--ink-2); font-size: 0.9rem; margin-bottom: 8px; }
+  .banner { border: 1px solid var(--border); border-left: 4px solid var(--warning);
+            background: var(--surface); padding: 10px 14px; margin: 12px 0; font-size: 0.9rem; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+          padding: 16px; margin: 12px 0; }
+  .verdict-row { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; }
+  .chip { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; min-width: 96px; }
+  .chip .g { font-size: 1.6rem; font-weight: 700; color: #fff; border-radius: 8px;
+             width: 52px; height: 52px; display: flex; align-items: center; justify-content: center; }
+  .chip .n { font-size: 0.78rem; color: var(--ink-2); text-transform: capitalize; }
+  .g-A { background: var(--good); } .g-B { background: var(--blue); }
+  .g-C { background: var(--warning); color: #0b0b0b !important; }
+  .g-D { background: var(--serious); } .g-F { background: var(--critical); }
+  .overall .g { width: 72px; height: 72px; font-size: 2.2rem; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--grid); }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .flag-bad { color: var(--critical); font-weight: 600; }
+  .flag-ok { color: var(--good); }
+  .chart { background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+           padding: 8px; margin: 16px 0; overflow-x: auto; }
+  footer { margin-top: 48px; color: var(--muted); font-size: 0.8rem; }
+  code { background: var(--surface); border: 1px solid var(--grid); padding: 0 4px; border-radius: 4px; }
+  details pre { background: var(--surface); border: 1px solid var(--grid); padding: 12px;
+                overflow-x: auto; font-size: 0.8rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>{{ title }}</h1>
+  <div class="meta">{{ subtitle }}</div>
+  <div class="meta">Fidelity: {{ fidelity_note }}</div>
+  {% for warning in warnings %}
+  <div class="banner">&#9888;&#65039; {{ warning }}</div>
+  {% endfor %}
+
+  <h2>The Verdict</h2>
+  <div class="card">
+    <div class="verdict-row">
+      <div class="chip overall">
+        <div class="g g-{{ verdict.overall }}">{{ verdict.overall }}</div>
+        <div class="n">overall{% if verdict.capped_by_sample %} (capped by sample size){% endif %}</div>
+      </div>
+      {% for pillar in verdict.pillars %}
+      <div class="chip">
+        <div class="g g-{{ pillar.grade }}">{{ pillar.grade }}</div>
+        <div class="n">{{ pillar.name }}</div>
+      </div>
+      {% endfor %}
+    </div>
+    <table style="margin-top:12px">
+      {% for pillar in verdict.pillars %}
+      <tr><td>{{ pillar.name }}</td><td>{{ pillar.detail }}</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <h2>Overfit checks</h2>
+  <div class="card"><table>
+    {% for flag in verdict.flags %}
+    <tr>
+      <td class="{{ 'flag-bad' if flag.triggered else 'flag-ok' }}">
+        {% if flag.triggered %}&#10071;{% else %}&#10003;{% endif %} {{ flag.name.replace('_',' ') }}
+      </td>
+      <td>{{ flag.explanation }}</td>
+    </tr>
+    {% endfor %}
+  </table></div>
+
+  <h2>Strategy metrics</h2>
+  <div class="card"><table>
+    {% for name, value in metric_rows %}
+    <tr><td>{{ name }}</td><td class="num">{{ value }}</td></tr>
+    {% endfor %}
+  </table></div>
+
+  {% for chart in strategy_charts %}
+  <div class="chart">{{ chart | safe }}</div>
+  {% endfor %}
+
+  {% if prop %}
+  <h2>Prop-firm simulation — {{ prop.firm_display }}</h2>
+  <div class="meta">{{ prop.sim_meta }}</div>
+  <div class="card"><table>
+    {% for name, value in prop.challenge_rows %}
+    <tr><td>{{ name }}</td><td class="num">{{ value }}</td></tr>
+    {% endfor %}
+  </table></div>
+  <div class="card"><table>
+    {% for name, value in prop.funded_rows %}
+    <tr><td>{{ name }}</td><td class="num">{{ value }}</td></tr>
+    {% endfor %}
+  </table></div>
+  <div class="card"><table>
+    {% for name, value in prop.econ_rows %}
+    <tr><td>{{ name }}</td><td class="num">{{ value }}</td></tr>
+    {% endfor %}
+  </table></div>
+  {% for chart in prop.charts %}
+  <div class="chart">{{ chart | safe }}</div>
+  {% endfor %}
+  <details>
+    <summary>Firm rules appendix ({{ prop.firm_name }}, verified {{ prop.verified_as_of }})</summary>
+    <pre>{{ prop.rules_text }}</pre>
+    <div class="meta">Sources:
+      {% for source in prop.sources %}<div><a href="{{ source }}">{{ source }}</a></div>{% endfor %}
+    </div>
+  </details>
+  {% endif %}
+
+  {% if reality %}
+  <h2>Reality check</h2>
+  <div class="meta">{{ reality.survives }}</div>
+  <h3>Cost stress</h3>
+  <table>
+    <tr><th>Scenario</th><th class="num">Added $/RT</th><th class="num">Expectancy</th><th class="num">PF</th><th class="num">MC pass</th></tr>
+    {% for label, added, exp, pf, mcp in reality.cost_rows %}
+    <tr><td>{{ label }}</td><td class="num">{{ added }}</td><td class="num">{{ exp }}</td><td class="num">{{ pf }}</td><td class="num">{{ mcp }}</td></tr>
+    {% endfor %}
+  </table>
+  <h3>Edge decay</h3>
+  <table>
+    {% for name, value in reality.decay_rows %}
+    <tr><td>{{ name }}</td><td class="num">{{ value }}</td></tr>
+    {% endfor %}
+  </table>
+  <h3>Deflated statistics</h3>
+  <table>
+    {% for name, value in reality.stat_rows %}
+    <tr><td>{{ name }}</td><td class="num">{{ value }}</td></tr>
+    {% endfor %}
+  </table>
+  <h3>Drawdown estimates</h3>
+  <table>
+    {% for name, value in reality.dd_rows %}
+    <tr><td>{{ name }}</td><td class="num">{{ value }}</td></tr>
+    {% endfor %}
+  </table>
+  {% if reality.clustering_rows %}
+  <h3>Volatility clustering</h3>
+  <table>
+    <tr><th>Test</th><th class="num">Statistic</th><th class="num">p-value</th></tr>
+    {% for name, stat, p in reality.clustering_rows %}
+    <tr><td>{{ name }}</td><td class="num">{{ stat }}</td><td class="num">{{ p }}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+  {% if reality.voltarget_rows %}
+  <h3>Vol-target counterfactual</h3>
+  <table>
+    <tr><th>Metric</th><th class="num">Fixed size</th><th class="num">Vol-targeted</th></tr>
+    {% for name, fixed, targeted in reality.voltarget_rows %}
+    <tr><td>{{ name }}</td><td class="num">{{ fixed }}</td><td class="num">{{ targeted }}</td></tr>
+    {% endfor %}
+  </table>
+  <div class="meta">{{ reality.voltarget_note }}</div>
+  {% endif %}
+  {% if reality.regime_rows %}
+  <h3>Volatility regimes</h3>
+  <table>
+    <tr><th>Regime</th><th class="num">Days</th><th class="num">Net</th><th class="num">Day exp.</th><th class="num">Win rate</th><th class="num">Persistence</th></tr>
+    {% for name, days, net, exp, wr, pers in reality.regime_rows %}
+    <tr><td>{{ name }}</td><td class="num">{{ days }}</td><td class="num">{{ net }}</td><td class="num">{{ exp }}</td><td class="num">{{ wr }}</td><td class="num">{{ pers }}</td></tr>
+    {% endfor %}
+  </table>
+  {% if reality.regime_note %}<div class="meta">{{ reality.regime_note }}</div>{% endif %}
+  {% if reality.market_rows %}
+  <h3>Market regimes (descriptive, from --ohlcv)</h3>
+  <table>
+    <tr><th>Regime</th><th class="num">Days</th><th class="num">Net</th><th class="num">Day exp.</th></tr>
+    {% for name, days, net, exp in reality.market_rows %}
+    <tr><td>{{ name }}</td><td class="num">{{ days }}</td><td class="num">{{ net }}</td><td class="num">{{ exp }}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+  {% endif %}
+  {% if reality.sampling_rows %}
+  <h3>Source-log sampling uncertainty</h3>
+  <table>
+    <tr><th>Quantile</th><th class="num">Pass prob</th><th class="num">Expected net</th></tr>
+    {% for q, p, net in reality.sampling_rows %}
+    <tr><td>{{ q }}</td><td class="num">{{ p }}</td><td class="num">{{ net }}</td></tr>
+    {% endfor %}
+  </table>
+  <div class="meta">{{ reality.sampling_note }}</div>
+  {% endif %}
+  {% if reality.haircut_rows %}
+  <h3>Literature-anchored decay scenarios</h3>
+  <table>
+    <tr><th>Haircut</th><th>Anchor</th><th class="num">Expectancy</th><th class="num">MC pass</th></tr>
+    {% for hc, label, exp, mcp in reality.haircut_rows %}
+    <tr><td>{{ hc }}</td><td>{{ label }}</td><td class="num">{{ exp }}</td><td class="num">{{ mcp }}</td></tr>
+    {% endfor %}
+  </table>
+  {% endif %}
+  {% for warning in reality.warnings %}
+  <div class="warning">{{ warning }}</div>
+  {% endfor %}
+  {% for chart in reality_charts %}
+  <div class="chart">{{ chart | safe }}</div>
+  {% endfor %}
+  {% endif %}
+
+  <footer>
+    Generated by loadx-quant v{{ version }} &middot; {{ reproducibility }}
+    &middot; Rules verified as of the dates shown in the firm appendix — prop firms
+    change rules constantly; re-verify before relying on EV numbers.
+  </footer>
+</main>
+</body>
+</html>
