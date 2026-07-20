@@ -195,7 +195,7 @@ class TestCliEndToEnd:
         assert result.exit_code == 0, result.output
         payload = json.loads(json_out.read_text())
         html = html_out.read_text()
-        assert payload["schema_version"] == 3
+        assert payload["schema_version"] == 4
         assert pct(payload["prop_simulation"]["economics"]["pass_prob"]) in html
         assert payload["reality_check"]["regime"] is not None
 

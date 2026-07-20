@@ -62,6 +62,19 @@ from quantlab.schema.trade import TradeLog
 
 MIN_DAYS_FOR_BLOCKS = 30
 DEFAULT_SESSIONS_PER_WEEK = 5.0
+
+
+def ensure_crn_seed(cfg: MCConfig) -> MCConfig:
+    """A concrete seed for grid analyses (frontier, policies): common
+    random numbers require one — default_rng(None) pulls fresh OS entropy
+    per call, turning cell differences into resampling noise."""
+    if cfg.seed is not None:
+        return cfg
+    import dataclasses as _dc
+
+    return _dc.replace(cfg, seed=int(np.random.default_rng().integers(0, 2**31 - 1)))
+
+
 # Keep withdrawn balances strictly above trailing floors so a payout can
 # never itself trigger an inclusive-touch breach on the next bar.
 PAYOUT_FLOOR_MARGIN = 0.01
@@ -145,6 +158,10 @@ class MCConfig:
     # Extraction mode: once a path has banked its qualifying days for the
     # current payout cycle, multiply the day weight by this (0 < w <= 1)
     # until the payout lands — protect the banked cycle, then re-risk.
+    # Definitional edge (deliberate): if the payout never becomes
+    # eligible (e.g. a consistency gate that reduced size makes slower to
+    # clear), the path STAYS at extract_weight — a well-defined policy
+    # whose cost shows up honestly in the policies grid.
     extract_weight: float | None = None
 
 
@@ -810,6 +827,13 @@ def _run_from_profile(
     challenge_sizing = _make_sizing(challenge_profile)
     funded_sizing = _make_sizing(funded_profile)
     cushion_clip = cfg.cushion_clip if cfg.sizing == "cushion" else None
+    # A scale what-if means the trader runs scale x the log's positions,
+    # so the scaling-plan conversion base scales WITH it: the firm caps
+    # CONTRACTS, and effective contracts = phase_scale * weight * base.
+    # Without this, `--scale 2` would quietly run twice the allowed size
+    # through an enforced plan (and `--scale 0.5` would over-restrict).
+    challenge_base = base_contracts * challenge_scale if base_contracts is not None else None
+    funded_base = base_contracts * funded_scale if base_contracts is not None else None
 
     if cfg.payout_policy not in ("asap", "keep_buffer"):
         raise QuantLabError(
@@ -841,7 +865,7 @@ def _run_from_profile(
                 sessions_per_week=sessions_per_week,
                 sizing=challenge_sizing,
                 cushion_clip=cushion_clip,
-                base_contracts=base_contracts,
+                base_contracts=challenge_base,
             )
         )
 
@@ -866,7 +890,7 @@ def _run_from_profile(
         sessions_per_week=sessions_per_week,
         sizing=funded_sizing,
         cushion_clip=cushion_clip,
-        base_contracts=base_contracts,
+        base_contracts=funded_base,
         extract_weight=cfg.extract_weight,
     )
 

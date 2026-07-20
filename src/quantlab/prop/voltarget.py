@@ -289,10 +289,9 @@ def compute_voltarget(
     mc_fixed = mc_targeted = None
     if firm is not None:
         cfg = mc_cfg or MCConfig(n_paths=2000, seed=42)
-        # Both arms MUST run at fixed engine sizing: a cfg carrying
-        # sizing="vol_target" would mislabel the fixed arm and apply the
-        # treatment twice to the targeted arm (resized log + per-path
-        # dynamic weights).
+        # Both arms MUST run at fixed engine sizing: a cfg carrying any
+        # dynamic mode (vol_target OR cushion) would mislabel the fixed
+        # arm and apply a second treatment on top of the resized log.
         if getattr(cfg, "sizing", "fixed") != "fixed":
             cfg = _dc.replace(cfg, sizing="fixed")
         rep_fixed = baseline_mc if baseline_mc is not None else run_monte_carlo(log, firm, cfg)

@@ -26,8 +26,6 @@ from __future__ import annotations
 import dataclasses
 from dataclasses import dataclass, field
 
-import numpy as np
-
 from quantlab.errors import QuantLabError
 from quantlab.prop.config import FirmConfig
 from quantlab.prop.montecarlo import MCConfig, run_monte_carlo
@@ -88,9 +86,9 @@ def compute_policy_grid(
     """Full-MC comparison across the payout-policy grid (CRN per cell)."""
     if not buffers or any(b < 0 for b in buffers):
         raise QuantLabError(f"--buffers must be >= 0 (got {list(buffers)})")
-    cfg = mc_cfg or MCConfig()
-    if cfg.seed is None:
-        cfg = dataclasses.replace(cfg, seed=int(np.random.default_rng().integers(0, 2**31 - 1)))
+    from quantlab.prop.montecarlo import ensure_crn_seed
+
+    cfg = ensure_crn_seed(mc_cfg or MCConfig())
     if firm.payout.qualifying_days.count == 0 and any(e is not None for e in extract_weights):
         extract_weights = tuple(e for e in extract_weights if e is None) or (None,)
 
@@ -128,6 +126,20 @@ def compute_policy_grid(
             "every policy produced identical EV — payouts likely never "
             "trigger on this log/firm (check qualifying days and horizon)"
         )
+    else:
+        # An inert extraction axis (e.g. Topstep XFA: the payout lands the
+        # same day the qualifying days complete, so extraction never
+        # activates) would silently show duplicate columns.
+        by_buffer: dict[float, dict[bool, float]] = {}
+        for c in cells:
+            by_buffer.setdefault(c.keep_buffer, {})[c.extract_weight is not None] = c.expected_net
+        pairs = [v for v in by_buffer.values() if len(v) == 2]
+        if pairs and all(v[True] == v[False] for v in pairs):
+            warnings.append(
+                "extraction is inert for this firm/log (payouts land the same "
+                "day the qualifying days complete) — the extract columns "
+                "duplicate the base columns"
+            )
     best_net = max(cells, key=lambda c: c.expected_net)
     lowest_ruin = min(cells, key=lambda c: c.risk_of_ruin_funded)
     return PolicyGrid(

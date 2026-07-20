@@ -89,6 +89,15 @@ def render_report(report: MonteCarloReport, console: Console) -> None:
             f"{_money(eco.overhead.get('extra_monthly', 0.0))}/mo + "
             f"{_money(eco.overhead.get('per_payout', 0.0))}/payout",
         )
+    # Non-default knobs must be VISIBLE next to the numbers they moved —
+    # two runs on screen should never be indistinguishable.
+    if report.sizing.get("mode", "fixed") != "fixed":
+        econ.add_row("sizing mode", report.sizing["mode"])
+    pol = report.policy
+    if pol.get("payout_policy", "asap") != "asap":
+        econ.add_row("payout policy", f"keep {_money(pol.get('keep_buffer', 0.0))} working")
+    if pol.get("extract_weight") is not None:
+        econ.add_row("extraction", f"{pol['extract_weight']:g}x after qualifying days bank")
     console.print(econ)
     if eco.reactivation is not None:
         r = eco.reactivation

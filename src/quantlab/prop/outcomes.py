@@ -65,7 +65,10 @@ class EconomicsSummary:
     pass_prob_ci: tuple[float, float]  # Wilson 95%
     expected_fees_per_attempt: float
     expected_cost_to_funded: float  # E[eval fees spent until first pass, unlimited retries]
-    expected_gross_payout: float  # E[withdrawn * split + refund | funded], per funded account
+    # E[withdrawn * split + refund | funded] per funded account; when
+    # fees.payout_haircut > 0 the user's counterparty assumption scales
+    # this too (denied value is never received, gross or otherwise).
+    expected_gross_payout: float
     expected_net: float  # single-attempt EV: -fees + pass * (funded value - activation)
     ev_with_resets: dict[int, float]  # campaign EV allowing k attempts, k=1..5
     p_net_positive: float

@@ -98,11 +98,11 @@ class TestExtraction:
         with pytest.raises(QuantLabError, match="extract-weight"):
             run_monte_carlo(log, firm, MCConfig(n_paths=10, seed=1, extract_weight=0.0))
 
-    def test_extraction_delays_first_payout(self) -> None:
-        # Apex EOD +500/day: qualifying banks day 5, the period/safety-net
-        # gates leave a wait window where extraction halves size — the
-        # first payout lands LATER (h=10: nothing yet vs $650 plain) but
-        # still lands (h=12: both paid).
+    def test_extraction_shrinks_first_payout(self) -> None:
+        # Apex EOD +500/day (1-lot log, so the firm's half-size rule never
+        # binds a 1-contract trader): qualifying banks day 5; extraction
+        # halves day 6, so the first payout is smaller ($650 vs $900) but
+        # still lands — the banked cycle is protected at a price.
         firm = load_firm("apex40_50k_eod")
         log = day_trades([[simple(500)]] * 80)
         h10_plain = run_monte_carlo(
@@ -111,12 +111,8 @@ class TestExtraction:
         h10_extract = run_monte_carlo(
             log, firm, MCConfig(n_paths=20, seed=1, funded_horizon_days=10, extract_weight=0.5)
         ).economics
-        assert h10_plain.expected_gross_payout > 0
-        assert h10_extract.expected_gross_payout == 0.0
-        h12_extract = run_monte_carlo(
-            log, firm, MCConfig(n_paths=20, seed=1, funded_horizon_days=12, extract_weight=0.5)
-        ).economics
-        assert h12_extract.expected_gross_payout > 0
+        assert h10_plain.expected_gross_payout == pytest.approx(900.0)
+        assert h10_extract.expected_gross_payout == pytest.approx(650.0)
 
     def test_extraction_neutral_when_no_qualifying_rule(self) -> None:
         # FTMO 1-Step has no qualifying-day requirement: extraction has
@@ -243,3 +239,19 @@ class TestSchemaV4:
         assert payload["policy"]["keep_buffer"] == 1500.0
         assert payload["policy"]["extract_weight"] == 0.5
         assert payload["policy"]["base_contracts"] == 1.0  # log's max position
+
+
+class TestInertExtractionWarning:
+    def test_topstep_inert_axis_flagged(self) -> None:
+        # Topstep XFA: the payout lands the same close the 5th qualifying
+        # day banks, so extraction never activates — the grid must say so.
+        firm = load_firm("topstep_50k")
+        log = day_trades([[simple(200)]] * 60)
+        grid = compute_policy_grid(
+            log,
+            firm,
+            mc_cfg=MCConfig(n_paths=50, seed=1),
+            buffers=(0.0, 1000.0),
+            extract_weights=(None, 0.5),
+        )
+        assert any("inert" in w for w in grid.warnings)

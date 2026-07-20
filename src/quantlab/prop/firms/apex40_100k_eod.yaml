@@ -41,8 +41,11 @@ funded:
     - {type: consistency, max_best_day_pct: 50, basis: total_profit, effect: gate_payout}
     # PA contract scaling (4.0): HALF the max contracts until the EOD
     # balance reaches the safety net (start + DD + $100); full size then
-    # unlocks permanently, even if the balance later drops.
+    # unlocks permanently, even if the balance later drops. The firm max
+    # below makes the half-rule "half of 14", so a trader running under
+    # the allowance is (correctly) not halved. Re-verify allowances.
     - {type: scaling_plan, half_until_safety_net: true}
+    - {type: contract_limit, max_contracts: 14}
 fees:
   one_time: 297
   activation: 119

@@ -15,7 +15,7 @@ from quantlab.metrics.core import Metrics
 from quantlab.metrics.scorecard import Verdict
 from quantlab.prop.outcomes import MonteCarloReport
 
-SCHEMA_VERSION = 3  # v3: versioned metrics block; MC economics gains overhead/reactivation
+SCHEMA_VERSION = 4  # v4: prop_simulation v4 (policy block); moves with the MC schema
 
 
 def sanitize(obj: Any) -> Any:

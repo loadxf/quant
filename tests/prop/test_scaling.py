@@ -68,8 +68,9 @@ class TestTopstepTiers:
 
 class TestApexHalfUntilSafetyNet:
     def test_half_then_sticky_unlock(self) -> None:
-        # Apex 50K EOD: safety net 52,100. Half size until the close
-        # reaches it; the unlock survives a later dip.
+        # Apex 50K EOD: safety net 52,100, firm max 10 contracts. A
+        # full-allowance (10-lot) trader is halved until the close reaches
+        # the net; the unlock survives a later dip.
         firm = load_firm("apex40_50k_eod")
         log = day_trades(
             [
@@ -78,7 +79,7 @@ class TestApexHalfUntilSafetyNet:
                 [simple(-500.0)],  # full size -> -500 (51,700, below net)
                 [simple(1000.0)],  # STILL full size (sticky)
             ],
-            quantity=4,
+            quantity=10,
         )
         result = evaluate(log, firm, phase="funded")
         assert result.timeline.iloc[0]["day_pnl"] == pytest.approx(1000.0)
@@ -89,7 +90,7 @@ class TestApexHalfUntilSafetyNet:
     def test_challenge_phase_unaffected(self) -> None:
         # The scaling plan lives on the PA only; the eval runs full size.
         firm = load_firm("apex40_50k_eod")
-        log = day_trades([[simple(1000.0)]] * 2, quantity=4)
+        log = day_trades([[simple(1000.0)]] * 2, quantity=10)
         result = evaluate(log, firm, phase="challenge")
         assert result.timeline.iloc[0]["day_pnl"] == pytest.approx(1000.0)
 
@@ -125,17 +126,18 @@ class TestMonteCarloIntegration:
         report = run_monte_carlo(log, firm, MCConfig(n_paths=100, seed=1))
         assert any("scaling plan enforced" in w for w in report.warnings)
 
-    def test_apex_half_cap_is_base_scale_free(self) -> None:
-        # Without a contract_limit the half cap is a RATIO (0.5 * base /
-        # base): overriding base_contracts must not change results — the
-        # "log trades the full allowance" assumption is the whole story.
+    def test_under_allowance_trader_not_halved(self) -> None:
+        # M11 review fix: the real Apex rule is half of the FIRM max (10),
+        # not half of the traded size. A 1-lot trader (well under the
+        # pre-unlock allowance of 5) must match a firm with no scaling
+        # rule exactly — the old ratio form spuriously halved everyone.
         firm = load_firm("apex40_50k_eod")
-        log = random_log(n_days=60, mean=40.0, std=300.0, seed=7)
+        bare = firm.model_copy(deep=True)
+        bare.funded.rules = [r for r in bare.funded.rules if r.type != "scaling_plan"]
+        log = random_log(n_days=60, mean=40.0, std=300.0, seed=7)  # quantity 1
         capped = run_monte_carlo(log, firm, MCConfig(n_paths=200, seed=2))
-        base = log.max_abs_quantity()
-        assert base is not None
-        loose = run_monte_carlo(log, firm, MCConfig(n_paths=200, seed=2, base_contracts=2 * base))
-        assert loose.economics.expected_net == capped.economics.expected_net
+        uncapped = run_monte_carlo(log, bare, MCConfig(n_paths=200, seed=2))
+        assert capped.economics.expected_net == uncapped.economics.expected_net
 
     def test_apex_half_cap_changes_funded_outcomes(self) -> None:
         # The cap must actually bite: funded economics differ from the
@@ -144,8 +146,9 @@ class TestMonteCarloIntegration:
         bare = firm.model_copy(deep=True)
         bare.funded.rules = [r for r in bare.funded.rules if r.type != "scaling_plan"]
         log = random_log(n_days=80, mean=60.0, std=250.0, seed=9)
-        capped = run_monte_carlo(log, firm, MCConfig(n_paths=300, seed=3))
-        uncapped = run_monte_carlo(log, bare, MCConfig(n_paths=300, seed=3))
+        # base_contracts=10 = the full allowance -> pre-unlock cap 0.5.
+        capped = run_monte_carlo(log, firm, MCConfig(n_paths=300, seed=3, base_contracts=10))
+        uncapped = run_monte_carlo(log, bare, MCConfig(n_paths=300, seed=3, base_contracts=10))
         assert capped.economics.expected_net != uncapped.economics.expected_net
         # Direction is log-dependent by design: half size slows early
         # growth but also protects paths from early ruin (payouts are
@@ -156,3 +159,34 @@ class TestMonteCarloIntegration:
         log = day_trades([[simple(100.0)]] * 40)
         with pytest.raises(QuantLabError, match="base"):
             run_monte_carlo(log, firm, MCConfig(n_paths=10, seed=1, base_contracts=-1))
+
+
+class TestScaleTimesCapInteraction:
+    """M11 review fix: a scale what-if multiplies the trader's contracts,
+    so the plan's weight cap must divide by scale x base — otherwise
+    --scale 2 quietly runs double the allowed size through an enforced
+    plan (and --scale 0.5 over-restricts)."""
+
+    def test_scale_two_still_respects_tier_contracts(self) -> None:
+        # XFA day 1, tier allows 2 contracts, log base 5, scale 2:
+        # effective contracts = 2 * w * 5 must cap at 2 -> w = 0.2, so the
+        # day PnL (already 2x in the profile) caps at 2/5 of the raw log
+        # day: 2 * 500 * 0.2 = 200 = tier_allowed/base * raw.
+        firm = load_firm("topstep_50k")
+        log = day_trades([[simple(500.0)]] * 3, quantity=5)
+        capped = run_monte_carlo(
+            log, firm, MCConfig(n_paths=10, seed=1, scale=2.0, funded_horizon_days=1)
+        )
+        # One funded day at scale 2: balance change equals the capped day.
+        assert float(capped.funded.final_balance[0]) == pytest.approx(200.0)
+
+    def test_half_scale_not_over_restricted(self) -> None:
+        # scale 0.5 with a 5-contract log = 2.5 effective contracts: the
+        # day-1 tier (2 allowed) caps weight at 2/2.5 = 0.8, NOT 2/5.
+        firm = load_firm("topstep_50k")
+        log = day_trades([[simple(500.0)]] * 3, quantity=5)
+        run = run_monte_carlo(
+            log, firm, MCConfig(n_paths=10, seed=1, scale=0.5, funded_horizon_days=1)
+        )
+        # Raw day at scale 0.5 = 250; capped at 0.8 -> 200 (= tier cap in $).
+        assert float(run.funded.final_balance[0]) == pytest.approx(200.0)

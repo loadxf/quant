@@ -218,3 +218,16 @@ class TestPayoutHaircut:
             with_fee_overrides(firm, payout_haircut=1.0)
         with pytest.raises(ConfigError, match="payout-haircut"):
             with_fee_overrides(firm, payout_haircut=-0.1)
+
+    def test_haircut_scales_ftmo_refund_too(self) -> None:
+        # M11 review fix: the refund rides the first payout, so the same
+        # denial risk applies — gross must scale by (1-h) EXACTLY even
+        # for refund-bearing firms.
+        from quantlab.prop.config import with_fee_overrides
+
+        firm = load_firm("ftmo_2step_100k")
+        log = day_trades([[simple(1500)]] * 100)
+        cfg = MCConfig(n_paths=50, seed=4, funded_horizon_days=100)
+        base = run_monte_carlo(log, firm, cfg).economics
+        cut = run_monte_carlo(log, with_fee_overrides(firm, payout_haircut=0.5), cfg).economics
+        assert cut.expected_gross_payout == pytest.approx(0.5 * base.expected_gross_payout)

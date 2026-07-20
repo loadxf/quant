@@ -150,6 +150,10 @@ def summarize(
         if fees.refundable_on_first_payout and fees.one_time > 0
         else np.zeros(n)
     )
+    if fees.payout_haircut > 0:
+        # The refund is disbursed WITH the first payout — the same
+        # denial/firm-failure risk the haircut prices applies to it.
+        refund = refund * (1.0 - fees.payout_haircut)
     funded_value = received + refund - fees.activation
     if fees.extra_monthly > 0:
         funded_months = np.ceil((funded.end_day + 1) / days_per_month)
@@ -226,7 +230,9 @@ def summarize(
         if fees.refundable_on_first_payout and fees.one_time > 0
         else 0.0
     )
-    retry_value_funded = value_funded - retry_discount * p_refund
+    # The retried-pass refund correction is refund value too, so the
+    # counterparty haircut applies to it as well.
+    retry_value_funded = value_funded - retry_discount * p_refund * (1.0 - fees.payout_haircut)
     ev_with_resets: dict[int, float] = {}
     for k in range(1, 6):
         ev = 0.0
