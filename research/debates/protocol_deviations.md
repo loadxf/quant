@@ -89,3 +89,18 @@ pre-declared risk R8). Loop 3 is diagnostics for the report:
 **Holdout:** remains SEALED. No candidate met the pre-registered Gate-1+2 bar, so no
 holdout shot is fired in this experiment. The one-shot design's integrity is preserved:
 an unfired holdout is itself a reportable result.
+
+## D4 — RETROSPECTIVE: universe broader than pre-registered (found by adversarial review)
+
+**Date logged:** 2026-07-20, during the two-mandate report review (overclaim objection O5).
+
+**Deviation:** protocol.md section 3 pre-registered "current S&P 500 constituents with >= 15
+years of history (~400 names)"; the harness as built used ALL 503 current constituents with
+no history filter (recent listings like ABNB/COIN included) plus 71 ETFs (vs "~60"). This
+was an implementation oversight, never intentional, and was NOT logged when it happened —
+it was caught by the project's own adversarial review of the final report.
+
+**Effect on results:** worsens the survivorship/recent-listing exposure that the loop-3
+autopsy identified — i.e., it biases TOWARD finding spurious positive candidates, and the
+experiment still found none that passed the gates. The negative headline result is therefore
+conservative with respect to this deviation; the C015 survivorship kill is strengthened.
