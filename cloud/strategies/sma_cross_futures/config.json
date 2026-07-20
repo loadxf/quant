@@ -1,0 +1,5 @@
+{
+    "algorithm-language": "Python",
+    "parameters": {},
+    "description": "SMA crossover on continuous ES futures (QC built-in data). Example strategy for the quantlab prop-firm pipeline."
+}

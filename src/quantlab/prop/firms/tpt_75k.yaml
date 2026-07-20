@@ -1,0 +1,48 @@
+# Take Profit Trader 75K Test + PRO account
+# Verified 2026-07-19 against takeprofittraderhelp.zendesk.com (articles
+# 15170265979165, 15169070804125, 15170316538013, 15171769361053,
+# 15172219527581, 15172354954525, 15140989806493). Monthly sticker fee is
+# secondary-sourced (site renders prices via JS); TPT discounts heavily.
+# - Test: EOD-trailing drawdown $2,500 (floor ratchets on end-of-day
+#   closing balance, liquidation check is CONTINUOUS incl. unrealized;
+#   trailing stops at the initial balance). No daily loss limit (removed
+#   Jan 2025). 5 minimum trading days. Soft consistency: no day may be
+#   >= 50% of total net P/L, else required profit becomes Net P/L x 2.
+# - PRO: $130 one-time activation, INTRADAY-trailing drawdown (peak incl.
+#   unrealized gains), 80/20 split, daily payouts from day one BUT only
+#   for profits above the buffer zone (initial + DD = $77,500);
+#   inside-buffer profits pay only on account termination (not modeled).
+name: tpt_75k
+display_name: "Take Profit Trader 75K"
+firm: Take Profit Trader
+account_size: 75000
+day_boundary: {tz: America/Chicago, cutoff_hour: 17}
+verified_as_of: "2026-07-19"
+sources:
+  - https://takeprofittraderhelp.zendesk.com/hc/en-us/articles/15170265979165
+  - https://takeprofittraderhelp.zendesk.com/hc/en-us/articles/15170316538013
+  - https://takeprofittraderhelp.zendesk.com/hc/en-us/articles/15171769361053
+  - https://takeprofittraderhelp.zendesk.com/hc/en-us/articles/15172354954525
+phases:
+  - name: challenge
+    profit_target: 4500
+    rules:
+      - {type: trailing_drawdown, amount: 2500, ratchet: eod, threshold_cap: 75000}
+      - {type: consistency, max_best_day_pct: 50, basis: total_profit, effect: raise_target}
+      - {type: min_trading_days, days: 5}
+funded:
+  name: funded
+  rules:
+    - {type: trailing_drawdown, amount: 2500, ratchet: intraday, threshold_cap: 75000}
+fees:
+  monthly: 245
+  reset: 139
+  activation: 130
+payout:
+  profit_split: 0.8
+  min_payout: 0
+  period_days: 0
+  buffer_above_initial: 2500
+notes: |
+  PRO weekly-activity requirement, news-flat rule, no-counter-positions,
+  and the PRO+ tier are not simulated. Withdrawals <= $250 carry a $50 fee.
