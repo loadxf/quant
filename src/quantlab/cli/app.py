@@ -33,12 +33,16 @@ register_stress_commands(app)
 register_pbo_commands(app)
 
 
-@app.callback()
+@app.callback(invoke_without_command=True)
 def _root(
+    ctx: typer.Context,
     version: bool = typer.Option(False, "--version", help="Print version and exit."),
 ) -> None:
     if version:
         typer.echo(__version__)
+        raise typer.Exit()
+    if ctx.invoked_subcommand is None:
+        typer.echo(ctx.get_help())
         raise typer.Exit()
 
 
