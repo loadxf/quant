@@ -656,6 +656,12 @@ pre-registered protocol with a locked holdout. See its
 [REPORT.md](projects/llm_edge/REPORT.md); it does not affect the `quant`
 CLI.
 
+[`docs/rohonchain-review.md`](docs/rohonchain-review.md) — a claim-by-claim
+review of a widely-shared social-media quant corpus (Polymarket arbitrage,
+Kelly sizing, Markov regime models), tracing each claim to its academic
+source and separating the real math from the profit marketing. A worked
+example of the skepticism [§6](#6-reading-the-numbers-honestly) asks for.
+
 ## 8. Development
 
 ```bash
