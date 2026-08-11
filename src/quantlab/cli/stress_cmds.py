@@ -29,7 +29,7 @@ def register_stress_commands(app: typer.Typer) -> None:
         tick_value: float | None = typer.Option(
             None,
             "--tick-value",
-            min=0.0,
+            min=1e-9,  # strictly positive: 0 would zero out every slip cost
             help="$ per tick per contract (auto-resolved for ES/MES/NQ/MNQ).",
         ),
         commission: float | None = typer.Option(
