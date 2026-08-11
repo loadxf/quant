@@ -50,9 +50,7 @@ class Trade:
         for name in ("entry_time", "exit_time"):
             timestamp: dt.datetime = getattr(self, name)
             if not isinstance(timestamp, dt.datetime):
-                raise QuantLabError(
-                    f"Trade.{name} must be a datetime (got {timestamp!r})"
-                )
+                raise QuantLabError(f"Trade.{name} must be a datetime (got {timestamp!r})")
             if timestamp.tzinfo is None:
                 raise QuantLabError(f"Trade.{name} must be tz-aware (got naive {timestamp!r})")
             # Normalize to UTC so the "UTC internally" contract actually holds.
@@ -250,7 +248,6 @@ class TradeLog:
     def cross_session_trade_count(self, boundary: DayBoundary = FUTURES_DAY) -> int:
         """Count trades whose interval crosses the selected daily reset."""
         return sum(
-            boundary.session_date(trade.entry_time)
-            != boundary.session_date(trade.exit_time)
+            boundary.session_date(trade.entry_time) != boundary.session_date(trade.exit_time)
             for trade in self.trades
         )

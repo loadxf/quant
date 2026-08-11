@@ -2,8 +2,9 @@
 
 Sharpe/Sortino are annualized from the active-session equity series. Dense
 weekday logs use 252 periods/year; sparse logs scale that baseline by their
-observed complete-week session cadence. Trade-level ratios remain unsuitable
-for comparing strategies with different frequencies.
+observed complete-week session cadence, so a once-a-week trader's MAR and
+Sharpe are not inflated by the flat days the series never sees. Trade-level
+ratios remain unsuitable for comparing strategies with different frequencies.
 """
 
 from __future__ import annotations
@@ -53,6 +54,8 @@ class Metrics:
     # (a hand-built or deserialized pre-upgrade Metrics) means "unknown":
     # the scorecard recomputes rather than silently grading F on 0.0.
     bootstrap_p_positive: float | None = None
+    # Annualization provenance (session cadence, periods/year) — the only
+    # sanctioned use of this extension point; arbitrary keys stay out.
     extras: dict[str, float] = field(default_factory=dict)
 
 
@@ -150,9 +153,17 @@ def _annualized_ratio(
         downside_sq = np.minimum(daily_returns, 0.0) ** 2
         denom = float(np.sqrt(downside_sq.mean()))
     else:
-        denom = float(daily_returns.std(ddof=1))
+        # ptp==0 catches the whole constant-series class: float noise in
+        # std of N identical values can leave a ~1e-14 denominator that
+        # turns "the same loss every day" into Sharpe -7e16 instead of
+        # the documented -inf convention.
+        denom = 0.0 if np.ptp(daily_returns) == 0.0 else float(daily_returns.std(ddof=1))
     if denom == 0.0:
-        return float("inf") if mean > 0 else 0.0
+        # Degenerate zero-variance series: keep the sign of the edge —
+        # a strategy losing the same amount every day is -inf, not flat.
+        if mean > 0:
+            return float("inf")
+        return float("-inf") if mean < 0 else 0.0
     return float(mean / denom * math.sqrt(periods_per_year))
 
 

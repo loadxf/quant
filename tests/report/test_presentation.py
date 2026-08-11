@@ -173,9 +173,7 @@ class TestCliEndToEnd:
         parquet = tmp_path / "t.parquet"
         html = tmp_path / "verdict.html"
         write_trade_log(random_log(n_days=30, seed=7), parquet)
-        result = CliRunner().invoke(
-            app, ["verdict", str(parquet), "--json", "--html", str(html)]
-        )
+        result = CliRunner().invoke(app, ["verdict", str(parquet), "--json", "--html", str(html)])
         assert result.exit_code == 0, result.output
         assert json.loads(result.stdout)["verdict"]["overall"]
         assert "HTML report written" in result.stderr
@@ -293,9 +291,7 @@ class TestReviewLoopFixes:
         mc = run_monte_carlo(log, firm, MCConfig(n_paths=5, seed=1))
         html_path = tmp_path / "ftmo.html"
         build_html_report(log, metrics, verdict, html_path, mc=mc, firm=firm)
-        payload = combined_json(
-            metrics, verdict, mc, log=log, boundary=boundary
-        )
+        payload = combined_json(metrics, verdict, mc, log=log, boundary=boundary)
         assert any("daily reset" in warning for warning in payload["metrics"]["warnings"])
         assert "daily reset" in html_path.read_text()
 
@@ -409,16 +405,16 @@ class TestWaterfallDecomposition:
     """Regression from the M10 adversarial review (line-scan pass): the
     EV-waterfall bars must sum exactly to expected_net, overheads included."""
 
-    def _waterfall_total(self, eco, activation: float) -> float:
+    def _waterfall_total(self, eco) -> float:
         from quantlab.report.charts import fig_ev_waterfall
 
-        fig = fig_ev_waterfall(eco, activation)
+        fig = fig_ev_waterfall(eco)
         ys = fig.data[0].y
         return float(sum(v for v in ys if v is not None))
 
     def test_sums_to_expected_net_without_knobs(self, bundle) -> None:
         eco = bundle["mc"].economics
-        total = self._waterfall_total(eco, bundle["firm"].fees.activation)
+        total = self._waterfall_total(eco)
         assert total == pytest.approx(eco.expected_net, abs=1e-6)
 
     def test_sums_to_expected_net_with_overheads(self) -> None:
@@ -428,5 +424,5 @@ class TestWaterfallDecomposition:
         log = random_log(n_days=80, mean=40.0, std=300.0, seed=7)
         eco = run_monte_carlo(log, firm, MCConfig(n_paths=300, seed=5)).economics
         assert eco.pass_prob > 0  # otherwise the identity is trivially 0-fee only
-        total = self._waterfall_total(eco, firm.fees.activation)
+        total = self._waterfall_total(eco)
         assert total == pytest.approx(eco.expected_net, abs=1e-6)

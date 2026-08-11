@@ -15,18 +15,24 @@ import re
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import numpy as np
 import pandas as pd
 
 from quantlab.errors import MappingError
-from quantlab.ingest.mapping import ColumnMapping, autodetect_mapping
+from quantlab.ingest.mapping import CANONICAL_FIELDS, ColumnMapping, autodetect_mapping
 from quantlab.schema.trade import Side, Trade, TradeLog
 
-_CURRENCY_RE = re.compile(r"[$€£,\s]")
+# Currency symbols and whitespace (incl. NBSP/narrow-NBSP digit grouping);
+# ',' and '.' survive for the decimal-separator resolution below.
+_CURRENCY_RE = re.compile(r"[$€£\s\u00a0\u202f]")
 _TIME_ONLY_RE = re.compile(r"^\d{1,2}:\d{2}(:\d{2}(\.\d+)?)?\s*([AaPp][Mm])?$")
 _DATE_HEADER_SYNONYMS = ("date", "tradedate", "tradeday", "day")
+# Grouping must lead with 1-9: no formatter emits "0,500" as thousands —
+# a zero integer part before a separator group is only ever a decimal.
+_COMMA_GROUPED_RE = re.compile(r"[+-]?[1-9]\d{0,2}(,\d{3})+")
+_DOT_GROUPED_RE = re.compile(r"[+-]?[1-9]\d{0,2}(\.\d{3})+")
 
 
 @dataclass
@@ -36,18 +42,47 @@ class IngestReport:
     dropped: list[tuple[int, str]] = field(default_factory=list)  # (row index, reason)
     mapping_used: dict[str, str] = field(default_factory=dict)
     autodetected: bool = False
+    warnings: list[str] = field(default_factory=list)
 
     @property
     def rows_dropped(self) -> int:
         return len(self.dropped)
 
 
-def parse_money(value: object) -> float:
-    """Parse '$1,234.56', '(500)', '$(500.00)', unicode-minus '\u221212', etc.
+def _resolve_separators(text: str) -> str:
+    """Decide which of '.'/',' is the decimal separator (US vs European).
 
-    Currency symbols/commas are stripped BEFORE parenthesized-negative
-    detection so accounting exports that put the symbol outside the parens
-    ('$(500.00)') parse as negatives instead of being dropped."""
+    Both present: the LATER one is the decimal, the other is grouping
+    ('1,234.56' US, '1.234,56' EU, '1,23,456.78' lakh). Commas only:
+    exactly-3-digit groups read as thousands ('1,234' — the documented
+    US-default ambiguity), anything else as a decimal comma ('1234,56',
+    '1,23456'). Dots only: two+ 3-digit groups read as EU grouping
+    ('1.234.567'); a single dot stays a US decimal ('1.234' — the
+    mirror-image ambiguity, equally irreducible without a locale flag).
+    """
+    last_dot, last_comma = text.rfind("."), text.rfind(",")
+    if last_dot >= 0 and last_comma >= 0:
+        if last_dot > last_comma:
+            return text.replace(",", "")
+        return text.replace(".", "").replace(",", ".")
+    if last_comma >= 0:
+        if _COMMA_GROUPED_RE.fullmatch(text) or text.count(",") > 1:
+            return text.replace(",", "")  # several commas can only be grouping
+        return text.replace(",", ".")
+    if last_dot >= 0 and text.count(".") > 1 and _DOT_GROUPED_RE.fullmatch(text):
+        return text.replace(".", "")
+    return text
+
+
+def parse_money(value: object) -> float:
+    """Parse '$1,234.56', '(500)', '$(500.00)', unicode-minus '\u221212',
+    and European decimal-comma forms ('1.234,56', '1 234,56').
+
+    Currency symbols are stripped BEFORE parenthesized-negative detection
+    so accounting exports that put the symbol outside the parens
+    ('$(500.00)') parse as negatives instead of being dropped. Non-finite
+    values (NaN/'inf') raise so the row drops with a reason instead of
+    corrupting every downstream statistic."""
     if isinstance(value, int | float):
         number = float(value)
         if not math.isfinite(number):
@@ -60,7 +95,7 @@ def parse_money(value: object) -> float:
         text = text[1:-1]
     if text in ("", "-", "--"):
         raise ValueError(f"empty money value {value!r}")
-    number = float(text)
+    number = float(_resolve_separators(text))
     if not math.isfinite(number):
         raise ValueError(f"money value must be finite (got {value!r})")
     return -abs(number) if negative else number
@@ -106,9 +141,7 @@ def _attach_tz(stamp: Any, tzinfo: ZoneInfo) -> dt.datetime:
     normalized = pd.Timestamp(stamp).floor("us")
     if normalized.tzinfo is None:
         try:
-            normalized = normalized.tz_localize(
-                tzinfo, ambiguous="raise", nonexistent="raise"
-            )
+            normalized = normalized.tz_localize(tzinfo, ambiguous="raise", nonexistent="raise")
         except ValueError as exc:
             raise ValueError(
                 f"ambiguous or nonexistent local timestamp {normalized} in {tzinfo.key}"
@@ -129,16 +162,22 @@ def _combine_split_date_time(frame: pd.DataFrame, column: str) -> str:
     time_only = frame[column].notna() & values.str.match(_TIME_ONLY_RE)
     if not time_only.any():
         return column
-    normalized = {re.sub(r"[^a-z0-9]", "", str(h).lower()): str(h) for h in frame.columns}
-    for synonym in _DATE_HEADER_SYNONYMS:
+    normalized: dict[str, str] = {}
+    for h in frame.columns:
+        normalized.setdefault(re.sub(r"[^a-z0-9]", "", str(h).lower()), str(h))
+    # Column-specific companion first: per-leg exports pair each time
+    # column with its own date column (Entry Time/Entry Date,
+    # Exit Time/Exit Date) — the generic date synonyms would miss them.
+    norm_column = re.sub(r"[^a-z0-9]", "", column.lower())
+    specific = norm_column.replace("time", "date") if "time" in norm_column else None
+    candidates = ([specific] if specific else []) + list(_DATE_HEADER_SYNONYMS)
+    for synonym in candidates:
         date_col = normalized.get(synonym)
         if date_col is not None and date_col != column:
             combined = f"__combined_{column}"
             frame[combined] = frame[column].copy()
             frame.loc[time_only, combined] = (
-                frame.loc[time_only, date_col].astype(str).str.strip()
-                + " "
-                + values.loc[time_only]
+                frame.loc[time_only, date_col].astype(str).str.strip() + " " + values.loc[time_only]
             )
             return combined
     raise MappingError(
@@ -167,6 +206,8 @@ def _parse_time_column(frame: pd.DataFrame, column: str, mapping: ColumnMapping)
     except (ValueError, TypeError):
         # pandas 3 rejects a valid vector containing different explicit UTC
         # offsets (for example New York summer and winter timestamps).
+        # Scalar parsing keeps naive rows naive, so an explicit mapping tz
+        # still localizes them (a vectorized utc=True would mislabel them).
         parsed = frame[combined].map(lambda value: _scalar_stamp(value, fmt))
     # Rescue rounds stay VECTORIZED: each pass re-infers a format from the
     # remaining stragglers' first row, so a two-format file costs two array
@@ -210,39 +251,85 @@ def _parse_side(value: object, mapping: ColumnMapping) -> Side:
     raise ValueError(f"unrecognized side value {value!r}")
 
 
+def _resolve_mapping(
+    headers: list[str],
+    mapping: ColumnMapping | None,
+    overrides: list[str] | None,
+    report: IngestReport,
+) -> ColumnMapping:
+    """Resolve the effective mapping from YAML/pairs/auto-detection.
+
+    Pairs on top of a YAML extend it (as before). Pairs alone are
+    authoritative when they define the required fields; otherwise they
+    overlay auto-detection — the user's bindings are applied FIRST, and
+    detection only fills still-unbound fields from still-unclaimed
+    headers (so an explicit --map can always resolve an ambiguity that
+    auto-detection refuses to guess at)."""
+    if mapping is not None:
+        return ColumnMapping.from_pairs(overrides, base=mapping) if overrides else mapping
+    if overrides:
+        data = ColumnMapping.parse_pairs(overrides)
+        bound = {f for f in CANONICAL_FIELDS if f in data}
+        if {"exit_time", "pnl"} <= bound:
+            return ColumnMapping.from_pairs(overrides)
+        claimed: set[str] = set()
+        for f, v in data.items():
+            if f in CANONICAL_FIELDS:
+                claimed.add(str(v["column"]) if isinstance(v, dict) else str(v))
+        detected = autodetect_mapping(
+            headers, skip_fields=bound, exclude_headers=claimed, require=False
+        )
+        report.autodetected = True
+        return ColumnMapping.from_pairs(overrides, base=detected)
+    report.autodetected = True
+    return autodetect_mapping(headers)
+
+
 def load_trade_log(
     path: Path | str,
     mapping: ColumnMapping | None = None,
     account_currency: str = "USD",
+    overrides: list[str] | None = None,
 ) -> tuple[TradeLog, IngestReport]:
     path = Path(path)
     try:
         frame = pd.read_csv(path, dtype=str, skipinitialspace=True)
+    except pd.errors.EmptyDataError:
+        raise MappingError(f"{path}: file is empty") from None
     except (OSError, UnicodeError, pd.errors.ParserError) as exc:
         raise MappingError(f"Could not read trade-log CSV {path}: {exc}") from exc
     frame.columns = [str(c).strip() for c in frame.columns]
     headers = list(frame.columns)
 
     report = IngestReport(rows_read=len(frame))
-    if mapping is None:
-        mapping = autodetect_mapping(headers)
-        report.autodetected = True
+    mapping = _resolve_mapping(headers, mapping, overrides, report)
     mapping.validate_against(headers)
     report.mapping_used = {
         f: (getattr(mapping, f).column if f == "side" and mapping.side else getattr(mapping, f))
-        for f in ("entry_time", "exit_time", "symbol", "side", "quantity", "pnl", "mae", "mfe")
+        for f in CANONICAL_FIELDS
         if getattr(mapping, f) is not None
     }
 
     assert mapping.exit_time is not None and mapping.pnl is not None  # validate_against ran
     try:
-        tzinfo = ZoneInfo(mapping.tz)
-    except (KeyError, TypeError) as exc:
+        tzinfo = ZoneInfo(mapping.tz or "UTC")
+    except (KeyError, TypeError, ValueError, ZoneInfoNotFoundError) as exc:
         raise MappingError(f"Unknown mapping timezone {mapping.tz!r}") from exc
     exit_stamps = _parse_time_column(frame, mapping.exit_time, mapping)
     entry_stamps = (
         _parse_time_column(frame, mapping.entry_time, mapping) if mapping.entry_time else None
     )
+    if mapping.tz is None:
+        naive = sum(
+            1 for v in exit_stamps.dropna() if getattr(pd.Timestamp(v), "tzinfo", None) is None
+        )
+        if naive:
+            report.warnings.append(
+                f"{naive} timestamp(s) carry no timezone and were read as UTC — "
+                "if they are local wall times, pass --map tz=<IANA zone> "
+                "(or set tz in the mapping YAML); session grouping depends on it"
+            )
+    side_inferred = 0
     trades: list[Trade] = []
     for position, (_, row) in enumerate(frame.iterrows()):
         try:
@@ -262,6 +349,16 @@ def load_trade_log(
                 if mapping.mfe and pd.notna(row[mapping.mfe])
                 else None
             )
+            quantity = parse_money(row[mapping.quantity]) if mapping.quantity else 1.0
+            if mapping.side:
+                side = _parse_side(row[mapping.side.column], mapping)
+            elif quantity < 0:
+                # Signed-quantity exports encode direction as the sign;
+                # without a side column the sign IS the side declaration.
+                side = Side.SHORT
+                side_inferred += 1
+            else:
+                side = Side.LONG
             trades.append(
                 Trade(
                     entry_time=entry_time,
@@ -271,10 +368,8 @@ def load_trade_log(
                         if mapping.symbol
                         else mapping.default_symbol
                     ),
-                    side=_parse_side(row[mapping.side.column], mapping)
-                    if mapping.side
-                    else Side.LONG,
-                    quantity=parse_money(row[mapping.quantity]) if mapping.quantity else 1.0,
+                    side=side,
+                    quantity=abs(quantity),
                     pnl=parse_money(row[mapping.pnl]),
                     entry_price=(
                         parse_money(row[mapping.entry_price])
@@ -299,6 +394,11 @@ def load_trade_log(
         except Exception as exc:
             report.dropped.append((position, f"{type(exc).__name__}: {exc}"))
 
+    if side_inferred:
+        report.warnings.append(
+            f"{side_inferred} trade(s): side inferred from negative quantity "
+            "(no side column mapped)"
+        )
     if not trades:
         raise MappingError(
             f"No trades could be parsed from {path} "

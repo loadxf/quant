@@ -32,9 +32,7 @@ CONTRACTS: dict[str, ContractSpec] = {
     "NQ": ContractSpec("NQ", 0.25, 5.00, 3.00),
 }
 
-_FUTURES_SYMBOL = re.compile(
-    r"^(MES|MNQ|ES|NQ)(?:[FGHJKMNQUVXZ]\d{1,4}|[1-9]\d*!|=F)?$"
-)
+_FUTURES_SYMBOL = re.compile(r"^(MES|MNQ|ES|NQ)(?:[FGHJKMNQUVXZ]\d{1,4}|[1-9]\d*!|=F)?$")
 
 
 def resolve_contract(symbol: str) -> ContractSpec | None:

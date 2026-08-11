@@ -1,5 +1,8 @@
 # Column mapping for examples/trades_sample.csv
-# (auto-detection also handles this file; the explicit mapping is for reference)
+# Auto-detection finds the same columns, but NOT the timezone: the sample's
+# naive Chicago wall times would be read as UTC (the ingest says so when it
+# happens). Pass this mapping — or at least `--map tz=America/Chicago` — for
+# correct session grouping.
 entry_time: "Entry DateTime"
 exit_time: "Exit DateTime"
 symbol: "Symbol"

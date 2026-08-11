@@ -19,9 +19,7 @@ class EquityPoint:
 
     def __post_init__(self) -> None:
         if not isinstance(self.time, dt.datetime):
-            raise QuantLabError(
-                f"EquityPoint.time must be a datetime (got {self.time!r})"
-            )
+            raise QuantLabError(f"EquityPoint.time must be a datetime (got {self.time!r})")
         if self.time.tzinfo is None:
             raise QuantLabError("EquityPoint.time must be timezone-aware")
         if (

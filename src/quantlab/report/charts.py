@@ -129,25 +129,24 @@ def fig_end_day_hist(phase: PhaseOutcome, title: str) -> go.Figure:
 
 
 def fig_payout_hist(received: np.ndarray) -> go.Figure:
-    fig = _base("Payouts received per funded account (after split)", "total received ($)", "paths")
+    fig = _base("Net received per funded account", "total received ($)", "paths")
     fig.add_trace(go.Histogram(x=received, marker_color=BLUE, nbinsx=50))
     return fig
 
 
-def fig_ev_waterfall(eco: EconomicsSummary, activation: float) -> go.Figure:
+def fig_ev_waterfall(eco: EconomicsSummary) -> go.Figure:
     """Expected-value decomposition of a single attempt (diverging pair).
 
     Bars come from economics.ev_decomposition — the path-exact linear
     pieces of expected_net — so they SUM to the headline number exactly
     (re-deriving pass_prob * E[...] here would differ by Monte Carlo
     covariance and the total would not add up on screen)."""
-    dec = eco.ev_decomposition or {
-        # Fallback for pre-M10 report objects: analytic approximation.
-        "eval_fees": -eco.expected_fees_per_attempt,
-        "payout_value": eco.pass_prob * eco.expected_gross_payout,
-        "activation": -eco.pass_prob * activation,
-        "overheads": 0.0,
-    }
+    dec = eco.ev_decomposition
+    if dec is None:
+        # Every EconomicsSummary construction sets the field; a missing one
+        # is a regression that must fail loudly, not render bars that
+        # silently do not sum to the headline EV.
+        raise ValueError("EconomicsSummary.ev_decomposition is missing")
     labels = ["eval fees", "payout value (x pass prob)", "activation (x pass prob)"]
     values: list[float | None] = [dec["eval_fees"], dec["payout_value"], dec["activation"]]
     if dec.get("overheads"):

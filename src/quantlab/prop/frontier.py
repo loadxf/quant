@@ -131,7 +131,9 @@ def compute_scale_frontier(
     best_within = max(within, key=lambda p: p.scale).scale if within else None
 
     warnings: list[str] = engine_warnings
-    if best.scale == max(s.scale for s in points) and best.expected_net > 0:
+    # A one-point grid has no trend to report — the single point is
+    # trivially "the top of the grid".
+    if len(points) > 1 and best.scale == max(s.scale for s in points) and best.expected_net > 0:
         warnings.append(
             f"EV is still rising at the top of the grid (x{best.scale:g}) — the "
             "same-fill assumption gets less realistic as size grows; treat "

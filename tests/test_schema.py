@@ -196,11 +196,19 @@ class TestParquetRoundTrip:
             read_trade_log(tmp_path / "nope.parquet")
 
     def test_write_failure_is_domain_error_and_does_not_leave_temp(self, tmp_path) -> None:
+        # Missing parents are auto-created, so the surviving failure mode is
+        # a target occupied by a directory: replace() fails after the temp
+        # write, which must surface as a domain error and clean the temp up.
+        target = tmp_path / "log.parquet"
+        target.mkdir()
         with pytest.raises(QuantLabError, match="Could not write trade log"):
-            write_trade_log(
-                trades_from_daily([[10.0]]), tmp_path / "missing" / "log.parquet"
-            )
+            write_trade_log(trades_from_daily([[10.0]]), target)
         assert not list(tmp_path.glob(".*.tmp"))
+
+    def test_missing_parent_dirs_are_created(self, tmp_path) -> None:
+        path = tmp_path / "missing" / "log.parquet"
+        write_trade_log(trades_from_daily([[10.0]]), path)
+        assert read_trade_log(path).trades[0].pnl == 10.0
 
     def test_future_schema_version_rejected(self, tmp_path, monkeypatch) -> None:
         import quantlab.schema.io as io_mod

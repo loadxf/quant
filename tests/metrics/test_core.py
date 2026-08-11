@@ -98,9 +98,7 @@ class TestComputeMetrics:
             ({"seed": 1.5}, "seed"),
         ],
     )
-    def test_metrics_rejects_boolean_or_fractional_numeric_controls(
-        self, kwargs, message
-    ) -> None:
+    def test_metrics_rejects_boolean_or_fractional_numeric_controls(self, kwargs, message) -> None:
         from quantlab.errors import QuantLabError
 
         with pytest.raises(QuantLabError, match=message):
@@ -120,9 +118,7 @@ class TestComputeMetrics:
             trades = []
             pnls = (100.0, -50.0)
             for week in range(12):
-                monday = dt.datetime(2026, 1, 5, 15, tzinfo=dt.UTC) + dt.timedelta(
-                    weeks=week
-                )
+                monday = dt.datetime(2026, 1, 5, 15, tzinfo=dt.UTC) + dt.timedelta(weeks=week)
                 for weekday in weekdays:
                     when = monday + dt.timedelta(days=weekday)
                     trades.append(

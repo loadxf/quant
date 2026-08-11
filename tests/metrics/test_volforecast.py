@@ -1,5 +1,5 @@
 """Volatility-forecast tests: hand-computed recursions, lookahead
-properties, and parameter recovery on simulated GARCH data."""
+properties, and clustering tests on simulated GARCH data."""
 
 from __future__ import annotations
 
@@ -13,7 +13,6 @@ from quantlab.metrics.volforecast import (
     arch_lm,
     compute_clustering,
     ewma_sigma_path,
-    fit_garch11,
     mcleod_li,
 )
 
@@ -68,39 +67,6 @@ class TestEwma:
     def test_nonfinite_series_rejected(self) -> None:
         with pytest.raises(QuantLabError, match="finite"):
             compute_clustering(np.array([1.0, float("nan")]))
-
-
-class TestGarchFit:
-    def test_recovers_known_parameters(self) -> None:
-        r = _simulate_garch(2000, omega=0.1, alpha=0.10, beta=0.85, seed=5)
-        res = fit_garch11(r)
-        assert res.method == "garch11" and res.converged
-        assert res.alpha == pytest.approx(0.10, abs=0.05)
-        assert res.beta == pytest.approx(0.85, abs=0.05)
-
-    def test_falls_back_below_min_obs(self) -> None:
-        r = _simulate_garch(150, 0.1, 0.1, 0.85, seed=6)
-        res = fit_garch11(r)
-        assert res.method == "ewma"
-        assert res.fallback_reason is not None and "250" in res.fallback_reason
-
-    def test_short_but_accepted_fit_warns(self) -> None:
-        r = _simulate_garch(300, 0.1, 0.1, 0.8, seed=7)
-        res = fit_garch11(r)
-        if res.method == "garch11":  # fit may legitimately fall back
-            assert res.fallback_reason is not None and "500" in res.fallback_reason
-
-    def test_lookahead_property(self) -> None:
-        r = _simulate_garch(600, 0.1, 0.1, 0.85, seed=8)
-        base = fit_garch11(r)
-        # Perturbing the LAST day cannot change any earlier sigma given
-        # the same parameters — but the fit itself uses the full sample,
-        # so compare sigma paths computed with IDENTICAL parameters: the
-        # documented contract is that sigma[t] depends on r[0..t-1] only.
-        assert base.method == "garch11"
-        sigma = np.array(base.sigma)
-        assert math.isnan(sigma[0])
-        assert not math.isnan(sigma[-1])
 
 
 class TestClusteringTests:

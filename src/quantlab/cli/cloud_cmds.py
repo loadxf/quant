@@ -9,6 +9,8 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
+from quantlab.errors import QuantLabError
+from quantlab.output import prepared
 from quantlab.qc import runner
 from quantlab.qc.api import QCClient
 from quantlab.qc.results import parse_closed_trades, parse_equity_chart
@@ -65,8 +67,9 @@ def results_cmd(
     firm: str | None = typer.Option(
         None,
         "--firm",
-        help="With --chart: cross-check the TRUE mark-to-market equity "
-        "against this firm's trailing/static/daily-loss rules.",
+        help="Cross-check the TRUE mark-to-market equity against this firm's "
+        "trailing/static/daily-loss rules (fetches the equity chart "
+        "automatically).",
     ),
 ) -> None:
     """Download full backtest results via the REST API -> canonical trades.parquet.
@@ -74,22 +77,52 @@ def results_cmd(
     (Verified: no lean CLI command downloads result JSON — the API is the
     only route; closedTrades carries MAE/MFE for intraday rule fidelity.)
     """
+    # Resolve the firm BEFORE any network call: a typo'd preset name must
+    # not burn the download and up to a minute of chart polling first.
+    firm_cfg = None
+    if firm is not None:
+        from quantlab.prop.registry import load_firm
+
+        firm_cfg = load_firm(firm)
+        if not with_chart:
+            # The check the user asked for needs the equity chart — fetch
+            # it implicitly rather than silently skipping the check.
+            with_chart = True
+            console.print(
+                "[dim]--firm implies --chart: fetching the Strategy Equity series "
+                "(writes the .equity.csv side file; may poll up to ~60s)[/dim]"
+            )
     client = QCClient()
     backtest = client.read_backtest(project_id, backtest_id)
     if save_json is not None:
-        serialized = json.dumps(
-            sanitize(backtest), indent=2, default=str, allow_nan=False
-        )
+        # Written BEFORE any status check so a crashed backtest's raw
+        # payload is still retrievable for diagnosis.
+        serialized = json.dumps(sanitize(backtest), indent=2, default=str, allow_nan=False)
         save_json.parent.mkdir(parents=True, exist_ok=True)
-        temporary = save_json.with_name(
-            f".{save_json.name}.{secrets.token_hex(6)}.tmp"
-        )
+        temporary = save_json.with_name(f".{save_json.name}.{secrets.token_hex(6)}.tmp")
         try:
-            temporary.write_text(serialized)
+            temporary.write_text(serialized, encoding="utf-8")
             temporary.replace(save_json)
         finally:
             temporary.unlink(missing_ok=True)
         console.print(f"raw result saved to {save_json}")
+
+    error_text = str(backtest.get("error") or backtest.get("stacktrace") or "").strip()
+    if error_text:
+        raise QuantLabError(
+            f"backtest {backtest_id} ended with a runtime error — its trades "
+            f"(if any) do not represent the full strategy. Algorithm error:\n"
+            f"{error_text[:1000]}"
+            + ("" if save_json else "\n(re-run with --save-json to keep the full payload)")
+        )
+    completed = backtest.get("completed")
+    if completed is False:
+        progress = backtest.get("progress")
+        pct = f" (progress {float(progress):.0%})" if isinstance(progress, int | float) else ""
+        console.print(
+            f"[yellow]warning[/yellow]: backtest is still running{pct} — "
+            "trades below are a PARTIAL snapshot, not the final result"
+        )
 
     log, skipped = parse_closed_trades(backtest)
     write_trade_log(log, output)
@@ -107,13 +140,12 @@ def results_cmd(
         chart = client.read_backtest_chart(project_id, backtest_id)
         curve = parse_equity_chart(chart)
         chart_path = output.with_suffix(".equity.csv")
-        curve.to_series().rename("equity").to_csv(chart_path, index_label="datetime")
+        curve.to_series().rename("equity").to_csv(prepared(chart_path), index_label="datetime")
         console.print(f"equity chart: {len(curve.points)} points -> {chart_path}")
-        if firm is not None:
+        if firm_cfg is not None:
             from quantlab.prop.equity_check import check_equity_curve
-            from quantlab.prop.registry import load_firm
 
-            check = check_equity_curve(curve, load_firm(firm))
+            check = check_equity_curve(curve, firm_cfg)
             if check.first_breach is not None:
                 b = check.first_breach
                 console.print(

@@ -40,9 +40,7 @@ class TestSpecValidation:
 
     def test_first_tier_must_cover_the_starting_balance(self) -> None:
         with pytest.raises(ConfigError, match=r"first tier.*0"):
-            ScalingPlanSpec(
-                tiers=[ScalingTier(min_balance=1000, max_contracts=2)]
-            )
+            ScalingPlanSpec(tiers=[ScalingTier(min_balance=1000, max_contracts=2)])
 
 
 class TestTopstepTiers:
@@ -50,9 +48,7 @@ class TestTopstepTiers:
         # XFA starts at $0 balance -> tier allows 2 of the log's 5-contract
         # base -> day-1 PnL scaled by 0.4.
         firm = load_firm("topstep_50k")
-        log = day_trades(
-            [[simple(500.0)], [simple(500.0)]], quantity=5, symbol="NQ"
-        )
+        log = day_trades([[simple(500.0)], [simple(500.0)]], quantity=5, symbol="NQ")
         result = evaluate(log, firm, phase="funded")
         assert result.timeline.iloc[0]["day_pnl"] == pytest.approx(500.0 * 2 / 5)
         assert any("scaling plan capped" in a for a in result.advisories)

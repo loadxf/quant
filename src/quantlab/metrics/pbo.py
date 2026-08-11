@@ -107,9 +107,7 @@ def compute_pbo(
     if m.shape[0] < 2:
         raise QuantLabError("PBO matrix needs at least two daily observations")
     if not np.any(m.std(axis=0, ddof=1) > 0):
-        raise QuantLabError(
-            "PBO is unavailable: every variant has zero return variance"
-        )
+        raise QuantLabError("PBO is unavailable: every variant has zero return variance")
     if np.unique(m, axis=1).shape[1] < 2:
         raise QuantLabError(
             "PBO is unavailable: the matrix has fewer than two distinct variant paths"
@@ -140,6 +138,9 @@ def compute_pbo(
 
     combos_total = math.comb(s, s // 2)
     if combos_total > MAX_COMBOS:
+        # Sample WITHOUT materializing all C(S, S/2) tuples (--partitions 30
+        # would need ~29 GB of them): draw lexicographic ranks (Floyd
+        # sampling — works for arbitrarily large totals), unrank each.
         combos = [
             _unrank_combination(s, s // 2, rank)
             for rank in _sample_ranks(combos_total, MAX_COMBOS, seed)
@@ -167,6 +168,12 @@ def compute_pbo(
     )
     omega = rank / (n_variants + 1)
     logit = np.log(omega / (1.0 - omega))
+    if np.all(omega == 0.5):
+        warnings.append(
+            "the IS winner ties every variant OOS on every split — no selection "
+            "differential exists (identical/duplicated variant columns?); "
+            "PBO is uninformative here"
+        )
 
     finite = np.isfinite(is_sr[rows, selected]) & np.isfinite(sel_oos)
     if finite.sum() >= 2:
@@ -180,7 +187,11 @@ def compute_pbo(
         s_partitions=s,
         combos_total=combos_total,
         combos_evaluated=len(combos),
-        pbo=float(np.mean(omega <= 0.5)),
+        # Continuity correction (deliberate deviation from the paper's
+        # P(omega <= 0.5)): an exact-median tie counts HALF an overfit
+        # event, so all-identical variants report the pure-noise ~0.5
+        # instead of a spurious 1.0 "SEVERE" (or 0.0 with strict <).
+        pbo=float(np.mean(omega < 0.5) + 0.5 * np.mean(omega == 0.5)),
         p_oos_loss=float(np.mean(oos_mean[rows, selected] < 0)),
         logit_mean=float(np.mean(logit)),
         logit_quantiles={f"p{q}": float(np.percentile(logit, q)) for q in (5, 25, 50, 75, 95)},
@@ -190,24 +201,60 @@ def compute_pbo(
     )
 
 
-def load_variant_matrix(path) -> tuple[np.ndarray, list[str]]:
-    """CSV -> (days x variants) matrix + variant names. A leading date-like
-    column (unparseable as float, or named date/datetime/day) is dropped."""
+def _index_like(column, name: str) -> str | None:
+    """Reason the first CSV column is an index/date, not a variant — or None.
+
+    A silently-kept index column is catastrophic: a 0..n-1 ramp has per-day
+    Sharpe ~1.7, wins every split IS and OOS, and drives PBO to 0.0
+    ("selection looks meaningful") on pure noise."""
+    if name in ("date", "datetime", "day", "time", "session", "index", "") or name.startswith(
+        "unnamed"
+    ):
+        return f"named {name!r}"
+    try:
+        values = column.astype(float).to_numpy()
+    except (TypeError, ValueError):
+        # Not numeric: a variant column must be numeric — date strings and
+        # labels alike are provenance, not PnL.
+        return "non-numeric values"
+    if np.all(values == np.floor(values)):
+        ints = values.astype(np.int64)
+        n = ints.size
+        if np.array_equal(ints, np.arange(n)) or np.array_equal(ints, np.arange(1, n + 1)):
+            return "a 0..n-1/1..n integer ramp (a saved DataFrame index)"
+        if n > 1 and (np.diff(ints) > 0).all():
+            if ((ints >= 19000101) & (ints <= 21001231)).all():
+                return "increasing yyyymmdd-style dates"
+            if ints[0] >= 10**9:
+                return "increasing epoch-timestamp-like values"
+    return None
+
+
+def load_variant_matrix(path) -> tuple[np.ndarray, list[str], list[str]]:
+    """CSV -> (days x variants) matrix, variant names, and loader notes.
+
+    A leading index/date-like column is dropped WITH a note saying so —
+    silently ingesting it as a variant flips the verdict on pure noise."""
     import pandas as pd
 
-    frame = pd.read_csv(path)
+    try:
+        frame = pd.read_csv(path)
+    except pd.errors.EmptyDataError:
+        raise QuantLabError(f"{path}: empty CSV") from None
+    except pd.errors.ParserError as exc:
+        raise QuantLabError(f"{path}: not a readable CSV ({exc})") from None
     if frame.empty:
         raise QuantLabError(f"{path}: empty CSV")
-    first = str(frame.columns[0]).strip().lower()
-    if first in ("date", "datetime", "day", "time", "session"):
+    notes: list[str] = []
+    first_name = str(frame.columns[0]).strip().lower()
+    reason = _index_like(frame[frame.columns[0]], first_name)
+    if reason is not None:
+        notes.append(f"dropped leading column {str(frame.columns[0])!r}: {reason}")
         frame = frame.drop(columns=frame.columns[0])
-    else:
-        try:
-            frame[frame.columns[0]].astype(float)
-        except (TypeError, ValueError):
-            frame = frame.drop(columns=frame.columns[0])
+    if frame.shape[1] == 0:
+        raise QuantLabError(f"{path}: no variant columns left after dropping the index column")
     numeric = frame.apply(pd.to_numeric, errors="coerce")
     if numeric.isna().any().any():
         bad = [c for c in numeric.columns if numeric[c].isna().any()]
         raise QuantLabError(f"{path}: non-numeric or missing values in variant column(s) {bad[:5]}")
-    return numeric.to_numpy(dtype=float), [str(c) for c in numeric.columns]
+    return numeric.to_numpy(dtype=float), [str(c) for c in numeric.columns], notes

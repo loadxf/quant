@@ -13,6 +13,7 @@ from zoneinfo import ZoneInfo
 
 import numpy as np
 
+from quantlab.errors import QuantLabError
 from quantlab.schema.trade import Side, Trade, TradeLog
 
 
@@ -64,6 +65,14 @@ def synthetic_geometry_log(
     before hitting its target), so results run at trade-close fidelity
     and the optimism warning stays visible.
     """
+    if days < 1 or trades_per_day < 1:
+        raise QuantLabError(
+            f"need days >= 1 and trades_per_day >= 1 (got {days}, {trades_per_day})"
+        )
+    if not 0.0 <= win_rate <= 1.0:
+        raise QuantLabError(f"win_rate must be in [0, 1] (got {win_rate})")
+    if risk <= 0 or rr <= 0:
+        raise QuantLabError(f"risk and rr must be positive (got risk={risk}, rr={rr})")
     rng = np.random.default_rng(seed)
     n_total = days * trades_per_day
     n_wins = round(win_rate * n_total)
@@ -90,18 +99,21 @@ def synthetic_geometry_log(
     ct = ZoneInfo("America/Chicago")
     date = dt.date(2026, 1, 5)
     trades: list[Trade] = []
+    # Pack the whole day inside the 9:00 -> 16:59 CT window: a trade whose
+    # exit crosses the 17:00 session boundary would silently migrate into
+    # the NEXT session (Friday overflow lands on Saturday), corrupting the
+    # exact day structure this generator exists to control.
+    step = dt.timedelta(seconds=(7 * 3600 + 59 * 60) / trades_per_day)
     for day in range(days):
         while date.weekday() >= 5:
             date += dt.timedelta(days=1)
         for k in range(trades_per_day):
             pnl = float(pnls[day * trades_per_day + k])
-            entry = dt.datetime.combine(date, dt.time(9, 0), tzinfo=ct) + dt.timedelta(
-                minutes=15 * k
-            )
+            entry = dt.datetime.combine(date, dt.time(9, 0), tzinfo=ct) + k * step
             trades.append(
                 Trade(
                     entry_time=entry,
-                    exit_time=entry + dt.timedelta(minutes=10),
+                    exit_time=entry + step / 2,
                     symbol="SYN",
                     side=Side.LONG,
                     quantity=1,

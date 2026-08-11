@@ -26,7 +26,7 @@ def load_firm(name_or_path: str | Path) -> FirmConfig:
     """Load a preset by name (`topstep_50k`) or any firm YAML by path."""
     path = Path(name_or_path)
     if path.suffix in (".yaml", ".yml") and path.exists():
-        raw_text = path.read_text()
+        raw_text = path.read_text(encoding="utf-8")
     else:
         resource = resources.files(_PACKAGE) / f"{name_or_path}.yaml"
         if not resource.is_file():
@@ -34,7 +34,7 @@ def load_firm(name_or_path: str | Path) -> FirmConfig:
                 f"Unknown firm {name_or_path!r}. Presets: {', '.join(list_firms())} — "
                 "or pass a path to your own firm YAML."
             )
-        raw_text = resource.read_text()
+        raw_text = resource.read_text(encoding="utf-8")
 
     raw = yaml.safe_load(raw_text)
     if not isinstance(raw, dict):
@@ -64,6 +64,13 @@ def _validate_amounts(firm: FirmConfig, source: str) -> None:
         for spec in phase.rules:
             if isinstance(spec, TrailingDrawdownSpec | StaticMaxLossSpec | DailyLossLimitSpec):
                 try:
-                    resolved_amount(spec, firm.account_size)
+                    amount = resolved_amount(spec, firm.account_size)
                 except ConfigError as exc:
                     raise ConfigError(f"Firm {source!r}, phase {phase.name!r}: {exc}") from exc
+                if amount <= 0:
+                    # A zero/negative width puts the floor at or above the
+                    # unchanged balance: every trade "breaches" instantly.
+                    raise ConfigError(
+                        f"Firm {source!r}, phase {phase.name!r}: {spec.type} resolves to "
+                        f"{amount:g} — rule amounts must be positive"
+                    )

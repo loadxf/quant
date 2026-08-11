@@ -144,11 +144,12 @@ numbers corrected:
 - **Estimator policy**: GARCH(1,1) MLE is negatively biased and unstable
   in small samples — **≥500 observations recommended** (Hwang & Valls
   Pereira, European J. of Finance, 2006). Trade logs are typically
-  60–250 days, so the default forecast is **EWMA/RiskMetrics λ=0.94**
+  60–250 days, so the forecast is **EWMA/RiskMetrics λ=0.94**
   (J.P. Morgan RiskMetrics Technical Document, 4th ed., 1996 — the
-  restricted IGARCH case, half-life ≈11 days). GARCH is offered above a
-  250-day hard floor (warning under 500) with variance targeting
-  (Engle & Mezrich 1996) and automatic EWMA fallback.
+  restricted IGARCH case, half-life ≈11 days). A GARCH(1,1) fitter was
+  prototyped and removed: at trade-log sample sizes it would always sit
+  below the reliability floor, so shipping it would only advertise an
+  estimator the data cannot support.
 - **Sizing rule**: weight = clip(target/σ_forecast, 0.5, 1.5) — the
   1.5× cap per Moreira & Muir (J. Finance 2017); target defaults to the
   trader's own median forecast σ so median weight is 1 (never injects

@@ -168,11 +168,12 @@ def parse_equity_chart(chart: object) -> EquityCurve:
 
 def load_result_file(path: Path) -> dict[str, Any]:
     """Read a saved backtests/read response (or its `backtest` object)."""
+
     def reject_constant(value: str):
         raise ValueError(f"non-finite JSON constant {value}")
 
     try:
-        raw = json.loads(Path(path).read_text(), parse_constant=reject_constant)
+        raw = json.loads(Path(path).read_text(encoding="utf-8"), parse_constant=reject_constant)
     except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as exc:
         raise QuantLabError(f"Could not read saved backtest result {path}: {exc}") from exc
     if not isinstance(raw, dict):

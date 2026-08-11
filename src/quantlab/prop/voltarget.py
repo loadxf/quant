@@ -66,6 +66,8 @@ class VolSizingParams:
         if not 0.0 < self.lam < 1.0:
             raise ValueError(f"lam must be in (0, 1) (got {self.lam})")
         if self.target_vol <= 0 or self.seed_var < 0:
+            # target/sigma <= 0 would pin every weight at clip_lo: "vol
+            # targeting" silently degrades to a constant down-scale.
             raise ValueError("target_vol must be positive and seed_var non-negative")
         if self.burn_in < 0 or self.band < 0:
             raise ValueError("burn_in and band must be non-negative")

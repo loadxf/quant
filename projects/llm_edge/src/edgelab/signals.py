@@ -451,9 +451,7 @@ def compute_declared_signal(
         )
     values = dict(declaration)
     values.update(override_values)
-    values = validate_declaration(
-        values, relaxed_expression_window="EXPR" in override_values
-    )
+    values = validate_declaration(values, relaxed_expression_window="EXPR" in override_values)
     reference = fields.get("adjclose")
     if not isinstance(reference, pd.DataFrame):
         raise RuntimeError("candidate fields must include an adjclose DataFrame")

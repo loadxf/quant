@@ -75,9 +75,7 @@ def test_dsr_penalizes_many_trials():
 def test_dsr_is_unavailable_when_multi_trial_dispersion_is_unestimable(trial_variance):
     rng = np.random.default_rng(51)
     returns = pd.Series(rng.normal(0.002, 0.01, 300))
-    result = deflated_sharpe_ratio(
-        returns, n_trials=100, var_sr_trials=trial_variance
-    )
+    result = deflated_sharpe_ratio(returns, n_trials=100, var_sr_trials=trial_variance)
     assert np.isnan(result["sr0_daily_benchmark"])
     assert np.isnan(result["dsr"])
 

@@ -31,9 +31,7 @@ def test_family_returns_parses_the_verified_byte_snapshot(monkeypatch, tmp_path)
             }
         )
     )
-    expected = pd.DataFrame(
-        {"C001": [0.1]}, index=pd.DatetimeIndex([pd.Timestamp("2020-01-02")])
-    )
+    expected = pd.DataFrame({"C001": [0.1]}, index=pd.DatetimeIndex([pd.Timestamp("2020-01-02")]))
 
     monkeypatch.setattr(diagnostics, "CANDIDATES_DIR", candidates)
     monkeypatch.setattr(diagnostics, "FAMILY_RETURNS_PATH", artifact_path)
@@ -143,7 +141,7 @@ def test_leg_decomposition_fails_on_a_missing_return_for_a_held_asset():
         dtype=float,
     )
     held = pd.DataFrame(0.0, index=dates, columns=adjclose.columns)
-    held.loc[dates[4]:, ["A", "D"]] = [1.0, -1.0]
+    held.loc[dates[4] :, ["A", "D"]] = [1.0, -1.0]
     adjclose.loc[dates[4], "A"] = float("nan")
 
     with pytest.raises(ValueError, match="held asset A has no return"):

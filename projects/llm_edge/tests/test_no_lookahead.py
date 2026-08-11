@@ -338,7 +338,7 @@ def test_finite_external_signal_cannot_trade_a_security_before_listing():
     )
 
     assert (result.weights.loc[: dates[31], "NEW"] == 0).all()
-    assert result.weights.loc[dates[32]:, "NEW"].gt(0).any()
+    assert result.weights.loc[dates[32] :, "NEW"].gt(0).any()
 
 
 @pytest.mark.parametrize(
@@ -570,9 +570,7 @@ def test_holding_window_is_perturbed_in_backtest_settings():
 
 
 def test_quantile_perturbations_skip_values_outside_the_valid_domain():
-    variants = _parameter_perturbations(
-        {"QUANTILE": 0.5, "PERTURBATIONS": ("QUANTILE",)}
-    )
+    variants = _parameter_perturbations({"QUANTILE": 0.5, "PERTURBATIONS": ("QUANTILE",)})
     assert variants == [
         ("QUANTILEx0.75", {"__BACKTEST__": {"quantile": 0.375}}),
     ]

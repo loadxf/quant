@@ -86,15 +86,21 @@ def optimal_block_length(series: np.ndarray) -> int:
 
 class StationaryBlockBootstrap:
     def __init__(self, expected_block_len: int | None = None) -> None:
+        if expected_block_len is not None and expected_block_len < 1:
+            # 1/L is the new-block probability: L <= 0 silently degenerates
+            # every path into one circular run of the source days.
+            raise QuantLabError(f"--block-len must be >= 1 (got {expected_block_len})")
         self.expected_block_len = expected_block_len
 
     def sample(
         self, n_days: int, n_paths: int, horizon: int, rng: np.random.Generator
     ) -> np.ndarray:
         _validate_shape(n_days, n_paths, horizon)
-        length = self.expected_block_len or default_block_length(n_days)
-        if length < 1:
-            raise QuantLabError(f"expected block length must be positive (got {length})")
+        length = (
+            self.expected_block_len
+            if self.expected_block_len is not None
+            else default_block_length(n_days)
+        )
         # Geometric block lengths: at each step, with prob 1/L start a new
         # block at a uniform position, else continue sequentially (wrapping).
         starts = rng.integers(0, n_days, size=(n_paths, horizon))
@@ -126,3 +132,32 @@ def make_bootstrapper(name: BootstrapName, block_len: int | None = None) -> Boot
         f"Unknown bootstrap {name!r}: choose stationary, iid_day, or iid_trade. "
         "(A typo here must not silently fall back to IID sampling.)"
     )
+
+
+MIN_DAYS_FOR_BLOCKS = 30
+
+
+def resolve_sampler(
+    requested: BootstrapName,
+    day_pnl: np.ndarray,
+    block_len: int | None = None,
+) -> tuple[Bootstrapper, BootstrapName, int | None, bool]:
+    """THE stationary-vs-iid fallback policy, in one place.
+
+    Returns (sampler, resolved_name, block_len_used, fell_back). The
+    stationary scheme degenerates below MIN_DAYS_FOR_BLOCKS source days
+    and falls back to iid_day; block_len resolves to the Politis-White
+    automatic length only for the stationary scheme. Callers own the
+    user-facing warning phrasing (their tests pin the texts); `fell_back`
+    tells them when one is due.
+    """
+    n_days = int(day_pnl.size)
+    resolved: BootstrapName = requested
+    fell_back = False
+    if requested == "stationary" and n_days < MIN_DAYS_FOR_BLOCKS:
+        resolved = "iid_day"
+        fell_back = True
+    block_len_used = block_len
+    if resolved == "stationary" and block_len_used is None:
+        block_len_used = optimal_block_length(day_pnl)
+    return make_bootstrapper(resolved, block_len_used), resolved, block_len_used, fell_back

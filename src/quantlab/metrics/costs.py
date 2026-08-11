@@ -106,9 +106,7 @@ def gross_pnl_warning(log: TradeLog) -> str | None:
     )
 
 
-def log_caveats(
-    log: TradeLog, boundary: DayBoundary = FUTURES_DAY
-) -> list[str]:
+def log_caveats(log: TradeLog, boundary: DayBoundary = FUTURES_DAY) -> list[str]:
     """The metrics-surface caveats, ONE implementation for every output
     (`quant metrics` table + JSON, combined_json) so the honesty layer can
     never disappear from one surface while showing on another."""

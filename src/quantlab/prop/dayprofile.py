@@ -80,6 +80,8 @@ class DayProfile:
         """PnL-scaled copy (position-sizing what-ifs). factor must be > 0;
         +/-inf padding survives scaling unchanged."""
         if not math.isfinite(factor) or factor <= 0:
+            # A negative factor flips low/high WITHOUT swapping their roles:
+            # breach checks would run against favorable excursions.
             raise QuantLabError(f"scale factor must be finite and positive (got {factor})")
         if factor == 1.0:
             return self

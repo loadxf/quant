@@ -353,9 +353,7 @@ class TestAdvisories:
 
         entry = dt.datetime(2026, 1, 5, 9, 0, tzinfo=ZoneInfo("America/Chicago"))
         log = TradeLog(
-            trades=[
-                Trade(entry, entry, "NQ", Side.LONG, quantity=8, pnl=100.0, mae=0.0, mfe=100.0)
-            ]
+            trades=[Trade(entry, entry, "NQ", Side.LONG, quantity=8, pnl=100.0, mae=0.0, mfe=100.0)]
         )
         result = evaluate(log, make_firm(rules, target=100_000))
         assert result.outcome == "incomplete"  # not a failure

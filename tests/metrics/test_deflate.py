@@ -195,3 +195,24 @@ class TestChi2:
             gammq(0.0, 1.0)
         with pytest.raises(ValueError):
             gammq(1.0, -1.0)
+
+
+class TestDegenerateZeroVariance:
+    def test_constant_loser_reports_negative_infinity(self) -> None:
+        """A log losing the same amount every trade must not look flat (F37)."""
+        pnls = np.full(20, -50.0)
+        stats = compute_deflated(pnls)
+        assert stats.sr_per_trade == float("-inf")
+        assert stats.sqn == float("-inf")
+        assert stats.psr == 0.0
+
+    def test_constant_winner_beats_any_finite_benchmark(self) -> None:
+        """PSR of a zero-variance winner compares Sharpe, not dollars (F36)."""
+        pnls = np.full(20, 0.5)  # mean $0.50 < any benchmark > 0.5 in the old units mixup
+        assert compute_psr(pnls, sr_benchmark=2.0) == 1.0
+        assert compute_psr(np.full(20, -0.5), sr_benchmark=-2.0) == 0.0
+
+    def test_zero_mean_zero_variance_neutral(self) -> None:
+        pnls = np.zeros(20)
+        stats = compute_deflated(pnls)
+        assert stats.sr_per_trade == 0.0 and stats.psr == 0.0

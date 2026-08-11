@@ -201,9 +201,7 @@ class TestTradePointsClamp:
         assert scalar.outcome != "breached"
 
         profile = DayProfile.from_log(log, firm.day_boundary.to_boundary())
-        outcome = _simulate_phase(
-            profile, np.array([[0]]), firm.phases[0], firm, None, 1
-        )
+        outcome = _simulate_phase(profile, np.array([[0]]), firm.phases[0], firm, None, 1)
         assert outcome.outcome[0] != OUTCOME_BREACHED
         assert outcome.max_drawdown[0] == pytest.approx(1000.0)
 

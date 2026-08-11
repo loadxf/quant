@@ -34,10 +34,10 @@ def ingest_trades(
     mapping: ColumnMapping | None = None
     if mapping_file is not None:
         mapping = ColumnMapping.from_yaml(mapping_file)
-    if map_pairs:
-        mapping = ColumnMapping.from_pairs(map_pairs, base=mapping)
 
-    log, report = load_trade_log(input_csv, mapping, account_currency=currency)
+    log, report = load_trade_log(
+        input_csv, mapping, account_currency=currency, overrides=map_pairs or None
+    )
     write_trade_log(log, output)
 
     table = Table(title=f"Ingested {input_csv.name}")
@@ -60,6 +60,8 @@ def ingest_trades(
 
     if report.mapping_used:
         console.print("[dim]Columns used:[/dim]", report.mapping_used)
+    for warning in report.warnings:
+        console.print(f"[yellow]note[/yellow]: {warning}")
     for row_index, reason in report.dropped[:10]:
         console.print(f"[yellow]dropped row {row_index}[/yellow]: {reason}")
     if report.rows_dropped > 10:

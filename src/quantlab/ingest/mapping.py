@@ -71,6 +71,8 @@ DEFAULT_SHORT_VALUES = ("short", "sell", "s", "sellshort", "sld", "sold", "-1")
 
 
 class SideMapping(BaseModel):
+    # extra="forbid": a typo'd key must fail loudly, not silently change
+    # parsing semantics (e.g. `long_vals:` being ignored).
     model_config = ConfigDict(extra="forbid", strict=True)
 
     column: str
@@ -99,14 +101,18 @@ class ColumnMapping(BaseModel):
     mae: str | None = None
     mfe: str | None = None
 
-    tz: str = "UTC"  # timezone applied to naive timestamps
+    # None = not declared: naive timestamps read as UTC, and the ingest
+    # report says so. An explicit value (YAML or --map tz=...) is trusted
+    # silently — the distinction is what makes the assumed-UTC warning
+    # possible without nagging users who declared their zone.
+    tz: str | None = None
     datetime_format: str | None = None  # strptime format; None = pandas inference
     default_symbol: str = "UNKNOWN"
 
     @classmethod
     def from_yaml(cls, path: Path | str) -> ColumnMapping:
         try:
-            raw = yaml.safe_load(Path(path).read_text())
+            raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
         except (OSError, UnicodeError, yaml.YAMLError) as exc:
             raise MappingError(f"Could not read mapping file {path}: {exc}") from exc
         if not isinstance(raw, dict):
@@ -116,12 +122,13 @@ class ColumnMapping(BaseModel):
         try:
             return cls.model_validate(raw)
         except ValidationError as exc:
-            raise MappingError(f"Invalid mapping file {path}: {exc}") from exc
+            raise MappingError(f"Invalid mapping file {path}: {_format_validation(exc)}") from None
 
-    @classmethod
-    def from_pairs(cls, pairs: list[str], base: ColumnMapping | None = None) -> ColumnMapping:
-        """Build/extend a mapping from CLI `field=Column` pairs."""
-        data = base.model_dump() if base else {}
+    @staticmethod
+    def parse_pairs(pairs: list[str]) -> dict[str, object]:
+        """`field=Column` CLI pairs -> a partial mapping dict (shared by
+        from_pairs and the ingest overlay, so both agree on syntax)."""
+        data: dict[str, object] = {}
         for pair in pairs:
             if "=" not in pair:
                 raise MappingError(f"--map expects field=Column, got {pair!r}")
@@ -135,7 +142,17 @@ class ColumnMapping(BaseModel):
                 raise MappingError(
                     f"Unknown field {field_name!r}; expected one of {CANONICAL_FIELDS}"
                 )
-        return cls.model_validate(data)
+        return data
+
+    @classmethod
+    def from_pairs(cls, pairs: list[str], base: ColumnMapping | None = None) -> ColumnMapping:
+        """Build/extend a mapping from CLI `field=Column` pairs."""
+        data = base.model_dump() if base else {}
+        data.update(cls.parse_pairs(pairs))
+        try:
+            return cls.model_validate(data)
+        except ValidationError as exc:
+            raise MappingError(f"Invalid --map pairs: {_format_validation(exc)}") from None
 
     def validate_against(self, headers: list[str]) -> None:
         missing = []
@@ -149,32 +166,82 @@ class ColumnMapping(BaseModel):
                 f"Mapped columns not present in CSV: {', '.join(missing)}. "
                 f"Available headers: {headers}"
             )
-        if self.exit_time is None or self.pnl is None:
-            raise MappingError("Mapping must define at least `exit_time` and `pnl` columns")
+        missing_required = [f for f in ("exit_time", "pnl") if getattr(self, f) is None]
+        if missing_required:
+            raise MappingError(
+                f"Mapping does not define {' or '.join(missing_required)} — "
+                "`exit_time` and `pnl` columns are required"
+            )
+
+
+def _format_validation(exc: ValidationError) -> str:
+    unknown = [
+        ".".join(str(p) for p in err["loc"])
+        for err in exc.errors()
+        if err["type"] == "extra_forbidden"
+    ]
+    if unknown:
+        return (
+            f"unknown key(s) {unknown} — valid fields: "
+            f"{(*CANONICAL_FIELDS, 'tz', 'datetime_format', 'default_symbol')}"
+        )
+    return str(exc)
 
 
 def _normalize(header: str) -> str:
     return re.sub(r"[^a-z0-9]", "", header.lower())
 
 
-def autodetect_mapping(headers: list[str]) -> ColumnMapping:
+def autodetect_mapping(
+    headers: list[str],
+    skip_fields: frozenset[str] | set[str] = frozenset(),
+    exclude_headers: frozenset[str] | set[str] = frozenset(),
+    require: bool = True,
+) -> ColumnMapping:
     """Best-effort mapping from CSV headers using the synonym table.
 
-    First exact-synonym match wins per field; a header is only assigned once.
-    Raises MappingError when the required fields can't be found.
+    Per field, synonyms are scanned twice: first skipping headers that
+    contain '%' (a percent column must never shadow the absolute-money
+    column it sits next to), then allowing them. When several distinct
+    headers normalize to the same synonym and no other synonym resolves
+    the field, that is genuine ambiguity — refuse loudly rather than
+    pick one by column order and silently load wrong numbers.
+
+    `skip_fields`/`exclude_headers` support --map overlays: fields the
+    user bound explicitly are not re-detected, and their headers are
+    off-limits to other fields.
     """
-    normalized = {_normalize(h): h for h in headers}
-    taken: set[str] = set()
+    normalized: dict[str, list[str]] = {}
+    for header in headers:
+        normalized.setdefault(_normalize(header), []).append(header)
+    taken: set[str] = set(exclude_headers)
     found: dict[str, str] = {}
     for field_name, synonyms in _SYNONYMS.items():
-        for syn in synonyms:
-            header = normalized.get(syn)
-            if header is not None and header not in taken:
-                found[field_name] = header
-                taken.add(header)
+        if field_name in skip_fields:
+            continue
+        ambiguous: list[str] = []
+        for allow_pct in (False, True):
+            for syn in synonyms:
+                pool = [
+                    h
+                    for h in normalized.get(syn, ())
+                    if h not in taken and (allow_pct or "%" not in h)
+                ]
+                if len(pool) == 1:
+                    found[field_name] = pool[0]
+                    taken.add(pool[0])
+                    break
+                if len(pool) > 1 and not ambiguous:
+                    ambiguous = pool
+            if field_name in found:
                 break
+        if field_name not in found and ambiguous:
+            raise MappingError(
+                f"Ambiguous columns for {field_name!r}: {ambiguous} all match the same "
+                f"synonym — disambiguate with --map {field_name}=<column>"
+            )
 
-    if "exit_time" not in found or "pnl" not in found:
+    if require and ("exit_time" not in found or "pnl" not in found):
         raise MappingError(
             "Could not auto-detect required columns (exit_time, pnl) from headers "
             f"{headers}. Provide a mapping YAML (--mapping) or --map pairs."

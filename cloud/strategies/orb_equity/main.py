@@ -95,9 +95,7 @@ class OpeningRangeBreakoutEquity(QCAlgorithm):  # noqa: F405
             return
         if flatten_id is not None and any(order.id == flatten_id for order in open_orders):
             return
-        self._flatten_ticket = self.market_order(
-            self._spy, -quantity, asynchronous=True, tag=tag
-        )
+        self._flatten_ticket = self.market_order(self._spy, -quantity, asynchronous=True, tag=tag)
 
     def _cancel_exits(self, except_order_id=None):
         for ticket in self._exit_tickets:
@@ -162,30 +160,34 @@ class OpeningRangeBreakoutEquity(QCAlgorithm):  # noqa: F405
         stop_price = holding.average_price - half_range
         limit_price = holding.average_price + half_range
         if not self._exit_tickets:
-            stop = self.stop_market_order(
-                self._spy, -quantity, stop_price, tag="ORB stop"
-            )
+            stop = self.stop_market_order(self._spy, -quantity, stop_price, tag="ORB stop")
             self._exit_tickets.append(stop)
-            if stop.status in (
-                OrderStatus.FILLED,  # noqa: F405
-                OrderStatus.INVALID,  # noqa: F405
-                OrderStatus.CANCELED,  # noqa: F405
-            ) or self.portfolio[self._spy].quantity <= 0:
+            if (
+                stop.status
+                in (
+                    OrderStatus.FILLED,  # noqa: F405
+                    OrderStatus.INVALID,  # noqa: F405
+                    OrderStatus.CANCELED,  # noqa: F405
+                )
+                or self.portfolio[self._spy].quantity <= 0
+            ):
                 self._begin_flatten("stop resolved during bracket submission")
                 return
             # A synchronous partial stop fill may have fired its event before
             # this ticket was appended. Size the sibling from live holdings,
             # not the stale pre-submit quantity.
             quantity = self.portfolio[self._spy].quantity
-            target = self.limit_order(
-                self._spy, -quantity, limit_price, tag="ORB target"
-            )
+            target = self.limit_order(self._spy, -quantity, limit_price, tag="ORB target")
             self._exit_tickets.append(target)
-            if target.status in (
-                OrderStatus.FILLED,  # noqa: F405
-                OrderStatus.INVALID,  # noqa: F405
-                OrderStatus.CANCELED,  # noqa: F405
-            ) or self.portfolio[self._spy].quantity <= 0:
+            if (
+                target.status
+                in (
+                    OrderStatus.FILLED,  # noqa: F405
+                    OrderStatus.INVALID,  # noqa: F405
+                    OrderStatus.CANCELED,  # noqa: F405
+                )
+                or self.portfolio[self._spy].quantity <= 0
+            ):
                 self._begin_flatten("target resolved during bracket submission")
             elif target.status == OrderStatus.PARTIALLY_FILLED:  # noqa: F405
                 self._resize_sibling(target.order_id)

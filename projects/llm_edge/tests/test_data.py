@@ -192,9 +192,7 @@ def test_gate_loader_rejects_a_universe_outside_the_capability_snapshot(monkeypa
         gates.load_etf_fields(token="token", candidate_id="C016")
 
 
-def test_force_refresh_preserves_prior_cache_when_provider_history_shrinks(
-    monkeypatch, tmp_path
-):
+def test_force_refresh_preserves_prior_cache_when_provider_history_shrinks(monkeypatch, tmp_path):
     cache = tmp_path / "cache"
     cache.mkdir()
     path = cache / "AAA.parquet"
@@ -225,9 +223,7 @@ def test_force_refresh_preserves_prior_cache_when_provider_history_shrinks(
     assert json.loads(manifest.read_text()) == old_manifest
 
 
-def test_download_hashes_the_exact_temporary_artifact_not_the_destination(
-    monkeypatch, tmp_path
-):
+def test_download_hashes_the_exact_temporary_artifact_not_the_destination(monkeypatch, tmp_path):
     cache = tmp_path / "cache"
     cache.mkdir()
     destination = cache / "AAA.parquet"

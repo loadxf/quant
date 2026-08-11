@@ -12,6 +12,7 @@ from rich.table import Table
 from quantlab.metrics.core import compute_metrics
 from quantlab.metrics.reality import compute_reality_check
 from quantlab.metrics.scorecard import compute_scorecard
+from quantlab.output import write_text
 from quantlab.prop.montecarlo import MCConfig, run_monte_carlo
 from quantlab.prop.registry import load_firm
 from quantlab.report.html import build_html_report
@@ -91,7 +92,11 @@ def register_report_commands(app: typer.Typer) -> None:
             help="Counterparty assumption (0-1): payout fraction lost to denials/failure.",
         ),
         ohlcv: Path | None = typer.Option(
-            None, "--ohlcv", help="Market bars CSV — adds the trend x vol market-regime table."
+            None,
+            "--ohlcv",
+            exists=True,
+            dir_okay=False,
+            help="Market bars CSV — adds the trend x vol market-regime table.",
         ),
         json_out: Path | None = typer.Option(None, "--json"),
     ) -> None:
@@ -157,7 +162,8 @@ def register_report_commands(app: typer.Typer) -> None:
         )
         console.print(f"\n[bold green]HTML report written to {output}[/bold green]")
         if json_out is not None:
-            json_out.write_text(
+            write_text(
+                json_out,
                 json.dumps(
                     combined_json(
                         metrics,
@@ -169,6 +175,6 @@ def register_report_commands(app: typer.Typer) -> None:
                     ),
                     indent=2,
                     default=str,
-                )
+                ),
             )
             console.print(f"JSON summary written to {json_out}")

@@ -316,6 +316,7 @@ def summarize(
         overhead=overhead,
         reactivation=reactivation,
         net_per_path=net,
+        received_per_path=received,
         ev_decomposition=ev_decomposition,
     )
     return MonteCarloReport(

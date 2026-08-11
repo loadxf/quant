@@ -14,6 +14,7 @@ from quantlab import __version__
 from quantlab.metrics.core import Metrics
 from quantlab.metrics.costs import log_caveats
 from quantlab.metrics.scorecard import Verdict
+from quantlab.output import write_text
 from quantlab.prop.config import FirmConfig
 from quantlab.prop.outcomes import MonteCarloReport
 from quantlab.report import charts
@@ -111,9 +112,14 @@ def _prop_context(mc: MonteCarloReport, firm: FirmConfig) -> dict:
         _fig_html(charts.fig_fan(mc.funded, "Funded equity paths"), False),
     ]
     if mc.funded.total_withdrawn is not None:
-        received = mc.funded.total_withdrawn * firm.payout.profit_split
+        # The SAME per-path series the payout_quantiles row summarizes
+        # (split, haircut, and per-payout processing applied) — recomputing
+        # it here from total_withdrawn would drift under --payout-haircut.
+        received = mc.economics.received_per_path
+        if received is None:  # deserialized/hand-built report objects
+            received = mc.funded.total_withdrawn * firm.payout.profit_split
         prop_charts.append(_fig_html(charts.fig_payout_hist(received), False))
-    prop_charts.append(_fig_html(charts.fig_ev_waterfall(eco, firm.fees.activation), False))
+    prop_charts.append(_fig_html(charts.fig_ev_waterfall(eco), False))
 
     rules_lines = [f"account size: {money(firm.account_size, decimals=0)}"]
     for phase_cfg in [*firm.phases, firm.funded]:
@@ -170,6 +176,8 @@ def _reality_context(rc: Any) -> dict:
     ]
     if decay.wfe is not None:
         decay_rows.insert(-1, ("Walk-forward efficiency", f"{decay.wfe:.2f} (>0.5 acceptable)"))
+    elif getattr(decay, "wfe_reason", None):
+        decay_rows.insert(-1, ("Walk-forward efficiency", f"not computed: {decay.wfe_reason}"))
     stat_rows = [
         ("PSR — P(true Sharpe > 0)", pct(d.psr)),
         ("SQN (t-stat / Van Tharp capped)", f"{d.sqn:.2f} / {d.sqn_capped:.2f}"),
@@ -324,9 +332,9 @@ def build_html_report(
 ) -> Path:
     if (mc is None) != (firm is None):
         raise ValueError("mc and firm must be provided together")
-    template_text = (
-        resources.files("quantlab.report") / "templates" / "report.html.j2"
-    ).read_text()
+    template_text = (resources.files("quantlab.report") / "templates" / "report.html.j2").read_text(
+        encoding="utf-8"
+    )
     template = Environment(autoescape=True).from_string(template_text)
 
     fidelity_note = {
@@ -385,5 +393,5 @@ def build_html_report(
             else "no simulation in this report"
         ),
     )
-    out_path.write_text(html)
+    write_text(out_path, html)
     return out_path

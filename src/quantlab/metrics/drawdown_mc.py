@@ -44,8 +44,17 @@ def permutation_drawdown(
         raise QuantLabError("ruin_capital must be finite and positive")
     pnls = np.array([t.pnl for t in log.trades], dtype=float)
     n = pnls.size
-    if n < 2:
-        return DrawdownMC(0, 0.0, 0.0, ruin_capital, None if ruin_capital is None else 0.0)
+    if n == 0:
+        # No trades -> no estimate: p_ruin=None, never an asserted 0.0.
+        return DrawdownMC(0, 0.0, 0.0, ruin_capital, None)
+    if n == 1:
+        # One trade has exactly one (trivial) path — report it, not zeros:
+        # a single trade that alone breaches the capital IS certain ruin.
+        dd = max(0.0, -float(pnls[0]))
+        p_ruin_single = (
+            None if ruin_capital is None else (1.0 if pnls[0] <= -abs(ruin_capital) else 0.0)
+        )
+        return DrawdownMC(0, dd, dd, ruin_capital, p_ruin_single)
     rng = np.random.default_rng(seed)
     # Vectorized permutations (argsort of random keys), CHUNKED: one big
     # (n_iter, n) batch holds ~5 simultaneous arrays — ~2.5 GB for a

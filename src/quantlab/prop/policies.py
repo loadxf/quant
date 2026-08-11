@@ -155,11 +155,25 @@ def compute_policy_grid(
                     days_to_first_payout_p50=days.get("p50") if days else None,
                 )
             )
-    if len({c.expected_net for c in cells}) == 1:
-        warnings.append(
-            "every policy produced identical EV — payouts likely never "
-            "trigger on this log/firm (check qualifying days and horizon)"
-        )
+    if len(cells) > 1 and len({c.expected_net for c in cells}) == 1:
+        pass_prob = max(c.pass_prob for c in cells)
+        if any(c.p_payout > 0 for c in cells) and pass_prob < 0.05:
+            # Payouts DO trigger on funded paths — identical EV means the
+            # eval phase almost never passes, so no policy difference can
+            # reach the single-attempt EV. Blaming qualifying days/horizon
+            # here would steer the user at the wrong knobs.
+            warnings.append(
+                f"every policy produced identical EV because pass probability is "
+                f"~{pass_prob:.1%} — policy differences only matter on funded paths, "
+                "and almost no path gets funded"
+            )
+        elif all(c.p_payout == 0 for c in cells):
+            warnings.append(
+                "every policy produced identical EV — payouts never trigger "
+                "on this log/firm (check qualifying days and horizon)"
+            )
+        else:
+            warnings.append("every policy produced identical EV on this log/firm")
     else:
         # An inert extraction axis (e.g. Topstep XFA: the payout lands the
         # same day the qualifying days complete, so extraction never

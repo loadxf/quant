@@ -224,14 +224,9 @@ def compute_regimes(
 def _worst_regime_stress(
     log: TradeLog, firm: FirmConfig, mc_cfg, days: list, codes: np.ndarray, worst: RegimeStats
 ) -> tuple[dict | None, list[str]]:
-    from quantlab.prop.bootstrap import (
-        BootstrapName,
-        make_bootstrapper,
-        optimal_block_length,
-    )
+    from quantlab.prop.bootstrap import MIN_DAYS_FOR_BLOCKS, resolve_sampler
     from quantlab.prop.dayprofile import DayProfile
     from quantlab.prop.montecarlo import (
-        MIN_DAYS_FOR_BLOCKS,
         MCConfig,
         _run_from_profile,
         observed_sessions_per_week,
@@ -250,19 +245,20 @@ def _worst_regime_stress(
     cfg = mc_cfg or MCConfig()
     boundary = firm.day_boundary.to_boundary()
     profile = DayProfile.from_log(log, boundary, days=days).gather(subset)
-    name: BootstrapName
-    if subset.size >= MIN_DAYS_FOR_BLOCKS:
-        name = "stationary"
-        block = optimal_block_length(profile.day_pnl)
-    else:
-        name, block = "iid_day", None
+    sampler, name, block, fell_back = resolve_sampler("stationary", profile.day_pnl)
     stress_warnings: list[str] = []
+    if fell_back:
+        stress_warnings.append(
+            f"worst-regime subset has only {subset.size} days (<{MIN_DAYS_FOR_BLOCKS}): "
+            "persistence stress resampled iid days — streaks within the regime "
+            "are not preserved"
+        )
     report = _run_from_profile(
         profile,
         firm,
         cfg,
         rng=np.random.default_rng(cfg.seed),
-        sampler=make_bootstrapper(name, block),
+        sampler=sampler,
         bootstrap_name=name,
         block_len_used=block,
         sessions_per_week=observed_sessions_per_week(log, boundary, days=days),

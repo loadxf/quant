@@ -180,7 +180,9 @@ def _moments(pnls: np.ndarray) -> tuple[float, float, float, float]:
     """(mean, std_ddof1, skew, raw kurtosis) via population moment ratios
     (the estimator convention in Bailey & Lopez de Prado)."""
     mean = float(pnls.mean())
-    std = float(pnls.std(ddof=1))
+    # ptp==0: N identical values are exactly degenerate even when float
+    # noise leaves std at ~1e-14 (the +/-inf convention must apply).
+    std = 0.0 if np.ptp(pnls) == 0.0 else float(pnls.std(ddof=1))
     centered = pnls - mean
     m2 = float(np.mean(centered**2))
     if m2 == 0.0:
@@ -197,6 +199,13 @@ def _psr_denominator(sr: float, skew: float, kurt: float) -> float:
     return math.sqrt(max(inner, 1e-12))
 
 
+def _degenerate_sr(mean: float) -> float:
+    """Sharpe of a zero-variance series: +/-inf by the sign of the edge."""
+    if mean > 0:
+        return math.inf
+    return -math.inf if mean < 0 else 0.0
+
+
 def compute_psr(pnls: np.ndarray, sr_benchmark: float = 0.0) -> float:
     """Probabilistic Sharpe Ratio: P(true SR > sr_benchmark)."""
     n = pnls.size
@@ -204,7 +213,9 @@ def compute_psr(pnls: np.ndarray, sr_benchmark: float = 0.0) -> float:
         return 0.0
     _, std, skew, kurt = _moments(pnls)
     if std == 0.0:
-        return 1.0 if float(pnls.mean()) > sr_benchmark else 0.0
+        # Compare the degenerate SHARPE (+/-inf, not the dollar mean) to
+        # the benchmark — mean vs sr_benchmark mixes units.
+        return 1.0 if _degenerate_sr(float(pnls.mean())) > sr_benchmark else 0.0
     sr = float(pnls.mean()) / std
     z = (sr - sr_benchmark) * math.sqrt(n - 1) / _psr_denominator(sr, skew, kurt)
     return norm_cdf(z)
@@ -227,9 +238,10 @@ def compute_deflated(pnls: np.ndarray, n_trials: int = 1) -> DeflatedStats:
         raise ValueError(f"n_trials must be >= 1 (got {n_trials})")
     mean, std, skew, kurt = _moments(pnls)
     if std == 0.0:
-        sr = math.inf if mean > 0 else 0.0
-        psr = 1.0 if mean > 0 else 0.0
-        sqn = math.inf if mean > 0 else 0.0
+        # Three-way degenerate values: an all-losing constant log is -inf,
+        # not 0.0 (which would be indistinguishable from break-even).
+        sr = sqn = _degenerate_sr(mean)
+        psr = compute_psr(pnls)
         return DeflatedStats(
             n=n,
             sr_per_trade=sr,
@@ -248,7 +260,9 @@ def compute_deflated(pnls: np.ndarray, n_trials: int = 1) -> DeflatedStats:
         )
     sr = mean / std
     denom = _psr_denominator(sr, skew, kurt)
-    psr = norm_cdf((sr - 0.0) * math.sqrt(n - 1) / denom)
+    # THE PSR implementation (compute_psr) — a second inline copy of the
+    # formula here could drift from the public function.
+    psr = compute_psr(pnls)
 
     # MinTRL (Bailey-LdP 2012): observations needed for PSR(0) >= 95%.
     z95 = norm_ppf(0.95)
@@ -267,7 +281,7 @@ def compute_deflated(pnls: np.ndarray, n_trials: int = 1) -> DeflatedStats:
             EULER_MASCHERONI
         ) * norm_ppf(1.0 - 1.0 / (n_trials * math.e))
         sr0 = math.sqrt(var_sr) * emax
-        dsr = norm_cdf((sr - sr0) * math.sqrt(n - 1) / denom)
+        dsr = compute_psr(pnls, sr_benchmark=sr0)
         # MinBTL (AMS 2014): years of backtest needed before an
         # ANNUALIZED Sharpe of 1.0 stops being explainable as the
         # expected maximum over n_trials random tries.

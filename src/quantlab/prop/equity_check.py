@@ -16,6 +16,13 @@ profit targets) need fills, which the trade-log evaluator already
 handles at full fidelity. The curve's own resolution bounds the check:
 daily-sampled charts still miss intra-bar excursions (reported).
 
+Lockout handling: a rule-free backtest keeps trading through a
+daily-loss lockout the ruled account would have sat out. The locked
+remainder of that session is ignored (phantom under the rules) and the
+day closes at the lockout level; the NEXT session's raw chart is
+rebased onto that flattened balance, so later sessions replay what the
+ruled account would actually have carried forward.
+
 Alignment convention: the curve's first mark is the backtest's starting
 capital, mapped to the phase's initial balance — balance_t = initial +
 (equity_t - equity_0). A session's opening balance is the prior
@@ -198,8 +205,15 @@ def load_equity_csv(path) -> EquityCurve:
     """Read the datetime,equity CSV that `quant cloud results --chart` writes."""
     import pandas as pd
 
-    frame = pd.read_csv(path)
-    cols = {c.lower().strip(): c for c in frame.columns}
+    try:
+        frame = pd.read_csv(path)
+    except pd.errors.EmptyDataError:
+        raise QuantLabError(f"{path}: file is empty") from None
+    except pd.errors.ParserError as exc:
+        raise QuantLabError(f"{path}: not a readable CSV ({exc})") from None
+    cols: dict[str, str] = {}
+    for c in frame.columns:  # first-wins on duplicate-normalizing headers
+        cols.setdefault(str(c).lower().strip(), str(c))
     if "datetime" not in cols or "equity" not in cols:
         raise QuantLabError(
             f"{path}: expected datetime,equity columns (from `quant cloud results --chart`)"

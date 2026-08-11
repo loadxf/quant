@@ -106,9 +106,7 @@ class TestApiAuth:
             QCClient(user_id="1", api_token="secret", base_url=base_url)
 
     def test_api_base_url_allows_loopback_http_for_local_tests(self) -> None:
-        client = QCClient(
-            user_id="1", api_token="secret", base_url="http://127.0.0.1:8080/api/v2/"
-        )
+        client = QCClient(user_id="1", api_token="secret", base_url="http://127.0.0.1:8080/api/v2/")
         assert client.base_url == "http://127.0.0.1:8080/api/v2"
 
     def test_transient_http_errors_retry_with_retry_after(self, monkeypatch) -> None:
@@ -199,11 +197,7 @@ class TestStrategiesParse:
 
     def test_orb_places_brackets_from_actual_fills(self) -> None:
         tree = ast.parse(self._strategy_source("orb_equity"))
-        methods = {
-            node.name: node
-            for node in ast.walk(tree)
-            if isinstance(node, ast.FunctionDef)
-        }
+        methods = {node.name: node for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)}
         on_data_calls = {
             node.func.attr
             for node in ast.walk(methods["on_data"])
@@ -667,8 +661,7 @@ class TestStrategiesParse:
                 self._startup_reconciled = False
                 self._retiring_contracts = set()
                 self.securities = {
-                    symbol: Security(symbol)
-                    for symbol in ("CONTINUOUS", "CURRENT", "STALE")
+                    symbol: Security(symbol) for symbol in ("CONTINUOUS", "CURRENT", "STALE")
                 }
                 self.portfolio = {
                     "CONTINUOUS": Holding(False),
@@ -837,3 +830,40 @@ class TestStrategiesParse:
             )
             is None
         )
+
+
+class TestTokenRedaction:
+    def test_failed_lean_login_never_echoes_token(self, monkeypatch):
+        """A failed `lean login` must not print the API token (it lands in
+        terminals, CI logs, and pasted GitHub issues)."""
+        import subprocess
+
+        from quantlab.errors import QuantLabError
+        from quantlab.qc import runner
+
+        def fake_run(args, **kwargs):
+            return subprocess.CompletedProcess(args, returncode=1, stdout="", stderr="boom")
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+        monkeypatch.setenv("QC_USER_ID", "123456")
+        monkeypatch.setenv("QC_API_TOKEN", "super-secret-token")
+        with pytest.raises(QuantLabError) as excinfo:
+            runner.login()
+        assert "super-secret-token" not in str(excinfo.value)
+        assert "<redacted>" in str(excinfo.value)
+
+    def test_timeout_never_echoes_token(self, monkeypatch):
+        import subprocess
+
+        from quantlab.errors import QuantLabError
+        from quantlab.qc import runner
+
+        def fake_run(args, **kwargs):
+            raise subprocess.TimeoutExpired(cmd=args, timeout=120)
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+        monkeypatch.setenv("QC_USER_ID", "123456")
+        monkeypatch.setenv("QC_API_TOKEN", "super-secret-token")
+        with pytest.raises(QuantLabError) as excinfo:
+            runner.login()
+        assert "super-secret-token" not in str(excinfo.value)

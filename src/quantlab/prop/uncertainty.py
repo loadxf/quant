@@ -29,12 +29,11 @@ from dataclasses import dataclass, field
 import numpy as np
 
 from quantlab.errors import QuantLabError
-from quantlab.prop.bootstrap import BootstrapName, make_bootstrapper, optimal_block_length
+from quantlab.prop.bootstrap import MIN_DAYS_FOR_BLOCKS, resolve_sampler
 from quantlab.prop.config import FirmConfig
 from quantlab.prop.dayprofile import DayProfile
 from quantlab.prop.exposure import firm_scaling_contract_limit, scaling_base_contracts
 from quantlab.prop.montecarlo import (
-    MIN_DAYS_FOR_BLOCKS,
     MCConfig,
     _run_from_profile,
     observed_sessions_per_week,
@@ -81,21 +80,16 @@ def source_uncertainty(
     n_days = profile.n_days
 
     warnings: list[str] = []
-    outer_name: BootstrapName
-    if n_days >= MIN_DAYS_FOR_BLOCKS:
-        outer_name = "stationary"
-        outer_block = optimal_block_length(profile.day_pnl)
-    else:
-        outer_name = "iid_day"
-        outer_block = None
+    outer_sampler, outer_name, outer_block, fell_back = resolve_sampler(
+        "stationary", profile.day_pnl
+    )
+    if fell_back:
         warnings.append(
             f"only {n_days} source days (<{MIN_DAYS_FOR_BLOCKS}): outer resampling "
             "fell back to iid days — the band itself is low-confidence"
         )
     outer_rng = np.random.default_rng(cfg.seed)
-    outer_idx = make_bootstrapper(outer_name, outer_block).sample(
-        n_days, n_outer, n_days, outer_rng
-    )
+    outer_idx = outer_sampler.sample(n_days, n_outer, n_days, outer_rng)
 
     inner_cfg = dataclasses.replace(cfg, n_paths=inner_paths)
     pass_probs = np.empty(n_outer)
@@ -105,13 +99,13 @@ def source_uncertainty(
         # Each inner run treats its resample as a fresh log: own block
         # length, own auto vol-target (via _run_from_profile), own seed
         # stream (deterministic in (cfg.seed, b)).
-        inner_block = optimal_block_length(rp.day_pnl) if outer_name == "stationary" else None
+        inner_sampler, _, inner_block, _ = resolve_sampler(outer_name, rp.day_pnl)
         report = _run_from_profile(
             rp,
             firm,
             inner_cfg,
             rng=np.random.default_rng((cfg.seed if cfg.seed is not None else 0, b)),
-            sampler=make_bootstrapper(outer_name, inner_block),
+            sampler=inner_sampler,
             bootstrap_name=outer_name,
             block_len_used=inner_block,
             sessions_per_week=sessions_per_week,

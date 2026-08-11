@@ -76,6 +76,10 @@ class DecayPanel:
     runs: RunsResult
     wfe: float | None  # walk-forward efficiency (OOS/IS expectancy ratio)
     decayed: bool
+    # Why WFE could not be computed when --oos-start was given (None when
+    # wfe is set or no boundary was declared) — a declared-but-unusable
+    # boundary must never be byte-identical to omitting the flag.
+    wfe_reason: str | None = None
 
 
 def rolling_expectancy(pnls: np.ndarray, window: int = 30) -> np.ndarray:
@@ -217,10 +221,23 @@ def compute_decay(
     first, second = _half_stats(pnls[:half]), _half_stats(pnls[half:])
 
     wfe: float | None = None
+    wfe_reason: str | None = None
     if oos_start is not None:
         is_mask = np.array([t.exit_time < oos_start for t in log.trades])
         is_pnls, oos_pnls = pnls[is_mask], pnls[~is_mask]
-        if is_pnls.size >= 10 and oos_pnls.size >= 10 and is_pnls.mean() > 0:
+        if is_pnls.size < 10:
+            wfe_reason = (
+                f"in-sample side has {is_pnls.size} trade(s) (<10) — "
+                "is --oos-start before the log begins?"
+            )
+        elif oos_pnls.size < 10:
+            wfe_reason = (
+                f"out-of-sample side has {oos_pnls.size} trade(s) (<10) — "
+                "is --oos-start after the log ends?"
+            )
+        elif is_pnls.mean() <= 0:
+            wfe_reason = "in-sample expectancy <= 0 — the OOS/IS ratio would be meaningless"
+        else:
             wfe = float(oos_pnls.mean() / is_pnls.mean())
 
     hac = hac_slope(pnls)
@@ -242,4 +259,5 @@ def compute_decay(
         runs=runs,
         wfe=wfe,
         decayed=decayed,
+        wfe_reason=wfe_reason,
     )

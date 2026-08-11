@@ -78,27 +78,25 @@ def evaluate(
     log: TradeLog,
     firm: FirmConfig,
     phase: str = "challenge",
-    start_day: int = 0,
     sizing: VolSizingParams | None = None,
     cushion_clip: tuple[float, float] | None = None,
 ) -> EvaluationResult:
-    """Replay `log` (from trading-day index `start_day`) against one phase.
+    """Replay the full `log` against one phase.
 
     `sizing`: optional vol-targeted dynamic sizing — the same EwmaSizer
     recursion the Monte Carlo uses (golden equivalence by construction).
     `cushion_clip`: optional buffer-aware sizing — the same cushion_weight
-    kernel the Monte Carlo uses."""
+    kernel the Monte Carlo uses. Phase chaining (each phase consuming
+    days) lives in evaluate_sequence."""
     phase_cfg = _find_phase(firm, phase)
-    days = log.daily_groups(firm.day_boundary.to_boundary())[start_day:]
+    days = log.daily_groups(firm.day_boundary.to_boundary())
     return _evaluate_days(
         days,
         firm,
         phase_cfg,
         fidelity_from(log),
         has_overlaps=log.has_overlapping_trades,
-        cross_session_trades=log.cross_session_trade_count(
-            firm.day_boundary.to_boundary()
-        ),
+        cross_session_trades=log.cross_session_trade_count(firm.day_boundary.to_boundary()),
         sizing=sizing,
         cushion_clip=cushion_clip,
         base_contracts=scaling_base_contracts(log, scaling_contract_limit(phase_cfg)),
@@ -128,14 +126,10 @@ def evaluate_sequence(
             phase_cfg,
             fidelity,
             has_overlaps=log.has_overlapping_trades,
-            cross_session_trades=log.cross_session_trade_count(
-                firm.day_boundary.to_boundary()
-            ),
+            cross_session_trades=log.cross_session_trade_count(firm.day_boundary.to_boundary()),
             sizing=sizing,
             cushion_clip=cushion_clip,
-            base_contracts=scaling_base_contracts(
-                log, scaling_contract_limit(phase_cfg)
-            ),
+            base_contracts=scaling_base_contracts(log, scaling_contract_limit(phase_cfg)),
         )
         results.append(result)
         cursor += result.days_consumed
@@ -148,14 +142,10 @@ def evaluate_sequence(
             firm.funded,
             fidelity,
             has_overlaps=log.has_overlapping_trades,
-            cross_session_trades=log.cross_session_trade_count(
-                firm.day_boundary.to_boundary()
-            ),
+            cross_session_trades=log.cross_session_trade_count(firm.day_boundary.to_boundary()),
             sizing=sizing,
             cushion_clip=cushion_clip,
-            base_contracts=scaling_base_contracts(
-                log, scaling_contract_limit(firm.funded)
-            ),
+            base_contracts=scaling_base_contracts(log, scaling_contract_limit(firm.funded)),
         )
     )
     return results

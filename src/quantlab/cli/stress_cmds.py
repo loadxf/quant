@@ -27,13 +27,19 @@ def register_stress_commands(app: typer.Typer) -> None:
             None, "--firm", help="Firm preset (adds MC pass-prob columns to the sweep)."
         ),
         tick_value: float | None = typer.Option(
-            None, "--tick-value", help="$ per tick per contract (auto-resolved for ES/MES/NQ/MNQ)."
+            None,
+            "--tick-value",
+            min=1e-9,  # strictly positive: 0 would zero out every slip cost
+            help="$ per tick per contract (auto-resolved for ES/MES/NQ/MNQ).",
         ),
         commission: float | None = typer.Option(
-            None, "--commission", help="All-in round-turn commission $ per contract."
+            None, "--commission", min=0.0, help="All-in round-turn commission $ per contract."
         ),
         stop_slip: float = typer.Option(
-            1.0, "--stop-slip", help="Extra ticks/side for the stop-stress row (stops fill worse)."
+            1.0,
+            "--stop-slip",
+            min=0.0,
+            help="Extra ticks/side for the stop-stress row (stops fill worse).",
         ),
         trials: int = typer.Option(
             1,
@@ -55,6 +61,8 @@ def register_stress_commands(app: typer.Typer) -> None:
         ohlcv: Path | None = typer.Option(
             None,
             "--ohlcv",
+            exists=True,
+            dir_okay=False,
             help="Market bars CSV (any broker export) — adds the descriptive "
             "trend x vol market-regime table.",
         ),

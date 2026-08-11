@@ -17,6 +17,10 @@ from quantlab.prop.outcomes import MonteCarloReport
 from quantlab.schema.trade import DayBoundary
 
 SCHEMA_VERSION = 4  # v4: prop_simulation v4 (policy block); moves with the MC schema
+# v2: drops the always-empty "extras" key from the metrics block.
+# v2: "extras" now carries annualization provenance (cadence-scaled
+# periods/year) instead of an always-empty placeholder.
+METRICS_SCHEMA_VERSION = 2
 
 
 def sanitize(obj: Any) -> Any:
@@ -45,7 +49,10 @@ def combined_json(
     # The metrics block carries its own version marker AND the same
     # caveats list as the standalone `quant metrics --json`, so consumers
     # of the embedded and standalone forms parse one identical shape.
-    metrics_block: dict[str, Any] = {"schema_version": 1, **dataclasses.asdict(metrics)}
+    metrics_block: dict[str, Any] = {
+        "schema_version": METRICS_SCHEMA_VERSION,
+        **dataclasses.asdict(metrics),
+    }
     if log is not None:
         from quantlab.metrics.costs import log_caveats
 

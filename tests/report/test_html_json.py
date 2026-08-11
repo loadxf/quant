@@ -73,6 +73,7 @@ class TestCombinedJson:
         parsed = json.loads(text)
         assert parsed["schema_version"] == 4
         assert set(parsed) == {"schema_version", "metrics", "verdict", "prop_simulation"}
-        assert parsed["metrics"]["schema_version"] == 1  # same shape as `quant metrics --json`
+        assert parsed["metrics"]["schema_version"] == 2  # same shape as `quant metrics --json`
+        assert "annualization_periods" in parsed["metrics"]["extras"]
         assert parsed["prop_simulation"]["economics"]["pass_prob"] >= 0.0
         assert parsed["verdict"]["overall"] in "ABCDF"

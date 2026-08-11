@@ -62,9 +62,7 @@ def firm_scaling_contract_limit(firm: FirmConfig) -> ContractLimitSpec | None:
     return limits[0]
 
 
-def scaling_base_contracts(
-    log: TradeLog, spec: ContractLimitSpec | None = None
-) -> float | None:
+def scaling_base_contracts(log: TradeLog, spec: ContractLimitSpec | None = None) -> float | None:
     """Peak concurrent gross exposure in the scaling plan's unit system.
 
     Firm tiers are mini-equivalents: by default one mini equals ten micros.

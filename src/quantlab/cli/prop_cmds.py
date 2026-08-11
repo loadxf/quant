@@ -9,6 +9,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from quantlab.output import write_text
 from quantlab.prop.evaluator import EvaluationResult, evaluate, evaluate_sequence
 from quantlab.prop.montecarlo import MCConfig, run_monte_carlo
 from quantlab.prop.registry import list_firms, load_firm
@@ -96,6 +97,8 @@ def evaluate_cmd(
     equity_csv: Path | None = typer.Option(
         None,
         "--equity-csv",
+        exists=True,
+        dir_okay=False,
         help="Mark-to-market equity CSV (datetime,equity — e.g. from "
         "`quant cloud results --chart`): cross-checks intraday-sensitive "
         "rules against TRUE open equity, not just fills.",
@@ -263,7 +266,7 @@ def simulate_cmd(
         render_multiaccount(ma, console)
         payload["multi_account"] = ma.to_json_dict()
     if json_out is not None:
-        json_out.write_text(json.dumps(sanitize(payload), indent=2))
+        write_text(json_out, json.dumps(sanitize(payload), indent=2))
         console.print(f"JSON summary written to {json_out}")
 
 
@@ -341,10 +344,10 @@ def frontier_cmd(
     if chart is not None:
         from quantlab.report.charts import fig_scale_frontier
 
-        chart.write_text(fig_scale_frontier(fr).to_html(full_html=True, include_plotlyjs=True))
+        write_text(chart, fig_scale_frontier(fr).to_html(full_html=True, include_plotlyjs=True))
         console.print(f"chart written to {chart}")
     if json_out is not None:
-        json_out.write_text(json.dumps(sanitize(payload), indent=2))
+        write_text(json_out, json.dumps(sanitize(payload), indent=2))
         console.print(f"JSON summary written to {json_out}")
 
 
@@ -390,7 +393,7 @@ def policies_cmd(
     )
     render_policies(grid, console)
     if json_out is not None:
-        json_out.write_text(json.dumps(sanitize(grid.to_json_dict()), indent=2))
+        write_text(json_out, json.dumps(sanitize(grid.to_json_dict()), indent=2))
         console.print(f"JSON summary written to {json_out}")
 
 
@@ -431,5 +434,5 @@ def geometry_cmd(
     report = run_monte_carlo(log, firm, MCConfig(n_paths=paths, seed=seed))
     render_report(report, console)
     if json_out is not None:
-        json_out.write_text(json.dumps(sanitize(report.to_json_dict()), indent=2))
+        write_text(json_out, json.dumps(sanitize(report.to_json_dict()), indent=2))
         console.print(f"JSON summary written to {json_out}")

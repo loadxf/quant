@@ -28,9 +28,7 @@ def _fields(rows: int = 80, names: int = 40) -> dict[str, object]:
         "low": close * 0.99,
         "close": close,
         "adjclose": close,
-        "volume": pd.DataFrame(
-            rng.lognormal(12, 0.5, close.shape), index=index, columns=columns
-        ),
+        "volume": pd.DataFrame(rng.lognormal(12, 0.5, close.shape), index=index, columns=columns),
         "etf_adjclose": etf,
         "sectors": {name: "Materials" for name in columns},
     }
@@ -38,9 +36,7 @@ def _fields(rows: int = 80, names: int = 40) -> dict[str, object]:
 
 def _candidate_ids() -> list[str]:
     return sorted(
-        path.name
-        for path in gates.CANDIDATES_DIR.iterdir()
-        if (path / "signal.py").is_file()
+        path.name for path in gates.CANDIDATES_DIR.iterdir() if (path / "signal.py").is_file()
     )
 
 
@@ -123,9 +119,7 @@ def test_declaration_overrides_cannot_change_identity_or_routing(name):
         "PERTURBATIONS": ("RETURN_WINDOW",),
     }
     with pytest.raises(RuntimeError, match="routing"):
-        compute_declared_signal(
-            _fields(rows=20, names=4), declaration, {name: "changed"}
-        )
+        compute_declared_signal(_fields(rows=20, names=4), declaration, {name: "changed"})
 
 
 def test_base_expression_must_belong_to_the_frozen_grammar(monkeypatch, tmp_path):
