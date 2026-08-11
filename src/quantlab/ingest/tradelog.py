@@ -201,9 +201,7 @@ def _parse_time_column(frame: pd.DataFrame, column: str, mapping: ColumnMapping)
         # DST-spanning ISO export). The offsets are explicit, so parsing
         # straight to UTC is lossless; scalar parsing is the last resort.
         try:
-            parsed = _to_ns(
-                pd.to_datetime(frame[combined], format=fmt, errors="coerce", utc=True)
-            )
+            parsed = _to_ns(pd.to_datetime(frame[combined], format=fmt, errors="coerce", utc=True))
         except (ValueError, TypeError):
             parsed = frame[combined].map(lambda v: _scalar_stamp(v, fmt))
     # Rescue rounds stay VECTORIZED: each pass re-infers a format from the

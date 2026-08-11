@@ -281,7 +281,6 @@ class TestPostReviewRegressions:
         assert "__combined" not in report.columns_used["datetime"]
         assert report.columns_used["datetime"] == "Date + Time"
 
-
     def test_partial_time_column_with_hhmm_times(self, tmp_path):
         """Bare HH:MM times + injected midnights must share ONE format."""
         csv = tmp_path / "hhmm.csv"

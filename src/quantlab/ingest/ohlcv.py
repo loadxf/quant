@@ -65,9 +65,7 @@ def _detect_columns(headers: list[str]) -> dict[str, str]:
     return found
 
 
-def _find_companion(
-    frame: pd.DataFrame, exclude: str, synonyms: tuple[str, ...]
-) -> str | None:
+def _find_companion(frame: pd.DataFrame, exclude: str, synonyms: tuple[str, ...]) -> str | None:
     normalized: dict[str, str] = {}
     for h in frame.columns:
         normalized.setdefault(_normalize_header(str(h)), str(h))

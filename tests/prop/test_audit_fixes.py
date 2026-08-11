@@ -253,7 +253,6 @@ class TestEquityCheckMultiRule:
         assert result.first_breach.rule == "daily_loss_limit"
         assert result.first_breach.threshold == pytest.approx(49_000)
 
-
     def test_next_session_breach_after_lockout_caught_with_warning(self) -> None:
         """locked_today must reset at rollover, and the post-lockout
         approximation must be disclosed."""

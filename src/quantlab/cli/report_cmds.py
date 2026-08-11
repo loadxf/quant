@@ -163,6 +163,6 @@ def register_report_commands(app: typer.Typer) -> None:
                     combined_json(metrics, verdict, mc, reality=rc, log=log),
                     indent=2,
                     default=str,
-                )
+                ),
             )
             console.print(f"JSON summary written to {json_out}")

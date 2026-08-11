@@ -297,9 +297,7 @@ class TestMapOverlayAutodetect:
         # A fully-specified pairs-only mapping must NOT autodetect: a Type
         # column holding order types would otherwise be grabbed as side.
         csv = tmp_path / "t.csv"
-        csv.write_text(
-            "Closed,NetPL,Type\n2024-01-05 10:30:00,150,market\n", encoding="utf-8"
-        )
+        csv.write_text("Closed,NetPL,Type\n2024-01-05 10:30:00,150,market\n", encoding="utf-8")
         log, report = load_trade_log(csv, overrides=["exit_time=Closed", "pnl=NetPL"])
         assert not report.autodetected
         assert len(log) == 1 and log.trades[0].side == Side.LONG
@@ -386,9 +384,7 @@ class TestWholeColumnMixedOffsets:
         pandas 3 — must fall back, not crash (F2)."""
         csv = tmp_path / "t.csv"
         csv.write_text(
-            "exit_time,pnl\n"
-            "2024-01-05T10:30:00-05:00,100\n"
-            "2024-06-05T10:30:00-04:00,-50\n",
+            "exit_time,pnl\n2024-01-05T10:30:00-05:00,100\n2024-06-05T10:30:00-04:00,-50\n",
             encoding="utf-8",
         )
         log, report = load_trade_log(csv)
@@ -401,8 +397,7 @@ class TestMappingUsedCompleteness:
     def test_fees_and_prices_reported(self, tmp_path: Path) -> None:
         csv = tmp_path / "t.csv"
         csv.write_text(
-            "Exit Time,PnL,Fees,Entry Price,Exit Price\n"
-            "2024-01-05 10:30:00,100,2.5,5000,5010\n",
+            "Exit Time,PnL,Fees,Entry Price,Exit Price\n2024-01-05 10:30:00,100,2.5,5000,5010\n",
             encoding="utf-8",
         )
         _, report = load_trade_log(csv)

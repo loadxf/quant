@@ -34,8 +34,11 @@ class TestCalendarSpanAnnualization:
         """A once-a-week trader's MAR must annualize over the calendar
         span, not the 12 active days (which would inflate it ~5x)."""
         mondays = [dt.date(2026, 1, 5) + dt.timedelta(weeks=k) for k in range(12)]
-        dense = [dt.date(2026, 1, 5) + dt.timedelta(days=k) for k in range(80) if
-                 (dt.date(2026, 1, 5) + dt.timedelta(days=k)).weekday() < 5][:12]
+        dense = [
+            dt.date(2026, 1, 5) + dt.timedelta(days=k)
+            for k in range(80)
+            if (dt.date(2026, 1, 5) + dt.timedelta(days=k)).weekday() < 5
+        ][:12]
         sparse_m = compute_metrics(_log_on_dates(mondays, pnl=100.0), starting_equity=50_000)
         dense_m = compute_metrics(_log_on_dates(dense, pnl=100.0), starting_equity=50_000)
         # Same trades, same PnL; the sparse log spans ~5x the calendar and
@@ -45,23 +48,32 @@ class TestCalendarSpanAnnualization:
     def test_dense_all_winner_log_unchanged(self) -> None:
         """Consecutive-weekday logs: span == active days, so the change is
         a no-op for the common case (all-winner: zero DD -> MAR inf)."""
-        dense = [dt.date(2026, 1, 5) + dt.timedelta(days=k) for k in range(28) if
-                 (dt.date(2026, 1, 5) + dt.timedelta(days=k)).weekday() < 5]
+        dense = [
+            dt.date(2026, 1, 5) + dt.timedelta(days=k)
+            for k in range(28)
+            if (dt.date(2026, 1, 5) + dt.timedelta(days=k)).weekday() < 5
+        ]
         m = compute_metrics(_log_on_dates(dense), starting_equity=50_000)
         assert m.mar == float("inf")  # zero drawdown, positive return
 
 
 class TestZeroVarianceSharpeSign:
     def test_constant_loser_is_negative_infinity(self) -> None:
-        days = [dt.date(2026, 1, 5) + dt.timedelta(days=k) for k in range(10) if
-                (dt.date(2026, 1, 5) + dt.timedelta(days=k)).weekday() < 5]
+        days = [
+            dt.date(2026, 1, 5) + dt.timedelta(days=k)
+            for k in range(10)
+            if (dt.date(2026, 1, 5) + dt.timedelta(days=k)).weekday() < 5
+        ]
         m = compute_metrics(_log_on_dates(days, pnl=-100.0), starting_equity=50_000)
         assert m.sharpe == float("-inf")
         assert m.sortino < 0
 
     def test_constant_winner_stays_positive_infinity(self) -> None:
-        days = [dt.date(2026, 1, 5) + dt.timedelta(days=k) for k in range(10) if
-                (dt.date(2026, 1, 5) + dt.timedelta(days=k)).weekday() < 5]
+        days = [
+            dt.date(2026, 1, 5) + dt.timedelta(days=k)
+            for k in range(10)
+            if (dt.date(2026, 1, 5) + dt.timedelta(days=k)).weekday() < 5
+        ]
         m = compute_metrics(_log_on_dates(days, pnl=100.0), starting_equity=50_000)
         assert m.sharpe == float("inf")
 
@@ -94,23 +106,17 @@ class TestWfeReason:
         return _log_on_dates(days, pnl=50.0)
 
     def test_boundary_outside_log_gets_reason(self) -> None:
-        panel = compute_decay(
-            self._log(), oos_start=dt.datetime(2030, 1, 1, tzinfo=UTC)
-        )
+        panel = compute_decay(self._log(), oos_start=dt.datetime(2030, 1, 1, tzinfo=UTC))
         assert panel.wfe is None
         assert panel.wfe_reason is not None and "out-of-sample side" in panel.wfe_reason
 
     def test_boundary_before_log_gets_reason(self) -> None:
-        panel = compute_decay(
-            self._log(), oos_start=dt.datetime(2020, 1, 1, tzinfo=UTC)
-        )
+        panel = compute_decay(self._log(), oos_start=dt.datetime(2020, 1, 1, tzinfo=UTC))
         assert panel.wfe is None
         assert panel.wfe_reason is not None and "in-sample side" in panel.wfe_reason
 
     def test_valid_boundary_computes_wfe(self) -> None:
-        panel = compute_decay(
-            self._log(30), oos_start=dt.datetime(2026, 1, 26, tzinfo=UTC)
-        )
+        panel = compute_decay(self._log(30), oos_start=dt.datetime(2026, 1, 26, tzinfo=UTC))
         assert panel.wfe is not None and panel.wfe_reason is None
 
     def test_no_boundary_no_reason(self) -> None:
@@ -122,8 +128,11 @@ class TestPostReviewRegressions:
     def test_float_noise_constant_series_still_degenerate(self) -> None:
         """A repeated loss whose float std is ~1e-14 (not exactly 0) must
         still hit the -inf convention, not report Sharpe -7e16 (P6)."""
-        days = [dt.date(2026, 1, 5) + dt.timedelta(days=k) for k in range(14) if
-                (dt.date(2026, 1, 5) + dt.timedelta(days=k)).weekday() < 5]
+        days = [
+            dt.date(2026, 1, 5) + dt.timedelta(days=k)
+            for k in range(14)
+            if (dt.date(2026, 1, 5) + dt.timedelta(days=k)).weekday() < 5
+        ]
         # -100.1 is not exactly representable; sums accumulate float noise.
         m = compute_metrics(_log_on_dates(days, pnl=-100.1), starting_equity=50_000)
         assert m.sharpe == float("-inf")

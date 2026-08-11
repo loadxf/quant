@@ -331,9 +331,9 @@ def build_html_report(
 ) -> Path:
     if (mc is None) != (firm is None):
         raise ValueError("mc and firm must be provided together")
-    template_text = (
-        resources.files("quantlab.report") / "templates" / "report.html.j2"
-    ).read_text(encoding="utf-8")
+    template_text = (resources.files("quantlab.report") / "templates" / "report.html.j2").read_text(
+        encoding="utf-8"
+    )
     template = Environment(autoescape=True).from_string(template_text)
 
     fidelity_note = (
