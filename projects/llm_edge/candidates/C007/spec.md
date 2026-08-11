@@ -10,13 +10,21 @@ provenance grade P-derived claimed, subject to Phase D attack (multiple-testing 
 profile has 10 cells; this is why the hypothesis is validated on 19 years of disjoint history
 rather than trusted from the panel).
 
+**Retrospective provenance correction (2026-08-10).** The panel code that produced the
+quoted cell shifted returns one session too far: its displayed `lag_7` was actually the
+condition now labeled lag 8. On the immutable original window, the corrected cells are lag 7
+IC **-0.00542** (t **-0.28**) and lag 8 IC **-0.05594** (t **-2.96**). The magnitude survives
+only under the corrected lag-8 label, so it does not support the lag-7 formula below. The
+formula is retained as the historical hypothesis, but the old label and claim of a measured
+isolated lag-7 effect are invalid evidence (protocol deviation D6).
+
 **Hypothesis.** The single-day return realized ~7 trading days ago carries a cross-sectional
 reversal signal for tomorrow that is distinct from (a) the documented lag-1 short-term
 reversal and (b) weekly (lag-5) seasonality. Economic story to be tested, not assumed:
 delayed correction after multi-day event drift completes.
 
-**Signal (exact formula).** `-ret_band(6..8)` where `ret_band = adjclose.pct_change(3)
-shifted by 6` — i.e. minus the cumulative return over days t-8..t-6:
+**Signal (exact formula).** `-ret_band(6..8)` where `ret_band = adjclose.pct_change(2)
+shifted by 6` — i.e. minus the two-period cumulative return from t-8 through t-6:
 `signal(t) = -(adjclose(t-6)/adjclose(t-8) - 1)`.
 Decile long-short, held 1 day, t+2 execution, S&P 500 equities.
 

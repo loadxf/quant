@@ -1,19 +1,8 @@
-"""C008: gap-intraday coherence premium (spec.md)."""
+"""C008: gap-intraday coherence premium."""
 
-import pandas as pd
-from edgelab.grammar import build_terminals
-
+SIGNAL_KIND = "gap_intraday_coherence"
+ORIGIN = "G1"
+HOLDOUT_END = "2026-01-31"
 SMOOTH = 3
-
-
-def compute_signal(fields: dict[str, pd.DataFrame]) -> pd.DataFrame:
-    terms = build_terminals(
-        fields["open"],
-        fields["high"],
-        fields["low"],
-        fields["close"],
-        fields["adjclose"],
-        fields["volume"],
-    )
-    coherence = terms["gap"] * terms["intraday"]
-    return coherence.rolling(SMOOTH, min_periods=2).mean()
+MIN_PERIODS = 2
+PERTURBATIONS = ("SMOOTH", "MIN_PERIODS")

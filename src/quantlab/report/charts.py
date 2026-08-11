@@ -14,7 +14,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 from quantlab.prop.outcomes import OUTCOME_BREACHED, EconomicsSummary, PhaseOutcome
-from quantlab.schema.trade import TradeLog
+from quantlab.schema.trade import FUTURES_DAY, DayBoundary, TradeLog
 
 # Reference palette (light mode)
 BLUE = "#2a78d6"
@@ -172,8 +172,8 @@ def fig_ev_waterfall(eco: EconomicsSummary, activation: float) -> go.Figure:
     return fig
 
 
-def fig_daily_pnl_hist(log: TradeLog) -> go.Figure:
-    daily = [sum(t.pnl for t in trades) for _, trades in log.daily_groups()]
+def fig_daily_pnl_hist(log: TradeLog, boundary: DayBoundary = FUTURES_DAY) -> go.Figure:
+    daily = [sum(t.pnl for t in trades) for _, trades in log.daily_groups(boundary)]
     fig = _base("Daily PnL distribution", "day PnL ($)", "days")
     fig.add_trace(go.Histogram(x=daily, marker_color=BLUE, nbinsx=40))
     fig.add_vline(x=0, line=dict(color=INK_MUTED, width=1, dash="dot"))

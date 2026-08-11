@@ -7,8 +7,9 @@ application of a documented effect.
 
 **Generation trace.** G4 control group (P-known, T0/T1 by construction).
 
-**Signal:** `-(sum over past 5 days of intraday return)` where intraday = close/open - 1.
-Decile long-short, held 1 day, t+2 execution, S&P 500 equities.
+**Signal:** `-(sum over past 5 days of intraday return)` where intraday = close/open - 1,
+formed with `rolling(5, min_periods=3)`. Decile long-short, held 1 day, t+2 execution,
+S&P 500 equities.
 
 **Predicted sign:** positive, plausibly stronger than C004 (consistent with the documented
 decomposition).

@@ -36,12 +36,12 @@ objection. Round caps: literature topics ≤ 3 rounds; novelty verdicts ≤ 2 ro
 | Split | Period | Use |
 |-------|--------|-----|
 | Train | 2005-01-01 → 2018-12-31 | signal development, G2 search training fitness |
-| Validation | 2019-01-01 → 2023-12-31 | Gate 1/2 evaluation, G2 selection fitness |
+| Validation | 2019-01-01 → 2023-12-31 | One fixed Gate 1/2 evaluation per candidate |
 | **Holdout (LOCKED)** | 2024-01-01 → last available (~2026-07-17) | Gate 3, one shot per candidate |
 | Post-cutoff sub-window | 2026-02-01 → end | provably outside model training data (cutoff Jan 2026); ~5.5 months — directional consistency check only, never primary evidence |
 
 Holdout lock mechanism: analysis code loads data through `load_panel(end="2023-12-31")` by
-default. Holdout evaluation is possible only through `src/quantlab/holdout_gate.py`, which
+default. Holdout evaluation is possible only through `src/edgelab/holdout_gate.py`, which
 (a) requires the candidate's spec SHA256 to exist in `candidates/registry.json`,
 (b) verifies via `git log` that the registry entry was committed before invocation,
 (c) writes `candidates/C###/holdout_results.json` exactly once and refuses re-runs.
@@ -54,10 +54,13 @@ The git history in the final PR is the public audit trail.
   universe, quintile or tercile for ETF-only universes; equal weight.
 - Transaction costs: 10 bps per side single-name equities, 5 bps per side ETFs, charged on
   turnover. Sensitivity sweep at {0, 5, 10, 25} bps.
-- A no-lookahead unit test must pass before any results are produced: a synthetic signal equal
-  to the future return must not be exploitable beyond its correctly lagged value.
+- A timing unit test must pass before any results are produced: a synthetic signal equal
+  to the next-day return must earn only its correctly lagged, stale alignment. Promotable
+  candidates are literal declarations dispatched through a trusted causal
+  registry. Every registry handler is exhaustively checked at every prefix on independent
+  panels; arbitrary Python is confined to non-promotable adversarial development tests.
 
-## 6. Statistics (implemented in `src/quantlab/stats.py`, pinned by unit tests)
+## 6. Statistics (implemented in `src/edgelab/stats.py`, pinned by unit tests)
 
 - Annualized Sharpe: SR = mean(r)/std(r) · √252 (daily returns, ddof=1).
 - Newey–West t-statistic of the mean daily return, lag 10.
@@ -67,20 +70,21 @@ The git history in the final PR is the public audit trail.
 - Deflated Sharpe Ratio: DSR = PSR(SR*₀) with
   SR*₀ = √V[{SRₖ}] · ( (1−γ)·Φ⁻¹(1 − 1/N) + γ·Φ⁻¹(1 − 1/(N·e)) ),
   γ = Euler–Mascheroni ≈ 0.5772. **N and V[{SRₖ}] come from `candidates/trials_ledger.csv`**
-  — an append-only ledger written *inside the backtest engine itself*, so no evaluation can
-  escape it. Every backtest ever run in this project (including every G2 search evaluation,
-  every parameter variant, every dead candidate, across all loops) adds a row. The final
-  report states the total N.
+  — a concurrency-safe CSV ledger written *inside the backtest engine itself*. Failed search
+  and gate evaluations are recorded explicitly. Before holdout access the ledger must be
+  committed and byte-identical to git HEAD. This makes changes auditable, not physically
+  immutable to a repository owner. The final report states the total N.
 - Family-wide test: stationary-bootstrap (Politis–Romano, mean block 20 days, 1000 resamples)
   Reality-Check-style p-value for the maximum validation SR across the candidate family.
-- Combinatorially purged cross-validation on train+validation: 8 blocks choose 2 test blocks
-  (28 paths), 5-day purge and 5-day embargo at test-block boundaries; report the OOS Sharpe
-  distribution across paths.
+- Combinatorial subperiod-stability analysis on train+validation: 8 blocks choose 2 selected
+  blocks (28 selections), with five observations removed on both sides of each boundary.
+  This is a descriptive stability check, not independent OOS evidence, because the strategy
+  is not independently re-fit within each selection.
 
 ## 7. Promotion gates — fixed now
 
 - **Gate 1 (validation):** cost-adjusted (10 bps) validation SR > 0.5; Newey–West |t| > 2;
-  sign of returns matches the spec's predicted sign; CPCV median OOS SR > 0.
+  sign of returns matches the spec's predicted sign; median subperiod-stability SR > 0.
 - **Gate 2 (robustness):** positive cost-adjusted SR in both validation subhalves; positive in
   both high- and low-volatility regime halves (split by median 63-day realized vol of the
   equal-weight universe); survives ±25% perturbation of every window parameter; SR > 0 at
@@ -94,9 +98,9 @@ The git history in the final PR is the public audit trail.
 - **G1 — data-first mining on fresh data:** descriptive-statistics panels computed on
   2024–2026 data; hypotheses articulated from anomalous cells; trace must cite the specific
   statistic that prompted each hypothesis. Strongest provenance path.
-- **G2 — grammar search with OOS fitness:** small signal DSL, evolutionary search driven by
-  validation fitness only; the model's priors choose the grammar, the data chooses the
-  survivors. All evaluations hit the trials ledger.
+- **G2 — grammar search with train-only fitness:** a small signal DSL and evolutionary search
+  use only the 2005–2018 training window. The top distinct expressions are then evaluated
+  once against the fixed 2019–2023 validation gates. All attempts hit the trials ledger.
 - **G3 — cross-domain structural transfer:** formalisms imported from fields with no
   documented finance footprint (checked against factor_db); tests recombination reach.
 - **G4 — anti-consensus inversion (control group):** perturbations/inversions of documented

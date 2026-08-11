@@ -286,3 +286,11 @@ completed or auditable when they are not (O1, O2, O16), (b) inflation at the mar
 generation/provenance story (O3, O4, O5, O8), and (c) a conclusion sentence that asserts
 causal identification the design cannot deliver and its own S9.1 contradicts (O6), plus
 wording-discipline slips the protocol explicitly banned (O7).
+
+## 2026-08-11 factual correction to archived objection O8
+
+O8 correctly identified the historical vacuous-perturbation failure, but misstated C010's
+formula. The tracked C010 specification and executable used `roll_std(rng, 63)`, not
+`roll_mean(roll_std(rng, 10), 63)`. Thus one embedded 63-day window—not two nested windows—was
+left unperturbed. This review transcript is retained verbatim above as audit history; the
+hardened declaration-based replay perturbs that actual 63-day parameter explicitly.

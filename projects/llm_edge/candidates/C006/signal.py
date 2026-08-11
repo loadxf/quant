@@ -1,16 +1,8 @@
-"""C006 CONTROL: intraday-component 5-day reversal (spec.md)."""
+"""C006 control: intraday-component five-day reversal."""
 
-import pandas as pd
-from edgelab.grammar import build_terminals
-
-
-def compute_signal(fields: dict[str, pd.DataFrame]) -> pd.DataFrame:
-    terms = build_terminals(
-        fields["open"],
-        fields["high"],
-        fields["low"],
-        fields["close"],
-        fields["adjclose"],
-        fields["volume"],
-    )
-    return -terms["intraday"].rolling(5, min_periods=3).sum()
+SIGNAL_KIND = "intraday_reversal"
+ORIGIN = "G4"
+HOLDOUT_END = "2030-01-01"
+REVERSAL_WINDOW = 5
+MIN_PERIODS = 3
+PERTURBATIONS = ("REVERSAL_WINDOW", "MIN_PERIODS")

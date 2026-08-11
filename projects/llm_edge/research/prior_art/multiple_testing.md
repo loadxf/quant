@@ -8,7 +8,7 @@ topic: multiple_testing
 Scope: exact formulas (with variable definitions) for PSR, DSR, expected-max-SR benchmark,
 MinTRL/MinBTL, PBO/CSCV, Harvey-Liu-Zhu t-hurdles, haircut Sharpe ratios, White's Reality
 Check, Hansen's SPA, the Politis-Romano stationary bootstrap, and purged/combinatorial
-cross-validation. These feed `src/quantlab/stats.py` and its unit tests. All primary-source
+cross-validation. These feed `src/edgelab/stats.py` and its unit tests. All primary-source
 PDFs were fetched and text-extracted during this session; every worked example below was
 additionally re-computed numerically (scipy) and reproduced the papers' printed values.
 
@@ -388,7 +388,7 @@ above is a different operationalization of that principle. This is precisely why
 protocol's engine-level `trials_ledger.csv` (N and V[{SRₖ}] recorded by the backtester itself)
 is the load-bearing design choice of the whole project: DSR is only as honest as its N.
 
-For `src/quantlab/stats.py`, the load-bearing implementation facts are: (1) PSR and DSR take
+For `src/edgelab/stats.py`, the load-bearing implementation facts are: (1) PSR and DSR take
 PER-PERIOD (non-annualized) Sharpe inputs, use √(n−1) (Bessel), and RAW kurtosis (Normal=3) —
 the protocol's stated formula in §6 matches the primary sources exactly; (2) the DSR benchmark
 SR₀ multiplies √V[{SRₖ}] (per-period trial-SR variance) by the two-quantile Euler–Mascheroni

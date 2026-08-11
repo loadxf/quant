@@ -6,7 +6,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from quantlab.errors import QuantLabError
-from quantlab.schema.equity import EquityCurve
+from quantlab.schema.equity import EquityCurve, EquityPoint
 from quantlab.schema.io import read_trade_log, write_trade_log
 from quantlab.schema.trade import FTMO_DAY, FUTURES_DAY, Side, Trade, TradeLog
 
@@ -28,6 +28,28 @@ def _trade(exit_time: dt.datetime, pnl: float = 100.0) -> Trade:
 
 
 class TestTradeValidation:
+    def test_detects_overlapping_trade_intervals(self) -> None:
+        start = dt.datetime(2026, 1, 5, 10, 0, tzinfo=UTC)
+        first = Trade(start, start + dt.timedelta(hours=1), "MNQ", Side.LONG, 1, 0)
+        overlapping = Trade(
+            start + dt.timedelta(minutes=30),
+            start + dt.timedelta(hours=2),
+            "MNQ",
+            Side.LONG,
+            1,
+            0,
+        )
+        touching = Trade(
+            start + dt.timedelta(hours=1),
+            start + dt.timedelta(hours=2),
+            "MNQ",
+            Side.LONG,
+            1,
+            0,
+        )
+        assert TradeLog([first, overlapping]).has_overlapping_trades
+        assert not TradeLog([first, touching]).has_overlapping_trades
+
     def test_rejects_naive_datetimes(self) -> None:
         naive = dt.datetime(2026, 1, 5, 10, 0)
         with pytest.raises(QuantLabError, match="tz-aware"):
@@ -54,8 +76,43 @@ class TestTradeValidation:
         with pytest.raises(QuantLabError, match="mfe"):
             Trade(t0, t0, "MNQ", Side.LONG, 1, 0.0, mfe=-5.0)
 
+    @pytest.mark.parametrize("field", ["quantity", "pnl", "fees", "mae", "mfe"])
+    @pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+    def test_rejects_nonfinite_numbers(self, field: str, value: float) -> None:
+        t0 = dt.datetime(2026, 1, 5, 10, 0, tzinfo=UTC)
+        values = {"quantity": 1.0, "pnl": 0.0, "fees": 0.0, "mae": None, "mfe": None}
+        values[field] = value
+        with pytest.raises(QuantLabError, match=field):
+            Trade(t0, t0, "MNQ", Side.LONG, **values)
+
+    @pytest.mark.parametrize("field", ["quantity", "pnl", "fees", "mae", "mfe"])
+    @pytest.mark.parametrize("value", [True, "1.0"])
+    def test_rejects_non_numeric_and_boolean_numbers(self, field: str, value) -> None:
+        t0 = dt.datetime(2026, 1, 5, 10, 0, tzinfo=UTC)
+        values = {"quantity": 1.0, "pnl": 0.0, "fees": 0.0, "mae": None, "mfe": None}
+        values[field] = value
+        with pytest.raises(QuantLabError, match=field):
+            Trade(t0, t0, "MNQ", Side.LONG, **values)
+
+    def test_rejects_blank_symbol_and_invalid_side(self) -> None:
+        t0 = dt.datetime(2026, 1, 5, 10, 0, tzinfo=UTC)
+        with pytest.raises(QuantLabError, match="symbol"):
+            Trade(t0, t0, " ", Side.LONG, 1, 0.0)
+        with pytest.raises(QuantLabError, match="side"):
+            Trade(t0, t0, "MNQ", "flat", 1, 0.0)  # type: ignore[arg-type]
+
 
 class TestDayBoundary:
+    def test_rejects_bad_configuration(self) -> None:
+        from quantlab.schema.trade import DayBoundary
+
+        with pytest.raises(QuantLabError, match=r"0\.\.23"):
+            DayBoundary("UTC", 24)
+        with pytest.raises(QuantLabError, match=r"0\.\.23"):
+            DayBoundary("UTC", True)
+        with pytest.raises(QuantLabError, match="timezone"):
+            DayBoundary("Not/A_Zone", 0)
+
     def test_futures_roll_at_5pm_chicago(self) -> None:
         # 16:00 CT Monday -> Monday's session; 18:00 CT Monday -> Tuesday's session
         monday = dt.date(2026, 1, 5)
@@ -88,6 +145,11 @@ class TestTradeLog:
         assert trades_from_daily([[10]], with_excursions=True).has_excursions
         assert not trades_from_daily([[10]]).has_excursions
 
+    @pytest.mark.parametrize("trades", ["bad", [object()]])
+    def test_rejects_non_trade_collections(self, trades) -> None:
+        with pytest.raises(QuantLabError, match="list of Trade"):
+            TradeLog(trades)  # type: ignore[arg-type]
+
 
 class TestEquityCurve:
     def test_from_series_and_daily(self) -> None:
@@ -102,6 +164,18 @@ class TestEquityCurve:
         assert [p.equity for p in curve.points] == [1_100.0, 1_050.0, 1_250.0]
         daily = curve.daily()
         assert list(daily.values) == [1_050.0, 1_250.0]
+
+    def test_rejects_naive_and_nonfinite_points(self) -> None:
+        with pytest.raises(QuantLabError, match="timezone-aware"):
+            EquityPoint(dt.datetime(2026, 1, 5), 1.0)
+        with pytest.raises(QuantLabError, match="finite"):
+            EquityPoint(dt.datetime(2026, 1, 5, tzinfo=UTC), float("nan"))
+        with pytest.raises(QuantLabError, match="datetime"):
+            EquityPoint("bad", 1.0)  # type: ignore[arg-type]
+        with pytest.raises(QuantLabError, match="finite real"):
+            EquityPoint(dt.datetime(2026, 1, 5, tzinfo=UTC), True)
+        with pytest.raises(QuantLabError, match="finite real"):
+            EquityPoint(dt.datetime(2026, 1, 5, tzinfo=UTC), "1.0")  # type: ignore[arg-type]
 
 
 class TestParquetRoundTrip:
@@ -121,6 +195,13 @@ class TestParquetRoundTrip:
         with pytest.raises(QuantLabError, match="not found"):
             read_trade_log(tmp_path / "nope.parquet")
 
+    def test_write_failure_is_domain_error_and_does_not_leave_temp(self, tmp_path) -> None:
+        with pytest.raises(QuantLabError, match="Could not write trade log"):
+            write_trade_log(
+                trades_from_daily([[10.0]]), tmp_path / "missing" / "log.parquet"
+            )
+        assert not list(tmp_path.glob(".*.tmp"))
+
     def test_future_schema_version_rejected(self, tmp_path, monkeypatch) -> None:
         import quantlab.schema.io as io_mod
 
@@ -130,4 +211,23 @@ class TestParquetRoundTrip:
         write_trade_log(log, path)
         monkeypatch.undo()
         with pytest.raises(QuantLabError, match="schema v99"):
+            read_trade_log(path)
+
+    @pytest.mark.parametrize("version", [True, 1.5, 0, -1, "1"])
+    def test_invalid_schema_versions_are_not_coerced(self, tmp_path, version) -> None:
+        import json
+
+        import pyarrow.parquet as pq
+
+        from quantlab.schema import io as schema_io
+
+        path = tmp_path / "trades.parquet"
+        write_trade_log(trades_from_daily([[10.0]]), path)
+        table = pq.read_table(path)
+        metadata = dict(table.schema.metadata or {})
+        payload = json.loads(metadata[schema_io._META_KEY].decode())
+        payload["schema_version"] = version
+        metadata[schema_io._META_KEY] = json.dumps(payload).encode()
+        pq.write_table(table.replace_schema_metadata(metadata), path)
+        with pytest.raises(QuantLabError, match=r"unreadable.*schema_version"):
             read_trade_log(path)

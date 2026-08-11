@@ -5,7 +5,10 @@ evolutionary search (seed 20260721, fitness = net train SR at 5 bps, 5-day hold,
 quintile 0.2 portfolios): **`(roll_skew (abs_ (cs_rank volz)) 63)`** — per ETF, the 63-day
 skewness of the absolute cross-sectional volume-z percentile (distance of the ETF's volume
 percentile from the cross-sectional median). Train SR net ≈ 0.39. Selection by data fitness
-under the model-chosen grammar; P-derived at the selection level.
+under the model-chosen grammar; P-derived at the selection level. Retrospective audit D5
+found that this original ETF run included available pre-2005 observations through 2018,
+rather than only the registered 2005-2018 train window. The corrected forward driver binds
+the registered start, but this historical selection is not retroactively repaired.
 
 **Interpretation (post-hoc, to be tested not assumed).** High values mark ETFs whose volume
 percentile is usually near the middle but occasionally spikes to an extreme — episodic
@@ -14,10 +17,10 @@ This is an opaque mined expression of exactly the stereotyped form the LLM-alpha
 literature produces (see research/prior_art/llm_in_trading.md); it is gated as the ETF-universe
 representative and an interpretability test case for Phase D.
 
-**Signal (exact formula).** `volz` = 63-day rolling z-score of log volume;
-`signal = |cs_rank_pct(volz) - 0.5|` rolled through a 63-day skew, per the grammar's
-cs_rank (which centers at 0). Quintile-0.2 long-short, 5-day hold, t+2 execution, 71-ETF
-universe, 5 bps.
+**Signal (exact formula).** `volz` = 63-day rolling z-score of log volume (63 observations
+required); `signal = |cs_rank_pct(volz) - 0.5|` rolled through a 63-day skew with
+`min_periods=31`, per the grammar's cs_rank (which centers at 0). Quintile-0.2 long-short,
+5-day hold, t+2 execution, 71-ETF universe, 5 bps.
 
 **Predicted sign:** positive (as selected). **Tier ceiling:** method T1; signal T2 only if
 no prior art and it survives all gates + Phase D.

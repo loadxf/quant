@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from quantlab.errors import MappingError
 from quantlab.ingest.mapping import ColumnMapping, autodetect_mapping
@@ -74,6 +75,33 @@ class TestMappingConfig:
         with pytest.raises(MappingError, match="not present"):
             mapping.validate_against(["When", "Other"])
 
+    def test_rejects_unknown_nested_and_wrong_type_fields(self) -> None:
+        with pytest.raises(ValidationError, match="tzz"):
+            ColumnMapping.model_validate(
+                {"exit_time": "Exit", "pnl": "P/L", "tzz": "America/New_York"}
+            )
+        with pytest.raises(ValidationError, match="unexpected"):
+            ColumnMapping.model_validate(
+                {
+                    "exit_time": "Exit",
+                    "pnl": "P/L",
+                    "side": {"column": "Side", "unexpected": "ignored before"},
+                }
+            )
+        with pytest.raises(ValidationError, match="exit_time"):
+            ColumnMapping.model_validate({"exit_time": 123, "pnl": "P/L"})
+
+    def test_yaml_validation_is_wrapped_as_mapping_error(self, tmp_path: Path) -> None:
+        path = tmp_path / "bad.yaml"
+        path.write_text("exit_time: Exit\npnl: P/L\ntzz: America/New_York\n")
+        with pytest.raises(MappingError, match="Invalid mapping file") as exc_info:
+            ColumnMapping.from_yaml(path)
+        assert "tzz" in str(exc_info.value)
+
+    def test_unreadable_trade_log_is_wrapped(self, tmp_path: Path) -> None:
+        with pytest.raises(MappingError, match="Could not read trade-log CSV"):
+            load_trade_log(tmp_path / "missing.csv")
+
 
 class TestLoadSampleCsv:
     def test_loads_with_autodetect(self) -> None:
@@ -133,6 +161,27 @@ class TestMixedFormatColumns:
         assert report.rows_dropped == 0
         assert len(log) == 3
         assert sorted(t.exit_time.day for t in log.trades) == [5, 6, 7]
+
+    @pytest.mark.parametrize("reverse", [False, True])
+    def test_mixed_full_and_time_only_rows_use_each_rows_companion_date(
+        self, tmp_path: Path, reverse: bool
+    ) -> None:
+        rows = [
+            "2024-01-02,2024-01-02 09:31,MNQ,100",
+            "2024-01-03,09:32,MNQ,-50",
+        ]
+        if reverse:
+            rows.reverse()
+        csv = tmp_path / "mixed_split.csv"
+        csv.write_text(
+            "Date,Exit Time,Symbol,Net P/L\n" + "\n".join(rows) + "\n"
+        )
+        log, report = load_trade_log(csv)
+        assert report.rows_dropped == 0
+        assert [trade.exit_time.date().isoformat() for trade in log.trades] == [
+            "2024-01-02",
+            "2024-01-03",
+        ]
 
 
 class TestFallbackUnitMismatch:
@@ -200,6 +249,18 @@ class TestMixedUtcOffsets:
         assert report.rows_dropped == 0
         assert len(log) == 3
 
+    def test_all_aware_summer_and_winter_rows_load(self, tmp_path: Path) -> None:
+        csv = tmp_path / "aware.csv"
+        csv.write_text(
+            "Entry DateTime,Exit DateTime,Symbol,Net P/L\n"
+            "2024-07-01T09:30:00-04:00,2024-07-01T10:00:00-04:00,MNQ,100\n"
+            "2024-12-01T09:30:00-05:00,2024-12-01T10:00:00-05:00,MNQ,-50\n"
+        )
+        log, report = load_trade_log(csv)
+        assert report.rows_dropped == 0
+        assert len(log) == 2
+        assert [trade.entry_time.hour for trade in log.trades] == [13, 14]
+
 
 class TestSentinelInScalarRescueBatch:
     """Pass-5 regression: a year-9999 sentinel sharing a rescue batch with
@@ -219,3 +280,28 @@ class TestSentinelInScalarRescueBatch:
         assert len(log) == 3
         assert report.rows_dropped == 1
         assert report.dropped[0][0] == 3
+
+
+class TestNaiveDstSafety:
+    @pytest.mark.parametrize("stamp", ["2025-11-02 01:15:00", "2025-03-09 02:15:00"])
+    def test_ambiguous_or_nonexistent_local_time_is_dropped(
+        self, tmp_path: Path, stamp: str
+    ) -> None:
+        csv = tmp_path / "dst.csv"
+        csv.write_text(
+            "Exit DateTime,Symbol,Net P/L\n"
+            "2025-11-03 09:00:00,MNQ,10\n"
+            f"{stamp},MNQ,10\n"
+        )
+        log, report = load_trade_log(
+            csv,
+            ColumnMapping(
+                exit_time="Exit DateTime",
+                symbol="Symbol",
+                pnl="Net P/L",
+                tz="America/Chicago",
+            ),
+        )
+        assert len(log) == 1
+        assert report.rows_dropped == 1
+        assert "ambiguous or nonexistent" in report.dropped[0][1]

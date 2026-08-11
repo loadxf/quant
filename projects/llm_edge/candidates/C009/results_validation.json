@@ -1,44 +1,85 @@
 {
  "candidate_id": "C009",
+ "research_identity": {
+  "candidate_ids": [
+   "C009"
+  ],
+  "spec_sha256": {
+   "C009": "694b06cbca8c2eb961eaf1ade61868e969c779113d25118ed634b3873d4bb34b"
+  },
+  "signal_sha256": {
+   "C009": "7be03445e963d1ecc95be8cfc4e31794fc4131fba94f192484055d2305fc1563"
+  },
+  "engine_sha256": "342f0f5248c5aa1169329b5aeb66305dc7a18ade15db58b1bc8718c677652e76",
+  "environment_sha256": "40eb75ca497e78acbc331a88a96ea5571f12ed832d8bc99c4440057f15b0ca27",
+  "data_manifest_sha256": "b5ba4c066e81ace34896f7a9d9091448d6bcd0838243ebdec8c1bfe24e667d4b",
+  "universe_sha256": "eb978a05f3bc72a0358e88ea18a974288b45f0f191ad0989aaa27160d2d90e43",
+  "universe_counts": {
+   "equities": 503,
+   "etfs": 71
+  }
+ },
  "params": {
   "hold": 1,
   "quantile": 0.1,
   "min_names": 20
  },
+ "data": {
+  "universe_size": 503,
+  "panel_start": "1970-01-02",
+  "evaluation_start": "2005-01-01",
+  "end": "2023-12-29"
+ },
  "train": {
-  "sr_net": -5.353468657151672,
-  "nw_t": -19.346029464063466,
-  "n_obs": 3519
+  "sr_net": -4.585249640898155,
+  "nw_t": -16.89422777390854,
+  "n_obs": 3523
  },
  "validation": {
-  "sr_net": -4.10108864519098,
-  "sr_gross": -0.4440608639291571,
-  "nw_t": -10.197349346480426,
+  "sr_net": -3.960345469548261,
+  "sr_gross": -0.3754379739666121,
+  "nw_t": -9.834639186781194,
   "n_obs": 1258,
-  "mean_daily_turnover": 3.437118039727263
+  "mean_daily_turnover": 3.443097959694272,
+  "cost_sweep_sr": {
+   "0": -0.3754379739666121,
+   "5": -2.1719371733386366,
+   "10": -3.960345469548261,
+   "25": -9.23827929663715
+  }
  },
- "cpcv": {
+ "combinatorial_subperiod_stability": {
+  "interpretation": "combinatorial_subperiod_stability_not_oos",
   "n_paths": 28,
-  "median_sr": -4.850503382507201,
-  "q25_sr": -5.15794129074642,
-  "min_sr": -6.831248912269087,
+  "median_sr": -4.625714595636872,
+  "q25_sr": -5.358088459234196,
+  "min_sr": -6.490025625639115,
   "frac_positive": 0.0
  },
  "gate1": {
   "val_sr_gt_0.5": false,
   "abs_t_gt_2": true,
   "sign_positive": false,
-  "cpcv_median_gt_0": false,
+  "stability_median_gt_0": false,
   "pass": false
  },
  "gate2": {
-  "subhalf1_sr": -3.829436344173946,
-  "subhalf2_sr": -4.416355345680271,
-  "hivol_sr": -3.744283595651217,
-  "lovol_sr": -4.717880534451638,
-  "cost25_sr": -9.474992273829487,
-  "perturbations": {},
+  "subhalf1_sr": -3.5676217332123046,
+  "subhalf2_sr": -4.438089916837949,
+  "hivol_sr": -3.6653466026454034,
+  "lovol_sr": -4.48334146456338,
+  "cost25_sr": -9.23827929663715,
+  "perturbations": {
+   "RETURN_WINDOWx1.25": -2.3063382429847796
+  },
+  "candidate_specific": {
+   "correlation_C004": {
+    "daily_return_correlation": 0.28192631860300926,
+    "t1_reversal_ceiling": false,
+    "n_obs": 1258
+   },
+   "requirements_pass": true
+  },
   "pass": false
- },
- "strategy_returns_net_train_val": null
+ }
 }

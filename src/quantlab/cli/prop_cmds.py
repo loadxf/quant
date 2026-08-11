@@ -104,11 +104,11 @@ def evaluate_cmd(
     """Deterministically replay a trade log against a firm's rules."""
     log = read_trade_log(trades)
     firm = load_firm(firm_name)
-    fidelity = (
-        "MAE/MFE-refined"
-        if log.has_excursions
-        else "trade-close only — intraday checks are optimistic"
-    )
+    fidelity = {
+        "full": "MAE/MFE-refined",
+        "partial": "partial MAE/MFE — missing sides are optimistic",
+        "close-only": "trade-close only — intraday checks are optimistic",
+    }[log.excursion_fidelity]
     console.print(f"[bold]{firm.display_name or firm.name}[/bold]  (fidelity: {fidelity})")
     if phase is not None:
         first = evaluate(log, firm, phase)
@@ -195,8 +195,8 @@ def simulate_cmd(
     base_contracts: float | None = typer.Option(
         None,
         "--base-contracts",
-        help="Your full contract allowance for scaling-plan caps "
-        "(default: the log's max position).",
+        help="Your full mini-equivalent contract allowance for scaling-plan caps "
+        "(default: the log's peak concurrent gross exposure).",
     ),
     payout_policy: str = typer.Option(
         "asap", "--payout-policy", help="asap | keep_buffer (leave --keep-buffer $ working)."

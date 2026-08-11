@@ -27,6 +27,7 @@ import numpy as np
 
 from quantlab.metrics.volforecast import DEFAULT_LAMBDA, ewma_sigma_path
 from quantlab.prop.config import FirmConfig
+from quantlab.prop.exposure import firm_scaling_contract_limit, scaling_base_contracts
 from quantlab.schema.trade import FUTURES_DAY, TradeLog
 
 REGIME_LABELS = ("low_vol", "mid_vol", "high_vol")
@@ -268,7 +269,9 @@ def _worst_regime_stress(
         source_trades=len(log),
         warnings=stress_warnings,
         base_contracts=(
-            cfg.base_contracts if cfg.base_contracts is not None else log.max_abs_quantity()
+            cfg.base_contracts
+            if cfg.base_contracts is not None
+            else scaling_base_contracts(log, firm_scaling_contract_limit(firm))
         ),
     )
     eco = report.economics

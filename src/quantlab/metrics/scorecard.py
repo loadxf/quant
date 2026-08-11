@@ -32,7 +32,7 @@ from quantlab.metrics.core import Metrics, bootstrap_means, compute_metrics
 from quantlab.metrics.decay import DecayPanel
 from quantlab.metrics.deflate import DeflatedStats, compute_deflated
 from quantlab.metrics.overfit import OverfitFlag, overfit_flags
-from quantlab.schema.trade import TradeLog
+from quantlab.schema.trade import FUTURES_DAY, DayBoundary, TradeLog
 
 GRADE_POINTS = {"A": 4.0, "B": 3.0, "C": 2.0, "D": 1.0, "F": 0.0}
 WEIGHTS = {"edge": 0.30, "robustness": 0.30, "risk": 0.20, "sample": 0.20}
@@ -205,11 +205,18 @@ def compute_scorecard(
     deflated: DeflatedStats | None = None,
     clustering=None,
     regime=None,
+    boundary: DayBoundary = FUTURES_DAY,
+    firm=None,
 ) -> Verdict:
     """decay/deflated: precomputed panels (e.g. from a RealityCheck) so a
     combined report never computes them twice; both derived internally
     when omitted. A supplied `deflated` must match `trials`."""
-    m = metrics or compute_metrics(log)
+    if deflated is not None and deflated.n_trials != trials:
+        raise ValueError(
+            f"deflated statistics use {deflated.n_trials} trials, but scorecard "
+            f"was asked to grade {trials}"
+        )
+    m = metrics or compute_metrics(log, boundary=boundary)
     edge = _grade_edge(m)
     robustness = _grade_robustness(log, m, trials=trials, deflated=deflated)
     risk = _grade_risk(log, m)
@@ -239,5 +246,13 @@ def compute_scorecard(
         overall=overall,
         points=points,
         capped_by_sample=capped,
-        flags=overfit_flags(log, m, decay=decay, clustering=clustering, regime=regime),
+        flags=overfit_flags(
+            log,
+            m,
+            decay=decay,
+            clustering=clustering,
+            regime=regime,
+            boundary=boundary,
+            firm=firm,
+        ),
     )

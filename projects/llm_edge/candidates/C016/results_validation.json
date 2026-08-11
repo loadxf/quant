@@ -1,44 +1,89 @@
 {
  "candidate_id": "C016",
+ "research_identity": {
+  "candidate_ids": [
+   "C016"
+  ],
+  "spec_sha256": {
+   "C016": "1f81614a643b38ec02a7d2bd4f6e9c72090b972c3295d2f8a8ef1f1a77cde6b2"
+  },
+  "signal_sha256": {
+   "C016": "478c88adc094124737d1d4cb79ecece98f11d888c5e72cf21bdf47ee170f78f3"
+  },
+  "engine_sha256": "342f0f5248c5aa1169329b5aeb66305dc7a18ade15db58b1bc8718c677652e76",
+  "environment_sha256": "40eb75ca497e78acbc331a88a96ea5571f12ed832d8bc99c4440057f15b0ca27",
+  "data_manifest_sha256": "b5ba4c066e81ace34896f7a9d9091448d6bcd0838243ebdec8c1bfe24e667d4b",
+  "universe_sha256": "eb978a05f3bc72a0358e88ea18a974288b45f0f191ad0989aaa27160d2d90e43",
+  "universe_counts": {
+   "equities": 503,
+   "etfs": 71
+  }
+ },
  "params": {
   "hold": 5,
   "quantile": 0.2,
   "min_names": 30
  },
+ "data": {
+  "universe_size": 71,
+  "panel_start": "1993-01-29",
+  "evaluation_start": "2005-01-01",
+  "end": "2023-12-29"
+ },
  "train": {
-  "sr_net": 0.5819288946014064,
-  "nw_t": 2.465347809095233,
+  "sr_net": 0.5822999213047287,
+  "nw_t": 2.454927875101755,
   "n_obs": 3523
  },
  "validation": {
-  "sr_net": 0.22146281767191583,
-  "sr_gross": 0.3686112175852783,
-  "nw_t": 0.562492077334743,
+  "sr_net": 0.1284844813843656,
+  "sr_gross": 0.2780499113749841,
+  "nw_t": 0.3251688200165324,
   "n_obs": 1258,
-  "mean_daily_turnover": 0.14881052175169823
+  "mean_daily_turnover": 0.14713108830755892,
+  "cost_sweep_sr": {
+   "0": 0.2780499113749841,
+   "5": 0.1284844813843656,
+   "10": -0.021097132858940493,
+   "25": -0.4698328068914736
+  }
  },
- "cpcv": {
+ "combinatorial_subperiod_stability": {
+  "interpretation": "combinatorial_subperiod_stability_not_oos",
   "n_paths": 28,
-  "median_sr": 0.44600862794749013,
-  "q25_sr": 0.20699419648850487,
-  "min_sr": -0.2140846512000011,
-  "frac_positive": 0.9642857142857143
+  "median_sr": 0.4710980062571537,
+  "q25_sr": 0.267226603847033,
+  "min_sr": -0.020051127397380273,
+  "frac_positive": 0.9285714285714286
  },
  "gate1": {
   "val_sr_gt_0.5": false,
   "abs_t_gt_2": false,
   "sign_positive": true,
-  "cpcv_median_gt_0": true,
+  "stability_median_gt_0": true,
   "pass": false
  },
  "gate2": {
-  "subhalf1_sr": -0.08150239232685862,
-  "subhalf2_sr": 0.5275375162966189,
-  "hivol_sr": 0.17984103355881095,
-  "lovol_sr": 0.34358490597222296,
-  "cost25_sr": -0.3671143998571061,
-  "perturbations": {},
+  "subhalf1_sr": -0.09836190404818457,
+  "subhalf2_sr": 0.3579994935667462,
+  "hivol_sr": 0.11886156114211056,
+  "lovol_sr": 0.1703706630950782,
+  "cost25_sr": -0.4698328068914736,
+  "perturbations": {
+   "VOL_WINDOWx0.75": 0.07518607789553525,
+   "VOL_WINDOWx1.25": -0.04287527233576658,
+   "HOLDx0.75": 0.09510197433002794,
+   "HOLDx1.25": 0.15262475583161816,
+   "QUANTILEx0.75": 0.21871137688375716,
+   "QUANTILEx1.25": 0.017141316000910987,
+   "MIN_NAMESx0.75": "error: parameter perturbation did not change validation portfolio weights",
+   "MIN_NAMESx1.25": "error: parameter perturbation did not change validation portfolio weights",
+   "EXPR[2]x0.75": -0.309162060248034,
+   "EXPR[2]x1.25": 0.041340719921160916
+  },
+  "candidate_specific": {
+   "requirements_pass": true
+  },
   "pass": false
- },
- "strategy_returns_net_train_val": null
+ }
 }

@@ -1,16 +1,7 @@
-"""C004 CONTROL: plain 5-day short-term reversal (spec.md)."""
+"""C004 control: plain five-day short-term reversal."""
 
-import pandas as pd
-from edgelab.grammar import build_terminals
-
-
-def compute_signal(fields: dict[str, pd.DataFrame]) -> pd.DataFrame:
-    terms = build_terminals(
-        fields["open"],
-        fields["high"],
-        fields["low"],
-        fields["close"],
-        fields["adjclose"],
-        fields["volume"],
-    )
-    return -terms["ret5"]
+SIGNAL_KIND = "plain_reversal"
+ORIGIN = "G4"
+HOLDOUT_END = "2030-01-01"
+RETURN_WINDOW = 5
+PERTURBATIONS = ("RETURN_WINDOW",)

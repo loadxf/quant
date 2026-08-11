@@ -1,19 +1,10 @@
-"""C014: sustained-volume premium, 21-day hold (spec.md)."""
+"""C014: sustained-volume premium, held 21 days."""
 
-import pandas as pd
-from edgelab.grammar import build_terminals
-
+SIGNAL_KIND = "smoothed_volume_z"
+ORIGIN = "G1"
+HOLDOUT_END = "2026-01-31"
 SMOOTH = 5
+MIN_PERIODS = 3
+VOL_WINDOW = 63
 HOLD = 21
-
-
-def compute_signal(fields: dict[str, pd.DataFrame]) -> pd.DataFrame:
-    terms = build_terminals(
-        fields["open"],
-        fields["high"],
-        fields["low"],
-        fields["close"],
-        fields["adjclose"],
-        fields["volume"],
-    )
-    return terms["volz"].rolling(SMOOTH, min_periods=3).mean()
+PERTURBATIONS = ("SMOOTH", "MIN_PERIODS", "VOL_WINDOW", "HOLD")

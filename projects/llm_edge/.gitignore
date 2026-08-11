@@ -6,3 +6,4 @@ data/cache/*.json
 report/figures/*.pdf
 .ipynb_checkpoints/
 src/quantlab.egg-info/
+candidates/.g1_access_log.lock

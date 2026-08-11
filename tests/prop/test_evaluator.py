@@ -354,9 +354,68 @@ class TestAdvisories:
         entry = dt.datetime(2026, 1, 5, 9, 0, tzinfo=ZoneInfo("America/Chicago"))
         log = TradeLog(
             trades=[
-                Trade(entry, entry, "MNQ", Side.LONG, quantity=8, pnl=100.0, mae=0.0, mfe=100.0)
+                Trade(entry, entry, "NQ", Side.LONG, quantity=8, pnl=100.0, mae=0.0, mfe=100.0)
             ]
         )
         result = evaluate(log, make_firm(rules, target=100_000))
         assert result.outcome == "incomplete"  # not a failure
-        assert any("max position 8" in a for a in result.advisories)
+        assert any("exposure 8" in a for a in result.advisories)
+
+    def test_contract_limit_counts_overlap_and_micro_equivalents(self) -> None:
+        rules = [TRAIL_EOD, {"type": "contract_limit", "max_contracts": 1}]
+        import datetime as dt
+        from zoneinfo import ZoneInfo
+
+        from quantlab.schema.trade import Side, Trade, TradeLog
+
+        entry = dt.datetime(2026, 1, 5, 9, 0, tzinfo=ZoneInfo("America/Chicago"))
+        trades = [
+            Trade(
+                entry,
+                entry + dt.timedelta(hours=1),
+                "MNQ",
+                Side.LONG,
+                quantity=6,
+                pnl=10,
+                mae=0,
+                mfe=10,
+            ),
+            Trade(
+                entry + dt.timedelta(minutes=1),
+                entry + dt.timedelta(hours=1),
+                "MNQ",
+                Side.LONG,
+                quantity=6,
+                pnl=10,
+                mae=0,
+                mfe=10,
+            ),
+        ]
+        result = evaluate(TradeLog(trades), make_firm(rules, target=100_000))
+        assert any("exposure 1.2" in advisory for advisory in result.advisories)
+        assert any("portfolio equity path" in advisory for advisory in result.advisories)
+
+    def test_contract_advisory_checks_source_rows_after_early_pass(self) -> None:
+        import datetime as dt
+        from zoneinfo import ZoneInfo
+
+        from quantlab.schema.trade import Side, Trade, TradeLog
+
+        rules = [TRAIL_EOD, {"type": "contract_limit", "max_contracts": 5}]
+        start = dt.datetime(2026, 1, 5, 9, 0, tzinfo=ZoneInfo("America/Chicago"))
+        trades = [
+            Trade(start, start, "NQ", Side.LONG, 1, 100, mae=0, mfe=100),
+            Trade(
+                start + dt.timedelta(days=1),
+                start + dt.timedelta(days=1),
+                "NQ",
+                Side.LONG,
+                50,
+                0,
+                mae=0,
+                mfe=0,
+            ),
+        ]
+        result = evaluate(TradeLog(trades), make_firm(rules, target=100))
+        assert result.outcome == "passed"
+        assert any("exposure 50" in advisory for advisory in result.advisories)

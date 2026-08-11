@@ -46,8 +46,8 @@ class TestPayoutTrailingInteraction:
         assert int(np.median(report.funded.payout_count)) >= 3
 
     def test_max_drawdown_excludes_withdrawals(self) -> None:
-        """Topstep XFA zero-loss winner: withdrawals rebase the peak, so
-        trading max drawdown stays 0 (was: reported ~$790)."""
+        """Topstep XFA winners: withdrawals rebase the peak, so drawdown
+        never exceeds the conservative within-trade high-to-low path."""
         firm = load_firm("topstep_50k")
         log = day_trades([[simple(200)]] * 40)
         profile = DayProfile.from_log(log, firm.day_boundary.to_boundary())
@@ -55,8 +55,33 @@ class TestPayoutTrailingInteraction:
         gates = _resolve_rules(firm.funded, firm, 0.0).payout_gate_pcts
         payout = _resolve_payout(firm, 0.0, gates)
         outcome = _simulate_phase(profile, idx, firm.funded, firm, payout, 1, base_contracts=1)
-        assert float(outcome.max_drawdown[0]) == 0.0
+        assert float(outcome.max_drawdown[0]) == 200.0
         assert outcome.payout_count is not None and outcome.payout_count[0] >= 1
+
+
+class TestCrossSessionFidelity:
+    def test_cross_reset_trade_is_prominently_advisory(self) -> None:
+        chicago = ZoneInfo("America/Chicago")
+        entry = dt.datetime(2026, 1, 5, 16, 30, tzinfo=chicago)
+        log = TradeLog(
+            [
+                Trade(
+                    entry_time=entry,
+                    exit_time=entry + dt.timedelta(hours=1),
+                    symbol="ES",
+                    side=Side.LONG,
+                    quantity=1,
+                    pnl=100,
+                    mae=-50,
+                    mfe=150,
+                )
+            ]
+        )
+        firm = load_firm("topstep_50k")
+        assert log.cross_session_trade_count(firm.day_boundary.to_boundary()) == 1
+        assert any("daily reset" in note for note in evaluate(log, firm).advisories)
+        report = run_monte_carlo(log, firm, MCConfig(n_paths=5, seed=1))
+        assert any("daily reset" in note for note in report.warnings)
 
 
 class TestConsistencyStrictBoundary:
@@ -159,6 +184,28 @@ class TestTradePointsClamp:
         assert low == -100.0  # not -50
         assert close == -100.0
         assert high == 10.0
+
+    def test_mae_only_winner_visits_low_before_close_in_both_engines(self) -> None:
+        firm = make_firm(
+            [
+                {
+                    "type": "trailing_drawdown",
+                    "amount": 1500,
+                    "ratchet": "intraday",
+                    "threshold_cap": 99_999,
+                }
+            ]
+        )
+        log = day_trades([[(1000.0, -1000.0, None)]])
+        scalar = evaluate(log, firm)
+        assert scalar.outcome != "breached"
+
+        profile = DayProfile.from_log(log, firm.day_boundary.to_boundary())
+        outcome = _simulate_phase(
+            profile, np.array([[0]]), firm.phases[0], firm, None, 1
+        )
+        assert outcome.outcome[0] != OUTCOME_BREACHED
+        assert outcome.max_drawdown[0] == pytest.approx(1000.0)
 
 
 class TestBootstrapNameValidation:

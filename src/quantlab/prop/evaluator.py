@@ -6,8 +6,8 @@ same day-level semantics; a golden-equivalence test keeps them honest.
 
 Fidelity: intraday checks use each trade's MAE/MFE when present,
 otherwise trade-close granularity (documented as optimistic for
-intraday-sensitive rules). Within a trade the point order is
-high -> low -> close (see rules/trailing_dd.py).
+intraday-sensitive rules). Within a trade the point order is high -> low ->
+close, except MAE-only records, which replay entry -> low -> close.
 """
 
 from __future__ import annotations
@@ -32,7 +32,12 @@ from quantlab.prop.config import (
     TimeLimitSpec,
     TrailingDrawdownSpec,
 )
-from quantlab.prop.dayprofile import trade_points
+from quantlab.prop.dayprofile import trade_low_first, trade_points
+from quantlab.prop.exposure import (
+    peak_contract_equivalents,
+    scaling_base_contracts,
+    scaling_contract_limit,
+)
 from quantlab.prop.rules import (
     BreachEvent,
     ConsistencyGate,
@@ -63,7 +68,7 @@ class EvaluationResult:
     effective_target: float | None
     best_day: float
     lockout_days: int
-    fidelity: str  # "mae_mfe" | "trade_close"
+    fidelity: str  # "mae_mfe" | "partial_mae_mfe" | "trade_close"
     timeline: pd.DataFrame
     advisories: list[str] = field(default_factory=list)
     days_consumed: int = 0  # trading days used from the log (for phase chaining)
@@ -90,9 +95,13 @@ def evaluate(
         firm,
         phase_cfg,
         fidelity_from(log),
+        has_overlaps=log.has_overlapping_trades,
+        cross_session_trades=log.cross_session_trade_count(
+            firm.day_boundary.to_boundary()
+        ),
         sizing=sizing,
         cushion_clip=cushion_clip,
-        base_contracts=log.max_abs_quantity(),
+        base_contracts=scaling_base_contracts(log, scaling_contract_limit(phase_cfg)),
     )
 
 
@@ -110,7 +119,6 @@ def evaluate_sequence(
     per phase on that phase's own drawdown allowance."""
     all_days = log.daily_groups(firm.day_boundary.to_boundary())
     fidelity = fidelity_from(log)
-    base = log.max_abs_quantity()
     results: list[EvaluationResult] = []
     cursor = 0
     for phase_cfg in firm.phases:
@@ -119,9 +127,15 @@ def evaluate_sequence(
             firm,
             phase_cfg,
             fidelity,
+            has_overlaps=log.has_overlapping_trades,
+            cross_session_trades=log.cross_session_trade_count(
+                firm.day_boundary.to_boundary()
+            ),
             sizing=sizing,
             cushion_clip=cushion_clip,
-            base_contracts=base,
+            base_contracts=scaling_base_contracts(
+                log, scaling_contract_limit(phase_cfg)
+            ),
         )
         results.append(result)
         cursor += result.days_consumed
@@ -133,16 +147,26 @@ def evaluate_sequence(
             firm,
             firm.funded,
             fidelity,
+            has_overlaps=log.has_overlapping_trades,
+            cross_session_trades=log.cross_session_trade_count(
+                firm.day_boundary.to_boundary()
+            ),
             sizing=sizing,
             cushion_clip=cushion_clip,
-            base_contracts=base,
+            base_contracts=scaling_base_contracts(
+                log, scaling_contract_limit(firm.funded)
+            ),
         )
     )
     return results
 
 
 def fidelity_from(log: TradeLog) -> str:
-    return "mae_mfe" if log.has_excursions else "trade_close"
+    return {
+        "full": "mae_mfe",
+        "partial": "partial_mae_mfe",
+        "close-only": "trade_close",
+    }[log.excursion_fidelity]
 
 
 def _find_phase(firm: FirmConfig, name: str) -> PhaseConfig:
@@ -162,6 +186,8 @@ def _evaluate_days(
     firm: FirmConfig,
     phase_cfg: PhaseConfig,
     fidelity: str,
+    has_overlaps: bool = False,
+    cross_session_trades: int = 0,
     sizing: VolSizingParams | None = None,
     cushion_clip: tuple[float, float] | None = None,
     base_contracts: float | None = None,
@@ -179,6 +205,18 @@ def _evaluate_days(
     min_days = MinTradingDaysGate(MinTradingDaysSpec(days=0))
     time_limit: TimeLimitGate | None = None
     advisories: list[str] = []
+    if has_overlaps:
+        advisories.append(
+            "trade intervals overlap: per-trade MAE/MFE cannot reconstruct the concurrent "
+            "portfolio equity path, so intraday breach chronology is approximate; verify "
+            "against a mark-to-market equity chart"
+        )
+    if cross_session_trades:
+        advisories.append(
+            f"{cross_session_trades} trade(s) cross the firm's daily reset: whole-trade PnL "
+            "and excursions are assigned to the exit session, so daily-rule chronology and "
+            "qualifying days are approximate; verify against mark-to-market equity data"
+        )
     max_contracts_spec: ContractLimitSpec | None = None
     scaling_spec: ScalingPlanSpec | None = None
 
@@ -255,7 +293,7 @@ def _evaluate_days(
             half_cap_weight = 0.5 * full_allowance / base_contracts
     best_day_completed = 0.0
     lockout_days = 0
-    max_qty = 0.0
+    source_trades = [trade for _, trades in days for trade in trades]
     rows: list[dict[str, object]] = []
 
     outcome: Outcome = "incomplete" if not is_funded else "survived"
@@ -319,11 +357,12 @@ def _evaluate_days(
                     mfe=trade.mfe * w if trade.mfe is not None else None,
                 )
             )
-            max_qty = max(max_qty, eff.quantity)
             high, low, close = trade_points(eff, day_open + day_cum)
+            low_first = trade_low_first(eff)
 
-            for tr_rule in trailing:
-                tr_rule.observe_high(high)
+            if not low_first:
+                for tr_rule in trailing:
+                    tr_rule.observe_high(high)
 
             # First-hit resolution at the adverse extreme: equity descends, so
             # among all levels hit, the HIGHEST fires first. Fail beats
@@ -356,6 +395,12 @@ def _evaluate_days(
                 lockout_days += 1
                 day_cum = -best_lock.width  # equity flattened exactly at the level
             else:
+                # An MAE-only trade reaches its recorded close/high only after
+                # surviving the adverse point. Ratcheting beforehand creates
+                # a false trailing breach for profitable trades.
+                if low_first:
+                    for tr_rule in trailing:
+                        tr_rule.observe_high(high)
                 day_cum = close - day_open
                 balance = day_open + day_cum
                 # Up-then-down catch: intraday ratchet may have raised the
@@ -421,16 +466,24 @@ def _evaluate_days(
         if day_resolved:
             break
 
-    if max_contracts_spec is not None and max_qty > max_contracts_spec.max_contracts:
+    peak_contracts = (
+        peak_contract_equivalents(source_trades, max_contracts_spec)
+        if max_contracts_spec is not None
+        else 0.0
+    )
+    if max_contracts_spec is not None and peak_contracts > max_contracts_spec.max_contracts:
         advisories.append(
-            f"max position {max_qty:g} exceeds the {max_contracts_spec.max_contracts:g}-contract "
-            f"limit (micros typically allowed at {max_contracts_spec.micros_multiplier:g}x) — "
+            f"source-log peak concurrent gross exposure {peak_contracts:g} "
+            "mini-equivalents exceeds the "
+            f"{max_contracts_spec.max_contracts:g}-contract limit (micros converted at "
+            f"{max_contracts_spec.micros_multiplier:g}:1) — "
             "sizing is advisory only and not enforced in simulation"
         )
     if scaling_spec is not None and capped_days:
         advisories.append(
             f"scaling plan capped position size on {capped_days} day(s) "
-            f"(base {base_contracts:g} contracts = the log's max position; "
+            f"(base {base_contracts:g} mini-equivalents = peak concurrent gross "
+            "source-log exposure; "
             "same-fill linear scaling)"
         )
 

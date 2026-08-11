@@ -43,3 +43,21 @@ class TestDayProfile:
     def test_empty_log_raises(self) -> None:
         with pytest.raises(QuantLabError, match="no trading days"):
             DayProfile.from_log(TradeLog(trades=[]), FUTURES_DAY)
+
+    def test_partial_excursions_are_used_independently(self) -> None:
+        log = day_trades([[(-10, -500, None), (20, None, 700)]])
+        profile = DayProfile.from_log(log, FUTURES_DAY)
+        assert profile.excursion_fidelity == "partial"
+        assert profile.low_rel[0].tolist() == [-500.0, 10.0]
+        assert profile.high_rel[0].tolist() == [-10.0, 690.0]
+
+    def test_close_only_trade_does_not_invent_entry_level_retrace(self) -> None:
+        profile = DayProfile.from_log(day_trades([[(100, None, None)]]), FUTURES_DAY)
+        assert profile.low_rel[0, 0] == 100.0
+        assert profile.high_rel[0, 0] == 100.0
+
+    @pytest.mark.parametrize("factor", [0, -1, float("nan"), float("inf")])
+    def test_scaled_rejects_invalid_factor(self, factor: float) -> None:
+        profile = DayProfile.from_log(day_trades([[(1, None, None)]]), FUTURES_DAY)
+        with pytest.raises(QuantLabError, match="scale"):
+            profile.scaled(factor)

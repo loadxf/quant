@@ -40,8 +40,19 @@ class TestApplyCost:
             for s, t in zip(stressed.trades, log.trades, strict=True)
         )
 
+    @pytest.mark.parametrize("cost", [-1.0, float("nan"), float("inf")])
+    def test_invalid_cost_rejected(self, cost: float) -> None:
+        with pytest.raises(QuantLabError, match="non-negative"):
+            apply_cost(_mnq_log(), cost)
+
 
 class TestHaircut:
+    def test_empty_log_is_rejected(self) -> None:
+        from quantlab.schema.trade import TradeLog
+
+        with pytest.raises(QuantLabError, match="at least one trade"):
+            run_haircut_scenarios(TradeLog([]))
+
     def test_mean_shrinks_std_preserved(self) -> None:
         log = _mnq_log()
         pnls = np.array([t.pnl for t in log.trades])
@@ -91,6 +102,20 @@ class TestCostSweep:
             np.mean([t.pnl for t in logged.trades])
         )
 
+    def test_mixed_fee_coverage_is_disclosed(self) -> None:
+        import dataclasses
+
+        base = _mnq_log()
+        mixed = type(base)(
+            trades=[
+                dataclasses.replace(t, fees=1.5 if index % 2 else 0.0)
+                for index, t in enumerate(base.trades)
+            ],
+            source=base.source,
+        )
+        assert "mixed zero/nonzero" in gross_pnl_warning(mixed)
+        assert any("mixed zero/nonzero" in warning for warning in run_cost_sweep(mixed).warnings)
+
     def test_grid_expectancy_declines_with_cost(self) -> None:
         stress = run_cost_sweep(_mnq_log())
         by_added = sorted(stress.grid, key=lambda p: p.added_rt_per_contract)
@@ -133,6 +158,33 @@ class TestCostSweep:
         zero_row = next(p for p in stress.grid if p.label == "0 tick/side, 1x commission")
         assert zero_row.added_rt_per_contract == pytest.approx(stress.commission_rt)
 
+    def test_mixed_symbols_resolve_each_trade_basis(self) -> None:
+        import dataclasses
+
+        base = _mnq_log(days=4)
+        mixed = type(base)(
+            trades=[
+                dataclasses.replace(trade, symbol="MES" if i % 2 else "MNQ")
+                for i, trade in enumerate(base.trades)
+            ],
+            source=base.source,
+        )
+        stress = run_cost_sweep(mixed)
+        assert stress.tick_source == "resolved:per-symbol"
+        assert any("per trade" in warning for warning in stress.warnings)
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {"tick_value": 0},
+            {"commission_rt": -1},
+            {"stop_slip_ticks": float("nan")},
+        ],
+    )
+    def test_invalid_cost_inputs_rejected(self, kwargs: dict) -> None:
+        with pytest.raises(QuantLabError):
+            run_cost_sweep(_mnq_log(), **kwargs)
+
 
 class TestPermutationDrawdown:
     def test_total_pnl_invariant_and_deterministic(self) -> None:
@@ -152,3 +204,8 @@ class TestPermutationDrawdown:
         log = day_trades([[simple(-100.0)]] * 40)
         res = permutation_drawdown(log, n_iter=200, seed=3, ruin_capital=1000.0)
         assert res.p_ruin == 1.0
+
+    @pytest.mark.parametrize("kwargs", [{"n_iter": 0}, {"ruin_capital": -1.0}])
+    def test_invalid_inputs_rejected(self, kwargs: dict) -> None:
+        with pytest.raises(QuantLabError):
+            permutation_drawdown(_mnq_log(), **kwargs)

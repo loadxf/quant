@@ -13,7 +13,7 @@ import numpy as np
 from quantlab.metrics.core import Metrics
 from quantlab.metrics.decay import DecayPanel, compute_decay
 from quantlab.metrics.volforecast import ClusteringTests
-from quantlab.schema.trade import TradeLog
+from quantlab.schema.trade import FUTURES_DAY, DayBoundary, TradeLog
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,7 +50,7 @@ def _smooth_curve(log: TradeLog, m: Metrics) -> OverfitFlag:
 
 def _zero_crossing(m: Metrics) -> OverfitFlag:
     lo, hi = m.expectancy_ci95
-    triggered = lo < 0 < hi
+    triggered = lo <= 0 <= hi
     return OverfitFlag(
         "expectancy_ci_straddles_zero",
         triggered,
@@ -217,6 +217,8 @@ def overfit_flags(
     decay: DecayPanel | None = None,
     clustering: ClusteringTests | None = None,
     regime=None,
+    boundary: DayBoundary = FUTURES_DAY,
+    firm=None,
 ) -> list[OverfitFlag]:
     panel = decay if decay is not None else compute_decay(log)
     flags = [
@@ -231,16 +233,13 @@ def overfit_flags(
     ]
     if clustering is None:
         from quantlab.metrics.volforecast import compute_clustering
-        from quantlab.schema.trade import FUTURES_DAY
 
-        day_pnl = np.array(
-            [sum(t.pnl for t in trades) for _, trades in log.daily_groups(FUTURES_DAY)]
-        )
+        day_pnl = np.array([sum(t.pnl for t in trades) for _, trades in log.daily_groups(boundary)])
         clustering = compute_clustering(day_pnl)
     flags.append(_vol_clustering(clustering))
     if regime is None:
         from quantlab.metrics.regime import compute_regimes
 
-        regime = compute_regimes(log)
+        regime = compute_regimes(log, firm=firm, precomputed_days=log.daily_groups(boundary))
     flags.append(_regime_dependence(regime))
     return flags

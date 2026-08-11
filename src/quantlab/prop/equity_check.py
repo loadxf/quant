@@ -80,69 +80,88 @@ def check_equity_curve(
     initial = phase.resolved_initial(firm.account_size)
     boundary = firm.day_boundary.to_boundary()
 
-    trailing: TrailingDrawdownRule | None = None
-    static: StaticMaxLossRule | None = None
-    daily: DailyLossRule | None = None
-    dll_fails = False
+    trailing: list[TrailingDrawdownRule] = []
+    static: list[StaticMaxLossRule] = []
+    daily_fail: list[DailyLossRule] = []
+    daily_lock: list[DailyLossRule] = []
     for spec in phase.rules:
         if isinstance(spec, TrailingDrawdownSpec):
-            trailing = TrailingDrawdownRule(spec, initial, firm.account_size)
+            trailing.append(TrailingDrawdownRule(spec, initial, firm.account_size))
         elif isinstance(spec, StaticMaxLossSpec):
-            static = StaticMaxLossRule(spec, initial, firm.account_size)
+            static.append(StaticMaxLossRule(spec, initial, firm.account_size))
         elif isinstance(spec, DailyLossLimitSpec):
-            daily = DailyLossRule(spec, firm.account_size)
-            dll_fails = spec.effect == "fail"
+            rule = DailyLossRule(spec, firm.account_size)
+            (daily_fail if spec.effect == "fail" else daily_lock).append(rule)
 
     points = sorted(curve.points, key=lambda p: p.time)
-    base = points[0].equity
+    offset = initial - points[0].equity
     sessions: set = set()
     first_breach: EquityBreach | None = None
     dll_hits: list[EquityBreach] = []
     current_session = None
     day_open = initial
     last_balance = initial
-    dll_hit_today = False
+    locked_session = False
 
     for point in points:
-        balance = initial + (point.equity - base)
         session = boundary.session_date(point.time)
         if session != current_session:
-            if trailing is not None and current_session is not None:
-                trailing.day_close(last_balance)
+            for trailing_rule in trailing:
+                if current_session is not None:
+                    trailing_rule.day_close(last_balance)
+            if locked_session:
+                # Ignore every prohibited mark after a lockout and rebase the
+                # next session's raw chart to the flattened prop balance.
+                offset = last_balance - point.equity
             current_session = session
             sessions.add(session)
             day_open = last_balance
-            dll_hit_today = False
-            if daily is not None:
-                daily.day_start(day_open)
+            locked_session = False
+            for daily_rule in (*daily_fail, *daily_lock):
+                daily_rule.day_start(day_open)
+
+        if locked_session:
+            continue
+        balance = point.equity + offset
 
         day_index = len(sessions) - 1
-        if trailing is not None and first_breach is None:
-            trailing.observe_high(balance)
-            event = trailing.check(balance, session, day_index, -1)
+        for trailing_rule in trailing:
+            trailing_rule.observe_high(balance)
+
+        fail_hits = []
+        for trailing_rule in trailing:
+            event = trailing_rule.check(balance, session, day_index, -1)
             if event is not None:
-                first_breach = _to_breach(event, point.time)
-        if static is not None and first_breach is None:
-            event = static.check(balance, session, day_index, -1)
+                fail_hits.append((event.threshold, event, False))
+        for static_rule in static:
+            event = static_rule.check(balance, session, day_index, -1)
             if event is not None:
-                first_breach = _to_breach(event, point.time)
-        # Guarded on first_breach like the hard rules: a QC equity curve
-        # runs to the end of the backtest, but the account is already
-        # liquidated after a hard breach — later daily-loss crossings
-        # would be phantom activity.
-        if daily is not None and first_breach is None and not dll_hit_today and daily.hit(balance):
-            dll_hit_today = True
-            hit = EquityBreach(
-                rule="daily_loss_limit",
-                when=point.time.isoformat(),
-                balance=balance,
-                threshold=daily.level,
-                detail=f"balance {balance:,.2f} crossed day floor {daily.level:,.2f} "
-                f"(day open {day_open:,.2f})",
-            )
+                fail_hits.append((event.threshold, event, False))
+        for daily_rule in daily_fail:
+            if daily_rule.hit(balance):
+                fail_hits.append(
+                    (
+                        daily_rule.level,
+                        daily_rule.breach_event(balance, session, day_index, -1),
+                        True,
+                    )
+                )
+        lock_hits = [daily_rule for daily_rule in daily_lock if daily_rule.hit(balance)]
+        best_fail = max(fail_hits, key=lambda item: item[0]) if fail_hits else None
+        best_lock = max(lock_hits, key=lambda daily_rule: daily_rule.level) if lock_hits else None
+
+        if best_fail is not None and (best_lock is None or best_fail[0] >= best_lock.level):
+            first_breach = _to_breach(best_fail[1], point.time)
+            if best_fail[2]:
+                dll_hits.append(first_breach)
+            last_balance = best_fail[0]
+            break
+        if best_lock is not None:
+            hit = _to_breach(best_lock.breach_event(balance, session, day_index, -1), point.time)
             dll_hits.append(hit)
-            if dll_fails and first_breach is None:
-                first_breach = hit
+            last_balance = best_lock.level
+            locked_session = True
+            continue
         last_balance = balance
 
     n_sessions = len(sessions)
@@ -160,7 +179,7 @@ def check_equity_curve(
             "marks remain invisible — this check tightens the trade-log verdict "
             "but is still an optimistic bound"
         )
-    if trailing is None and static is None and daily is None:
+    if not trailing and not static and not daily_fail and not daily_lock:
         result.warnings.append(f"phase {name!r} has no equity-path rules to check")
     return result
 

@@ -12,7 +12,7 @@ import re
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from quantlab.errors import MappingError
 
@@ -71,9 +71,11 @@ DEFAULT_SHORT_VALUES = ("short", "sell", "s", "sellshort", "sld", "sold", "-1")
 
 
 class SideMapping(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
     column: str
-    long_values: tuple[str, ...] = DEFAULT_LONG_VALUES
-    short_values: tuple[str, ...] = DEFAULT_SHORT_VALUES
+    long_values: list[str] = Field(default_factory=lambda: list(DEFAULT_LONG_VALUES))
+    short_values: list[str] = Field(default_factory=lambda: list(DEFAULT_SHORT_VALUES))
 
 
 class ColumnMapping(BaseModel):
@@ -82,6 +84,8 @@ class ColumnMapping(BaseModel):
     Only `exit_time` and `pnl` are strictly required; everything else has a
     sensible default (entry_time falls back to exit_time, quantity to 1, ...).
     """
+
+    model_config = ConfigDict(extra="forbid", strict=True)
 
     entry_time: str | None = None
     exit_time: str | None = None
@@ -101,12 +105,18 @@ class ColumnMapping(BaseModel):
 
     @classmethod
     def from_yaml(cls, path: Path | str) -> ColumnMapping:
-        raw = yaml.safe_load(Path(path).read_text())
+        try:
+            raw = yaml.safe_load(Path(path).read_text())
+        except (OSError, UnicodeError, yaml.YAMLError) as exc:
+            raise MappingError(f"Could not read mapping file {path}: {exc}") from exc
         if not isinstance(raw, dict):
             raise MappingError(f"Mapping file {path} must contain a YAML mapping")
         if isinstance(raw.get("side"), str):
             raw["side"] = {"column": raw["side"]}
-        return cls.model_validate(raw)
+        try:
+            return cls.model_validate(raw)
+        except ValidationError as exc:
+            raise MappingError(f"Invalid mapping file {path}: {exc}") from exc
 
     @classmethod
     def from_pairs(cls, pairs: list[str], base: ColumnMapping | None = None) -> ColumnMapping:

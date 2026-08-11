@@ -22,5 +22,24 @@
  {
   "granted_utc": "2026-07-19T22:55:06+00:00",
   "window_start": "2026-02-01"
+ },
+ {
+  "granted_utc": "2026-08-10T19:56:23+00:00",
+  "window_start": "2026-02-01",
+  "window_end": "2026-08-10"
+ },
+ {
+  "granted_utc": "2026-08-10T20:36:02+00:00",
+  "window_start": "2026-02-01",
+  "window_end": "2026-07-17",
+  "data_manifest_sha256": "b7eaac3fa619817e0785de90c755bd21750d1cc21287db7cae9bf0012f1415ff",
+  "universe_sha256": "eb978a05f3bc72a0358e88ea18a974288b45f0f191ad0989aaa27160d2d90e43"
+ },
+ {
+  "granted_utc": "2026-08-11T02:46:51+00:00",
+  "window_start": "2026-02-01",
+  "window_end": "2026-07-17",
+  "data_manifest_sha256": "b5ba4c066e81ace34896f7a9d9091448d6bcd0838243ebdec8c1bfe24e667d4b",
+  "universe_sha256": "eb978a05f3bc72a0358e88ea18a974288b45f0f191ad0989aaa27160d2d90e43"
  }
 ]

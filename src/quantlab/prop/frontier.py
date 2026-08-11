@@ -28,6 +28,7 @@ granularity, margin, and larger-size psychology.
 from __future__ import annotations
 
 import dataclasses
+import math
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -87,8 +88,10 @@ def compute_scale_frontier(
 
     Grid points share the seed (common random numbers), so differences
     between scales are the treatment effect, not resampling noise."""
-    if not scales or any(s <= 0 for s in scales):
+    if not scales or any(not math.isfinite(s) or s <= 0 for s in scales):
         raise QuantLabError(f"--scales must be positive (got {list(scales)})")
+    if not math.isfinite(ruin_cap) or not 0 <= ruin_cap <= 1:
+        raise QuantLabError(f"--ruin-cap must be in [0, 1] (got {ruin_cap})")
     from quantlab.prop.montecarlo import ensure_crn_seed
 
     cfg = ensure_crn_seed(mc_cfg or MCConfig())
@@ -183,7 +186,7 @@ def compute_multiaccount(
     net = report.economics.net_per_path
     if net is None:
         raise QuantLabError("report carries no per-path net (older report object)")
-    if any(k < 1 for k in k_list):
+    if not k_list or any(k < 1 for k in k_list):
         raise QuantLabError(f"--accounts must be >= 1 (got {list(k_list)})")
     p_lose = float(np.mean(net < 0))
     var5 = float(np.percentile(net, 5))

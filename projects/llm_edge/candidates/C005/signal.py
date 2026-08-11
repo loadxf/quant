@@ -1,17 +1,8 @@
-"""C005 CONTROL: low-volume-conditioned reversal, inverted conditioning (spec.md)."""
+"""C005 control: low-volume-conditioned reversal."""
 
-import pandas as pd
-from edgelab.grammar import build_terminals
-
-
-def compute_signal(fields: dict[str, pd.DataFrame]) -> pd.DataFrame:
-    terms = build_terminals(
-        fields["open"],
-        fields["high"],
-        fields["low"],
-        fields["close"],
-        fields["adjclose"],
-        fields["volume"],
-    )
-    low_vol_weight = 1.0 - terms["volz"].rank(axis=1, pct=True)
-    return -terms["ret5"] * low_vol_weight
+SIGNAL_KIND = "volume_weighted_reversal"
+ORIGIN = "G4"
+HOLDOUT_END = "2030-01-01"
+RETURN_WINDOW = 5
+VOL_WINDOW = 63
+PERTURBATIONS = ("RETURN_WINDOW", "VOL_WINDOW")

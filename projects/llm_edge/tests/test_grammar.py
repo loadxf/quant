@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import pytest
 from edgelab.grammar import (
     MAX_DEPTH,
     MAX_NODES,
@@ -10,6 +11,7 @@ from edgelab.grammar import (
     depth,
     evaluate,
     mutate,
+    parse_expr,
     random_expr,
     to_string,
 )
@@ -54,6 +56,25 @@ def test_serialization_roundtrip_dedupes():
     rng = np.random.default_rng(1)
     seen = {to_string(random_expr(rng)) for _ in range(300)}
     assert len(seen) > 100  # grammar generates diverse expressions
+
+
+@pytest.mark.parametrize(
+    "expression",
+    [
+        "",
+        "(",
+        "()",
+        ")",
+        "(unknown ret1)",
+        "(lag ret1)",
+        "(mul ret1)",
+        "(lag ret1 99999)",
+        "(cs_rank (cs_rank (cs_rank (cs_rank (cs_rank ret1)))))",
+    ],
+)
+def test_parser_rejects_malformed_expressions(expression):
+    with pytest.raises(ValueError):
+        parse_expr(expression)
 
 
 def test_mutation_crossover_respect_bounds():

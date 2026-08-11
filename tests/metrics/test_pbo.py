@@ -33,6 +33,12 @@ class TestAnchors:
         b = compute_pbo(_noise(), partitions=8)
         assert a.pbo == b.pbo and a.logit_mean == b.logit_mean
 
+    def test_large_partition_count_is_sampled_without_enumeration(self) -> None:
+        result = compute_pbo(_noise(t=64, n=4), partitions=32, seed=7)
+        assert result.combos_total == 601_080_390
+        assert result.combos_evaluated == 12_870
+        assert result == compute_pbo(_noise(t=64, n=4), partitions=32, seed=7)
+
     def test_more_variants_raise_noise_pbo_stability(self) -> None:
         # PBO is a probability: always inside [0, 1] and JSON-clean.
         import json
@@ -45,6 +51,11 @@ class TestAnchors:
 
 
 class TestValidation:
+    @pytest.mark.parametrize("partitions", [4.0, True])
+    def test_partitions_must_be_an_integer(self, partitions) -> None:
+        with pytest.raises(QuantLabError, match="integer"):
+            compute_pbo(_noise(), partitions=partitions)
+
     def test_odd_partitions_rejected(self) -> None:
         with pytest.raises(QuantLabError, match="even"):
             compute_pbo(_noise(), partitions=15)
@@ -62,6 +73,16 @@ class TestValidation:
         m[3, 4] = np.nan
         with pytest.raises(QuantLabError, match="NaN"):
             compute_pbo(m)
+
+    @pytest.mark.parametrize("value", [0.0, 1.0])
+    def test_all_constant_variants_are_unavailable(self, value: float) -> None:
+        with pytest.raises(QuantLabError, match="zero return variance"):
+            compute_pbo(np.full((64, 4), value), partitions=8)
+
+    def test_identical_variant_paths_are_unavailable(self) -> None:
+        path = _noise(t=64, n=1)
+        with pytest.raises(QuantLabError, match="distinct variant"):
+            compute_pbo(np.repeat(path, 4, axis=1), partitions=8)
 
     def test_remainder_days_dropped_with_note(self) -> None:
         result = compute_pbo(_noise(t=323), partitions=16)

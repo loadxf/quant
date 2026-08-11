@@ -17,8 +17,8 @@ regardless of direction.
 
 **Signal (exact formula).** `coherence = gap * intraday` (product of the day's overnight and
 intraday simple returns; positive iff same sign, magnitude scales with both). Signal =
-cross-sectional value of `coherence`, smoothed `roll_mean(3)` to reduce single-day noise.
-Decile long-short, held 1 day, t+2 execution, S&P 500 equities.
+cross-sectional value of `coherence`, smoothed with `rolling(3, min_periods=2).mean()` to
+reduce single-day noise. Decile long-short, held 1 day, t+2 execution, S&P 500 equities.
 
 **Predicted sign:** positive. **Gate-2 comparisons:** daily-return correlation with C004
 (-ret5) and C006 (-intraday5) reported; |corr| > 0.6 with either declares it a reversal

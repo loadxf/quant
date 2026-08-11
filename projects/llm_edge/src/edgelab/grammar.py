@@ -105,19 +105,31 @@ def to_string(expr) -> str:
 
 def parse_expr(s: str):
     """Inverse of to_string: parse '(op child .. )' S-expressions back to tuples."""
+    if not isinstance(s, str) or not s.strip():
+        raise ValueError("expression must be a non-empty string")
     tokens = s.replace("(", " ( ").replace(")", " ) ").split()
     pos = 0
 
     def parse():
         nonlocal pos
+        if pos >= len(tokens):
+            raise ValueError(f"unterminated expression: {s}")
         tok = tokens[pos]
         pos += 1
         if tok == "(":
             items = []
-            while tokens[pos] != ")":
+            while True:
+                if pos >= len(tokens):
+                    raise ValueError(f"unterminated expression: {s}")
+                if tokens[pos] == ")":
+                    break
                 items.append(parse())
             pos += 1
+            if not items:
+                raise ValueError("empty expression is invalid")
             return tuple(items)
+        if tok == ")":
+            raise ValueError(f"unexpected ')' in expression: {s}")
         if tok.lstrip("-").isdigit():
             return int(tok)
         return tok
@@ -125,7 +137,38 @@ def parse_expr(s: str):
     result = parse()
     if pos != len(tokens):
         raise ValueError(f"trailing tokens in expression: {s}")
+    _validate_expr(result)
+    if depth(result) > MAX_DEPTH or count_nodes(result) > MAX_NODES:
+        raise ValueError("expression exceeds the grammar complexity bounds")
     return result
+
+
+def _validate_expr(expr) -> None:
+    if isinstance(expr, str):
+        if expr not in TERMINALS:
+            raise ValueError(f"unknown terminal {expr!r}")
+        return
+    if not isinstance(expr, tuple) or not expr or not isinstance(expr[0], str):
+        raise ValueError(f"invalid expression node {expr!r}")
+    op = expr[0]
+    if op in UNARY:
+        if len(expr) != 2:
+            raise ValueError(f"{op} expects one operand")
+        _validate_expr(expr[1])
+        return
+    if op in ROLLING:
+        allowed = LAGS if op in ("lag", "delta") else WINDOWS
+        if len(expr) != 3 or type(expr[2]) is not int or expr[2] not in allowed:
+            raise ValueError(f"{op} window must be one of {allowed}")
+        _validate_expr(expr[1])
+        return
+    if op in BINARY:
+        if len(expr) != 3:
+            raise ValueError(f"{op} expects two operands")
+        _validate_expr(expr[1])
+        _validate_expr(expr[2])
+        return
+    raise ValueError(f"unknown op {op!r}")
 
 
 def count_nodes(expr) -> int:

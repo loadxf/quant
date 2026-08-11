@@ -15,8 +15,12 @@ dependencies = [
     "requests>=2.31",
 ]
 
+[project.optional-dependencies]
+test = ["pytest>=9.1"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["src"]

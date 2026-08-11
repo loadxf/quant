@@ -1,18 +1,8 @@
-"""C011: G2 winner — gap volatility minus monthly return (spec.md)."""
+"""C011: gap volatility minus monthly return."""
 
-import pandas as pd
-from edgelab.grammar import build_terminals, evaluate
-
-EXPR = ("sub", ("roll_std", "gap", 63), "ret21")
-
-
-def compute_signal(fields: dict[str, pd.DataFrame]) -> pd.DataFrame:
-    terms = build_terminals(
-        fields["open"],
-        fields["high"],
-        fields["low"],
-        fields["close"],
-        fields["adjclose"],
-        fields["volume"],
-    )
-    return evaluate(EXPR, terms)
+SIGNAL_KIND = "expression_minus_return"
+ORIGIN = "G2"
+HOLDOUT_END = "2030-01-01"
+EXPR = ("roll_std", "gap", 63)
+RETURN_WINDOW = 21
+PERTURBATIONS = ("EXPR", "RETURN_WINDOW")

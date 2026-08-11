@@ -1,32 +1,21 @@
-"""C013: volume-recession-conditioned monthly reversal, held 21 days (spec.md)."""
+"""C013: volume-recession-conditioned monthly reversal."""
 
-import pandas as pd
-from edgelab.grammar import build_terminals
-
+SIGNAL_KIND = "volume_recession_monthly_reversal"
+ORIGIN = "G3"
+HOLDOUT_END = "2030-01-01"
 SPIKE_Z = 1.5
 POST_DAYS = 5
 WINDOW = 252
 MIN_SPIKES = 3
 HOLD = 21
-
-
-def compute_signal(fields: dict[str, pd.DataFrame]) -> pd.DataFrame:
-    terms = build_terminals(
-        fields["open"],
-        fields["high"],
-        fields["low"],
-        fields["close"],
-        fields["adjclose"],
-        fields["volume"],
-    )
-    volz = terms["volz"]
-
-    post_mean = sum(volz.shift(-k) for k in range(1, POST_DAYS + 1)) / POST_DAYS
-    recession = (volz - post_mean).where(volz > SPIKE_Z)
-    recession_known = recession.shift(POST_DAYS)
-    rec_speed = recession_known.rolling(WINDOW, min_periods=MIN_SPIKES).mean()
-    n_spikes = recession_known.notna().rolling(WINDOW, min_periods=1).sum()
-    rec_speed = rec_speed.where(n_spikes >= MIN_SPIKES)
-
-    rev21 = -terms["ret21"]
-    return rev21 * rec_speed.rank(axis=1, pct=True)
+VOL_WINDOW = 63
+RETURN_WINDOW = 21
+PERTURBATIONS = (
+    "SPIKE_Z",
+    "POST_DAYS",
+    "WINDOW",
+    "MIN_SPIKES",
+    "VOL_WINDOW",
+    "RETURN_WINDOW",
+    "HOLD",
+)

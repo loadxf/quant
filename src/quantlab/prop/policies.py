@@ -24,6 +24,7 @@ one log — not an optimal-stopping solution, and framed as such.
 from __future__ import annotations
 
 import dataclasses
+import math
 from dataclasses import dataclass, field
 
 from quantlab.errors import QuantLabError
@@ -106,8 +107,13 @@ def compute_policy_grid(
     extract_weights: tuple[float | None, ...] = DEFAULT_EXTRACTS,
 ) -> PolicyGrid:
     """Full-MC comparison across the payout-policy grid (CRN per cell)."""
-    if not buffers or any(b < 0 for b in buffers):
+    if not buffers or any(not math.isfinite(b) or b < 0 for b in buffers):
         raise QuantLabError(f"--buffers must be >= 0 (got {list(buffers)})")
+    if not extract_weights or any(
+        value is not None and (not math.isfinite(value) or not 0 < value <= 1)
+        for value in extract_weights
+    ):
+        raise QuantLabError("--extract-weights must contain None or finite values in (0, 1]")
     from quantlab.prop.montecarlo import ensure_crn_seed
 
     cfg = ensure_crn_seed(mc_cfg or MCConfig())

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+from pydantic import ValidationError
 
 from quantlab.errors import ConfigError
 from quantlab.prop.config import (
@@ -137,6 +138,94 @@ class TestConfigValidation:
         with pytest.raises(ConfigError, match="payout_haircut"):
             FeeSchedule(payout_haircut=-0.3)
         assert FeeSchedule(payout_haircut=0.35).payout_haircut == 0.35
+
+    @pytest.mark.parametrize(
+        "fragment",
+        [
+            {"account_size": -1},
+            {"account_size": float("nan")},
+            {"day_boundary": {"tz": "UTC", "cutoff_hour": 24}},
+        ],
+    )
+    def test_firm_rejects_impossible_domains(self, fragment: dict) -> None:
+        from quantlab.prop.config import FirmConfig
+
+        data = {
+            "name": "bad",
+            "account_size": 1_000,
+            "phases": [{"name": "challenge", "profit_target": 100}],
+            "funded": {"name": "funded"},
+        }
+        data.update(fragment)
+        with pytest.raises(ValidationError):
+            FirmConfig.model_validate(data)
+
+    @pytest.mark.parametrize(
+        "fragment",
+        [
+            {"account_size": True},
+            {"day_boundary": {"tz": "UTC", "cutoff_hour": False}},
+            {"sources": ["javascript:alert(1)"]},
+        ],
+    )
+    def test_firm_rejects_bool_numeric_and_unsafe_source_urls(self, fragment: dict) -> None:
+        from quantlab.prop.config import FirmConfig
+
+        data = {
+            "name": "bad",
+            "account_size": 1_000,
+            "phases": [{"name": "challenge", "profit_target": 100}],
+            "funded": {"name": "funded"},
+        }
+        data.update(fragment)
+        with pytest.raises(ValidationError):
+            FirmConfig.model_validate(data)
+
+    def test_negative_fee_override_is_rejected(self) -> None:
+        from quantlab.prop.config import with_fee_overrides
+
+        with pytest.raises(ConfigError, match=">= 0"):
+            with_fee_overrides(load_firm("topstep_50k"), extra_monthly=-1)
+
+    @pytest.mark.parametrize(
+        "duplicate_rules",
+        [
+            [
+                {"type": "scaling_plan", "tiers": [{"min_balance": 0.0, "max_contracts": 1.0}]},
+                {"type": "scaling_plan", "half_until_safety_net": True},
+            ],
+            [
+                {"type": "contract_limit", "max_contracts": 1.0},
+                {"type": "contract_limit", "max_contracts": 2.0},
+            ],
+            [
+                {"type": "time_limit", "max_calendar_days": 10},
+                {"type": "time_limit", "max_calendar_days": 20},
+            ],
+            [
+                {"type": "min_trading_days", "days": 1},
+                {"type": "min_trading_days", "days": 2},
+            ],
+        ],
+    )
+    def test_duplicate_singleton_phase_rules_are_rejected(self, duplicate_rules) -> None:
+        from quantlab.prop.config import FirmConfig
+
+        with pytest.raises(Exception, match="duplicate"):
+            FirmConfig.model_validate(
+                {
+                    "name": "ambiguous",
+                    "account_size": 1_000.0,
+                    "phases": [
+                        {
+                            "name": "challenge",
+                            "profit_target": 100.0,
+                            "rules": duplicate_rules,
+                        }
+                    ],
+                    "funded": {"name": "funded", "rules": []},
+                }
+            )
 
 
 class TestConsistencyGateMath:

@@ -1,9 +1,9 @@
 """edgelab: empirical harness for the LLM-novelty trading-edge experiment.
 
 All backtests route through backtest.run_backtest, which writes every evaluation
-to the append-only trials ledger (candidates/trials_ledger.csv). The Deflated
-Sharpe Ratio of any final claim is computed against the FULL ledger, so no
-evaluation escapes multiple-testing accounting.
+to a concurrency-safe, git-audited trials ledger (candidates/trials_ledger.csv).
+Retrospective deviation D5 records why the historical mixed-window ledger cannot
+currently supply a calibrated Deflated Sharpe Ratio; promotion fails closed.
 """
 
 from pathlib import Path
@@ -22,3 +22,7 @@ VALIDATION_START = "2019-01-01"
 VALIDATION_END = "2023-12-31"
 HOLDOUT_START = "2024-01-01"
 POST_CUTOFF_START = "2026-02-01"  # provably outside model training data
+# The data actually shown to the model during G1 generation.  This must never
+# drift with wall-clock time: later observations are evaluation/audit data, not
+# part of the historical hypothesis provenance.
+G1_GENERATION_END = "2026-07-17"

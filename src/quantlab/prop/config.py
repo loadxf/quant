@@ -13,15 +13,24 @@ Firms change rules constantly — re-verify before trusting EV outputs.
 
 from __future__ import annotations
 
+import math
 from typing import Annotated, Literal
+from urllib.parse import urlparse
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from quantlab.errors import ConfigError
 
 
 class _RuleBase(BaseModel):
-    model_config = {"extra": "forbid"}
+    model_config = {"extra": "forbid", "allow_inf_nan": False, "strict": True}
+
+
+PositiveFloat = Annotated[float, Field(gt=0)]
+NonNegativeFloat = Annotated[float, Field(ge=0)]
+PositiveInt = Annotated[int, Field(gt=0)]
+NonNegativeInt = Annotated[int, Field(ge=0)]
 
 
 class TrailingDrawdownSpec(_RuleBase):
@@ -41,8 +50,8 @@ class TrailingDrawdownSpec(_RuleBase):
     """
 
     type: Literal["trailing_drawdown"] = "trailing_drawdown"
-    amount: float | None = None
-    pct: float | None = None  # percent of account size (FTMO-style)
+    amount: PositiveFloat | None = None
+    pct: PositiveFloat | None = None  # percent of account size (FTMO-style)
     ratchet: Literal["eod", "intraday"] = "eod"
     threshold_cap: float | None = None  # absolute equity level; None = trails forever
     inclusive: bool = True  # breach on touch (<=) vs strictly below (<)
@@ -52,8 +61,8 @@ class StaticMaxLossSpec(_RuleBase):
     """Fixed floor at initial_balance - amount (FTMO 2-Step Max Loss)."""
 
     type: Literal["static_max_loss"] = "static_max_loss"
-    amount: float | None = None
-    pct: float | None = None
+    amount: PositiveFloat | None = None
+    pct: PositiveFloat | None = None
     inclusive: bool = False  # FTMO: violated when equity drops BELOW the limit
 
 
@@ -71,8 +80,8 @@ class DailyLossLimitSpec(_RuleBase):
     """
 
     type: Literal["daily_loss_limit"] = "daily_loss_limit"
-    amount: float | None = None
-    pct: float | None = None  # percent of account size (FTMO: width fixed vs INITIAL)
+    amount: PositiveFloat | None = None
+    pct: PositiveFloat | None = None  # percent of account size (FTMO: width fixed vs INITIAL)
     anchor: Literal["day_open_balance", "prev_midnight_balance"] = "day_open_balance"
     effect: Literal["fail", "lockout"] = "fail"
     inclusive: bool = True
@@ -93,34 +102,34 @@ class ConsistencySpec(_RuleBase):
     """
 
     type: Literal["consistency"] = "consistency"
-    max_best_day_pct: float = 50.0
+    max_best_day_pct: Annotated[float, Field(gt=0, le=100)] = 50.0
     basis: Literal["profit_target", "total_profit"] = "total_profit"
     effect: Literal["raise_target", "gate_payout"] = "raise_target"
 
 
 class MinTradingDaysSpec(_RuleBase):
     type: Literal["min_trading_days"] = "min_trading_days"
-    days: int = 1
+    days: NonNegativeInt = 1
 
 
 class TimeLimitSpec(_RuleBase):
     """Hard calendar-day expiry for a phase (Apex 4.0: 30-day evals)."""
 
     type: Literal["time_limit"] = "time_limit"
-    max_calendar_days: int = 30
+    max_calendar_days: PositiveInt = 30
 
 
 class ContractLimitSpec(_RuleBase):
     """Advisory position-size check on the source log (not enforced in MC)."""
 
     type: Literal["contract_limit"] = "contract_limit"
-    max_contracts: float = 0
-    micros_multiplier: float = 10.0  # micros allowed at Nx the mini limit
+    max_contracts: PositiveFloat
+    micros_multiplier: PositiveFloat = 10.0  # micros allowed at Nx the mini limit
 
 
 class ScalingTier(_RuleBase):
-    min_balance: float
-    max_contracts: float
+    min_balance: NonNegativeFloat
+    max_contracts: PositiveFloat
 
 
 class ScalingPlanSpec(_RuleBase):
@@ -134,10 +143,10 @@ class ScalingPlanSpec(_RuleBase):
       balance reaches the payout safety-net floor, then full size unlocks
       permanently — even if the balance later drops (Apex 4.0 PA).
 
-    Simulation maps contracts to a PnL weight via base_contracts (the
-    log's max observed position by default, `--base-contracts` to
-    override): cap_weight = allowed / base — the same-fill linear-scaling
-    assumption.
+    Simulation maps contracts to a PnL weight via base_contracts (the log's
+    peak concurrent gross exposure in mini-equivalents by default;
+    `--base-contracts` uses the same unit): cap_weight = allowed / base —
+    the same-fill linear-scaling assumption.
     """
 
     type: Literal["scaling_plan"] = "scaling_plan"
@@ -152,6 +161,8 @@ class ScalingPlanSpec(_RuleBase):
             mins = [t.min_balance for t in self.tiers]
             if mins != sorted(mins) or len(set(mins)) != len(mins):
                 raise ConfigError("scaling_plan tiers must have strictly increasing min_balance")
+            if mins[0] != 0:
+                raise ConfigError("scaling_plan first tier must start at min_balance 0")
             if any(t.max_contracts <= 0 for t in self.tiers):
                 raise ConfigError("scaling_plan tiers need positive max_contracts")
         return self
@@ -172,7 +183,16 @@ RuleSpec = Annotated[
 
 class DayBoundarySpec(_RuleBase):
     tz: str = "America/Chicago"
-    cutoff_hour: int = 17
+    cutoff_hour: Annotated[int, Field(ge=0, le=23)] = 17
+
+    @field_validator("tz")
+    @classmethod
+    def _known_timezone(cls, value: str) -> str:
+        try:
+            ZoneInfo(value)
+        except (ZoneInfoNotFoundError, TypeError) as exc:
+            raise ValueError(f"unknown timezone {value!r}") from exc
+        return value
 
     def to_boundary(self):  # -> quantlab.schema.trade.DayBoundary
         """Single conversion point so every engine groups sessions identically."""
@@ -182,9 +202,9 @@ class DayBoundarySpec(_RuleBase):
 
 
 class PhaseConfig(_RuleBase):
-    name: str
-    profit_target: float | None = None  # None => funded phase (no target)
-    initial_balance: float | None = None  # None => account_size (Topstep XFA uses 0)
+    name: Annotated[str, Field(min_length=1)]
+    profit_target: PositiveFloat | None = None  # None => funded phase (no target)
+    initial_balance: NonNegativeFloat | None = None  # None => account_size (Topstep XFA uses 0)
     rules: list[RuleSpec] = Field(default_factory=list)
 
     def resolved_initial(self, account_size: float) -> float:
@@ -192,29 +212,35 @@ class PhaseConfig(_RuleBase):
 
 
 class QualifyingDays(_RuleBase):
-    count: int = 0
-    min_daily_profit: float = 0.0
+    count: NonNegativeInt = 0
+    min_daily_profit: NonNegativeFloat = 0.0
 
 
 class Reactivations(_RuleBase):
-    max: int = 0
-    fees: list[float] = Field(default_factory=list)
+    max: NonNegativeInt = 0
+    fees: list[NonNegativeFloat] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _fees_cover_reactivations(self) -> Reactivations:
+        if len(self.fees) > self.max:
+            raise ConfigError("reactivation fee entries cannot exceed the maximum reactivations")
+        return self
 
 
 class FeeSchedule(_RuleBase):
-    monthly: float = 0.0  # recurring eval subscription (Topstep/TPT; exclusive with one_time)
-    one_time: float = 0.0  # single eval fee (Apex 4.0, FTMO; exclusive with monthly)
-    reset: float = 0.0  # discounted retry fee replacing the next month (0 = full-price retry)
-    free_resets_per_cycle: int = 0  # informational; ignored by EV math (documented pessimistic)
-    activation: float = 0.0  # funded activation / PA fee
+    monthly: NonNegativeFloat = 0.0  # recurring eval subscription
+    one_time: NonNegativeFloat = 0.0  # single eval fee
+    reset: NonNegativeFloat = 0.0  # discounted retry fee
+    free_resets_per_cycle: NonNegativeInt = 0
+    activation: NonNegativeFloat = 0.0
     refundable_on_first_payout: bool = False  # FTMO 2-Step refunds the fee
     # Generic user-side overheads, off by default (presets stay 0 — e.g.
     # Topstep L1 data is free during the Combine and pro data fees only hit
     # Live Funded, outside the modeled funnel). Set via YAML or the
     # --extra-monthly / --per-payout-fee CLI knobs for platform/data
     # subscriptions and payout processing costs.
-    extra_monthly: float = 0.0  # recurring overhead billed while trading (eval AND funded)
-    per_payout: float = 0.0  # processing cost deducted from each payout
+    extra_monthly: NonNegativeFloat = 0.0
+    per_payout: NonNegativeFloat = 0.0
     # USER-SUPPLIED counterparty assumption (0-1): expected fraction of
     # payout value lost to denials/delays/firm failure. The tool has no
     # data on denial rates — this knob exists so users can price their
@@ -230,8 +256,6 @@ class FeeSchedule(_RuleBase):
                 "silently ignore the monthly fee."
             )
         if not 0.0 <= self.payout_haircut < 1.0:
-            # Guard the YAML/direct-construction path too, not just the CLI
-            # override: h >= 1 flips every payout negative, h < 0 inflates.
             raise ConfigError(
                 f"FeeSchedule.payout_haircut must be in [0, 1) (got {self.payout_haircut})"
             )
@@ -239,26 +263,26 @@ class FeeSchedule(_RuleBase):
 
 
 class PayoutPolicy(_RuleBase):
-    profit_split: float = 1.0  # trader's share
-    min_payout: float = 0.0
+    profit_split: Annotated[float, Field(gt=0, le=1)] = 1.0  # trader's share
+    min_payout: NonNegativeFloat = 0.0
     # Min calendar days between payout requests. Biweekly is the industry
     # norm, so it is the safe default for user YAMLs that omit the field;
     # set 0 explicitly for on-demand payout firms.
-    period_days: int = 14
+    period_days: NonNegativeInt = 14
     qualifying_days: QualifyingDays = Field(default_factory=QualifyingDays)
-    payout_cap_ladder: list[float] = Field(default_factory=list)  # per-payout caps, indexed
-    max_lifetime_payouts: int | None = None  # Apex 4.0: 6, then the PA closes
-    payout_share_of_balance: float | None = None  # Topstep: request up to 50% of balance
-    safety_net_floor: float | None = None  # balance must stay >= after payout (Apex)
-    buffer_above_initial: float | None = None  # TPT: withdraw only above initial + DD
+    payout_cap_ladder: list[PositiveFloat] = Field(default_factory=list)
+    max_lifetime_payouts: PositiveInt | None = None
+    payout_share_of_balance: Annotated[float, Field(gt=0, le=1)] | None = None
+    safety_net_floor: NonNegativeFloat | None = None
+    buffer_above_initial: NonNegativeFloat | None = None
     reactivations: Reactivations = Field(default_factory=Reactivations)
 
 
 class FirmConfig(_RuleBase):
-    name: str
+    name: Annotated[str, Field(min_length=1)]
     display_name: str = ""
     firm: str = ""
-    account_size: float
+    account_size: PositiveFloat
     day_boundary: DayBoundarySpec = Field(default_factory=DayBoundarySpec)
     phases: list[PhaseConfig] = Field(min_length=1)  # evaluation phases, in order
     funded: PhaseConfig
@@ -268,6 +292,15 @@ class FirmConfig(_RuleBase):
     sources: list[str] = Field(default_factory=list)
     notes: str = ""
 
+    @field_validator("sources")
+    @classmethod
+    def _safe_source_urls(cls, values: list[str]) -> list[str]:
+        for value in values:
+            parsed = urlparse(value)
+            if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+                raise ValueError(f"source must be an absolute HTTP(S) URL (got {value!r})")
+        return values
+
     @model_validator(mode="after")
     def _check(self) -> FirmConfig:
         for phase in self.phases:
@@ -275,6 +308,24 @@ class FirmConfig(_RuleBase):
                 raise ConfigError(f"evaluation phase {phase.name!r} needs a profit_target")
         if self.funded.profit_target is not None:
             raise ConfigError("funded phase must not define a profit_target")
+        names = [phase.name for phase in self.phases]
+        if len(names) != len(set(names)):
+            raise ConfigError("evaluation phase names must be unique")
+        if self.funded.name in names:
+            raise ConfigError("funded phase name must differ from evaluation phase names")
+        singleton_rules = (
+            ScalingPlanSpec,
+            ContractLimitSpec,
+            TimeLimitSpec,
+            MinTradingDaysSpec,
+        )
+        for phase in [*self.phases, self.funded]:
+            for rule_type in singleton_rules:
+                if sum(isinstance(rule, rule_type) for rule in phase.rules) > 1:
+                    rule_name = rule_type.model_fields["type"].default
+                    raise ConfigError(
+                        f"phase {phase.name!r} has duplicate {rule_name} rules"
+                    )
         return self
 
 
@@ -285,6 +336,11 @@ def with_fee_overrides(
     payout_haircut: float = 0.0,
 ) -> FirmConfig:
     """Copy of `firm` with user-side overhead/assumption knobs applied."""
+    values = (extra_monthly, per_payout, payout_haircut)
+    if not all(math.isfinite(value) for value in values):
+        raise ConfigError("fee overrides must be finite")
+    if extra_monthly < 0 or per_payout < 0:
+        raise ConfigError("--extra-monthly and --per-payout-fee must be >= 0")
     if not 0.0 <= payout_haircut < 1.0:
         raise ConfigError(f"--payout-haircut must be in [0, 1) (got {payout_haircut})")
     if extra_monthly <= 0 and per_payout <= 0 and payout_haircut <= 0:
@@ -304,6 +360,8 @@ def resolved_amount(
     account_size: float,
 ) -> float:
     """Collapse amount/pct into absolute dollars (pct is % of account size)."""
+    if not math.isfinite(account_size) or account_size <= 0:
+        raise ConfigError(f"account_size must be finite and positive (got {account_size})")
     if spec.amount is not None and spec.pct is not None:
         raise ConfigError(f"{spec.type}: set either amount or pct, not both")
     if spec.amount is not None:

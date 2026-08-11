@@ -127,3 +127,40 @@ class TestPostLiquidationGuard:
         assert check.first_breach is not None
         assert check.first_breach.rule.startswith("trailing_drawdown")
         assert check.daily_loss_hits == []
+
+
+class TestMultipleRulesAndLockout:
+    def test_tightest_of_multiple_static_rules_fires_first(self) -> None:
+        from tests.prop.conftest import make_firm
+
+        firm = make_firm(
+            [
+                {"type": "static_max_loss", "amount": 1_000},
+                {"type": "static_max_loss", "amount": 5_000},
+            ],
+            target=10_000,
+        )
+        curve = _curve([("2026-03-02 15:00", 50_000), ("2026-03-02 16:00", 48_000)])
+        check = check_equity_curve(curve, firm)
+        assert check.first_breach is not None
+        assert check.first_breach.threshold == 49_000
+
+    def test_lockout_ignores_rest_of_session_and_rebases_next(self) -> None:
+        from tests.prop.conftest import make_firm
+
+        firm = make_firm(
+            [{"type": "daily_loss_limit", "amount": 1_000, "effect": "lockout"}],
+            target=10_000,
+        )
+        curve = _curve(
+            [
+                ("2026-03-02 15:00", 50_000),
+                ("2026-03-02 16:00", 48_900),  # locks at 49,000
+                ("2026-03-02 20:00", 40_000),  # prohibited remainder ignored
+                ("2026-03-03 15:00", 40_000),  # next session rebased to 49,000
+                ("2026-03-03 16:00", 39_500),  # only -500: no second lock
+            ]
+        )
+        check = check_equity_curve(curve, firm)
+        assert check.first_breach is None
+        assert len(check.daily_loss_hits) == 1

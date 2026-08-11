@@ -1,14 +1,17 @@
 """Standard strategy statistics from a trade log.
 
-Sharpe/Sortino are annualized from the DAILY equity series (252 trading
-days) — a documented assumption; trade-level ratios are not comparable
-across strategies with different trade frequencies.
+Sharpe/Sortino are annualized from the active-session equity series. Dense
+weekday logs use 252 periods/year; sparse logs scale that baseline by their
+observed complete-week session cadence. Trade-level ratios remain unsuitable
+for comparing strategies with different frequencies.
 """
 
 from __future__ import annotations
 
+import datetime as dt
 import math
 from dataclasses import dataclass, field
+from numbers import Integral, Real
 
 import numpy as np
 
@@ -75,15 +78,67 @@ def bootstrap_means(pnls: np.ndarray, n_samples: int = 4000, seed: int = 7) -> n
     robustness pillar's P(edge>0) (scorecard), so the two published
     statistics can never disagree about the same resampling question.
     """
-    n = pnls.size
+    values = np.asarray(pnls, dtype=float)
+    if values.ndim != 1 or not np.isfinite(values).all():
+        raise QuantLabError("bootstrap PnL must be a finite one-dimensional array")
+    if not isinstance(n_samples, Integral) or isinstance(n_samples, bool) or n_samples < 1:
+        raise QuantLabError(f"n_samples must be >= 1 (got {n_samples})")
+    if not isinstance(seed, Integral) or isinstance(seed, bool):
+        raise QuantLabError(f"seed must be an integer (got {seed!r})")
+    n_samples = int(n_samples)
+    seed = int(seed)
+    n = values.size
     if n < 2:
-        return np.repeat(float(pnls.mean()) if n else 0.0, 2)
+        return np.repeat(float(values.mean()) if n else 0.0, n_samples)
     rng = np.random.default_rng(seed)
-    idx = rng.integers(0, n, size=(n_samples, n))
-    return pnls[idx].mean(axis=1)
+    means = np.empty(n_samples)
+    chunk_rows = max(1, min(n_samples, 2_000_000 // n))
+    for start in range(0, n_samples, chunk_rows):
+        rows = min(chunk_rows, n_samples - start)
+        idx = rng.integers(0, n, size=(rows, n))
+        means[start : start + rows] = values[idx].mean(axis=1)
+    return means
 
 
-def _annualized_ratio(daily_returns: np.ndarray, downside_only: bool) -> float:
+def _session_cadence(
+    log: TradeLog, boundary: DayBoundary, days: list | None = None
+) -> tuple[float, bool]:
+    """Observed active sessions/week and whether a short-sample fallback was used."""
+    if days is None:
+        days = log.daily_groups(boundary)
+    if len(days) < 2:
+        return 5.0, True
+    first, last = days[0][0], days[-1][0]
+    first_monday = first - dt.timedelta(days=first.weekday())
+    start = first_monday if first_monday == first else first_monday + dt.timedelta(days=7)
+    counts: dict[dt.date, int] = {}
+    for session_date, _ in days:
+        monday = session_date - dt.timedelta(days=session_date.weekday())
+        counts[monday] = counts.get(monday, 0) + 1
+    n_weeks = 0
+    n_sessions = 0
+    monday = start
+    while monday + dt.timedelta(days=6) <= last:
+        n_weeks += 1
+        n_sessions += counts.get(monday, 0)
+        monday += dt.timedelta(days=7)
+    if n_weeks < 2 or n_sessions == 0:
+        return 5.0, True
+    return min(7.0, n_sessions / n_weeks), False
+
+
+def observed_sessions_per_week(
+    log: TradeLog, boundary: DayBoundary, days: list | None = None
+) -> float:
+    """Estimate active-session cadence from complete Monday-Sunday weeks."""
+    return _session_cadence(log, boundary, days)[0]
+
+
+def _annualized_ratio(
+    daily_returns: np.ndarray,
+    downside_only: bool,
+    periods_per_year: float = TRADING_DAYS_PER_YEAR,
+) -> float:
     if daily_returns.size < 2:
         return 0.0
     mean = daily_returns.mean()
@@ -98,7 +153,7 @@ def _annualized_ratio(daily_returns: np.ndarray, downside_only: bool) -> float:
         denom = float(daily_returns.std(ddof=1))
     if denom == 0.0:
         return float("inf") if mean > 0 else 0.0
-    return float(mean / denom * math.sqrt(TRADING_DAYS_PER_YEAR))
+    return float(mean / denom * math.sqrt(periods_per_year))
 
 
 def compute_metrics(
@@ -108,8 +163,24 @@ def compute_metrics(
     bootstrap_samples: int = 4_000,
     seed: int = 7,
 ) -> Metrics:
-    if starting_equity <= 0:
+    if (
+        not isinstance(starting_equity, Real)
+        or isinstance(starting_equity, bool)
+        or not math.isfinite(float(starting_equity))
+        or starting_equity <= 0
+    ):
         raise QuantLabError(f"starting_equity must be positive (got {starting_equity})")
+    if (
+        not isinstance(bootstrap_samples, Integral)
+        or isinstance(bootstrap_samples, bool)
+        or bootstrap_samples < 1
+    ):
+        raise QuantLabError(f"bootstrap_samples must be >= 1 (got {bootstrap_samples})")
+    if not isinstance(seed, Integral) or isinstance(seed, bool):
+        raise QuantLabError(f"seed must be an integer (got {seed!r})")
+    starting_equity = float(starting_equity)
+    bootstrap_samples = int(bootstrap_samples)
+    seed = int(seed)
     pnls = np.array([t.pnl for t in log.trades], dtype=float)
     n = pnls.size
     wins = pnls[pnls > 0]
@@ -136,7 +207,9 @@ def compute_metrics(
     daily = log.daily_groups(boundary)
     daily_pnls = np.array([sum(t.pnl for t in trades) for _, trades in daily], dtype=float)
     daily_returns = daily_pnls / starting_equity
-    years = max(len(daily) / TRADING_DAYS_PER_YEAR, 1e-9)
+    sessions_per_week, cadence_defaulted = _session_cadence(log, boundary, daily)
+    annual_periods = TRADING_DAYS_PER_YEAR * sessions_per_week / 5.0
+    years = max(len(daily) / annual_periods, 1e-9)
     annual_return = (float(pnls.sum()) / starting_equity) / years
 
     streak = longest = 0
@@ -168,8 +241,12 @@ def compute_metrics(
         profit_factor=profit_factor(pnls),
         max_drawdown=max_dd,
         max_drawdown_pct=max_dd / starting_equity if starting_equity else 0.0,
-        sharpe=_annualized_ratio(daily_returns, downside_only=False),
-        sortino=_annualized_ratio(daily_returns, downside_only=True),
+        sharpe=_annualized_ratio(
+            daily_returns, downside_only=False, periods_per_year=annual_periods
+        ),
+        sortino=_annualized_ratio(
+            daily_returns, downside_only=True, periods_per_year=annual_periods
+        ),
         # Zero drawdown with positive return is the BEST outcome, not the
         # worst — report inf, consistent with profit_factor's convention.
         mar=(
@@ -186,4 +263,9 @@ def compute_metrics(
         per_trade_pnl_std=per_trade_std,
         starting_equity=starting_equity,
         bootstrap_p_positive=p_positive,
+        extras={
+            "sessions_per_week": sessions_per_week,
+            "annualization_periods": annual_periods,
+            "cadence_defaulted": float(cadence_defaulted),
+        },
     )

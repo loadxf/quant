@@ -15,6 +15,23 @@ def _write(tmp_path: Path, text: str) -> Path:
 
 
 class TestLoadOhlcv:
+    def test_unreadable_csv_is_wrapped(self, tmp_path: Path) -> None:
+        with pytest.raises(MappingError, match="Could not read OHLCV CSV"):
+            load_ohlcv(tmp_path / "missing.csv")
+
+    def test_explicit_summer_and_winter_offsets_normalize_to_utc(
+        self, tmp_path: Path
+    ) -> None:
+        csv = _write(
+            tmp_path,
+            "datetime,open,high,low,close,volume\n"
+            "2024-07-01T09:30:00-04:00,1,2,0.5,1.5,10\n"
+            "2024-12-01T09:30:00-05:00,1,2,0.5,1.5,10\n",
+        )
+        frame, report = load_ohlcv(csv, tz="America/New_York")
+        assert report.bars_kept == 2
+        assert [stamp.hour for stamp in frame["datetime"]] == [13, 14]
+
     def test_normalizes_and_validates(self, tmp_path: Path) -> None:
         csv = _write(
             tmp_path,
@@ -43,10 +60,60 @@ class TestLoadOhlcv:
         _, report = load_ohlcv(csv)
         assert report.weekday_gaps == 2
 
+    @pytest.mark.parametrize("reverse", [False, True])
+    def test_conflicting_duplicate_timestamp_is_rejected_independent_of_order(
+        self, tmp_path: Path, reverse: bool
+    ) -> None:
+        rows = [
+            "2026-01-05 09:30,100,101,99,100.5,1200",
+            "2026-01-05 09:30,100,102,99,101.5,900",
+        ]
+        if reverse:
+            rows.reverse()
+        csv = _write(
+            tmp_path,
+            "datetime,open,high,low,close,volume\n" + "\n".join(rows) + "\n",
+        )
+        with pytest.raises(MappingError, match="Conflicting OHLCV bars"):
+            load_ohlcv(csv)
+
     def test_missing_columns(self, tmp_path: Path) -> None:
         csv = _write(tmp_path, "a,b\n1,2\n")
         with pytest.raises(MappingError, match="detect OHLCV"):
             load_ohlcv(csv)
+
+    def test_drops_nonfinite_prices_and_invalid_volume(self, tmp_path: Path) -> None:
+        csv = _write(
+            tmp_path,
+            "datetime,open,high,low,close,volume\n"
+            "2026-01-05 09:30,1,2,0.5,1.5,10\n"
+            "2026-01-05 09:31,1,inf,0.5,1.5,10\n"
+            "2026-01-05 09:32,1,2,0.5,1.5,-1\n"
+            "2026-01-05 09:33,1,2,0.5,1.5,nan\n",
+        )
+        frame, report = load_ohlcv(csv)
+        assert len(frame) == 1
+        assert len(report.dropped) == 3
+        assert any("volume" in reason for _, reason in report.dropped)
+
+    def test_drops_nonpositive_prices(self, tmp_path: Path) -> None:
+        csv = _write(
+            tmp_path,
+            "datetime,open,high,low,close,volume\n"
+            "2026-01-05 09:30,1,2,0.5,1.5,10\n"
+            "2026-01-05 09:31,-1,2,-2,1.5,10\n",
+        )
+        frame, report = load_ohlcv(csv)
+        assert len(frame) == 1
+        assert report.dropped == [(1, "price must be numeric, finite, and positive")]
+
+    def test_unknown_timezone_is_domain_error(self, tmp_path: Path) -> None:
+        csv = _write(
+            tmp_path,
+            "datetime,open,high,low,close\n2026-01-05,1,2,0.5,1.5\n",
+        )
+        with pytest.raises(MappingError, match="timezone"):
+            load_ohlcv(csv, tz="Not/A_Zone")
 
     def test_write_normalized_round_trip(self, tmp_path: Path) -> None:
         csv = _write(
@@ -59,11 +126,19 @@ class TestLoadOhlcv:
         assert text.splitlines()[0] == "datetime,open,high,low,close,volume"
         assert "2026-01-05T09:30:00Z" in text
 
+    def test_write_normalized_failure_is_domain_error(self, tmp_path: Path) -> None:
+        csv = _write(
+            tmp_path,
+            "datetime,open,high,low,close,volume\n"
+            "2026-01-05 09:30,1,2,0.5,1.5,10\n",
+        )
+        frame, _ = load_ohlcv(csv)
+        with pytest.raises(MappingError, match="Could not write normalized OHLCV"):
+            write_normalized(frame, tmp_path / "missing" / "norm.csv")
+
 
 class TestDstFallBack:
-    """Pass-2 regression: ambiguous=True stamped both passes of the repeated
-    fall-back hour with the SAME UTC offset, so the dedupe silently deleted
-    the entire standard-time hour of real bars."""
+    """Naive fold/gap stamps are rejected because they do not identify an instant."""
 
     def test_fall_back_hour_bars_survive(self, tmp_path: Path) -> None:
         csv = _write(
@@ -74,10 +149,10 @@ class TestDstFallBack:
             "2025-11-02 02:15,102,103,101,102.5,10\n",
         )
         frame, report = load_ohlcv(csv, tz="America/Chicago")
-        assert report.bars_kept == 3
+        assert report.bars_kept == 1
+        assert len(report.dropped) == 2
         assert report.duplicate_timestamps == 0
-        stamps = sorted(frame["datetime"])
-        assert len(set(stamps)) == 3  # distinct UTC instants
+        assert list(frame["open"]) == [102.0]
 
 
 class TestNewestFirstExport:
@@ -94,16 +169,13 @@ class TestNewestFirstExport:
             "2025-11-02 00:15,99,100,98,99.5,10\n",
         )
         frame, report = load_ohlcv(csv, tz="America/Chicago")
-        assert report.bars_kept == 4
+        assert report.bars_kept == 2
         assert report.duplicate_timestamps == 0
-        # Chronological output: opens must ascend 99 -> 100 (CDT) -> 101 (CST) -> 102
-        assert list(frame["open"]) == [99.0, 100.0, 101.0, 102.0]
+        assert list(frame["open"]) == [99.0, 102.0]
 
 
 class TestLoneFoldBar:
-    """Pass-3 regression: with a feed that records the fall-back hour once,
-    "infer" raises — the fallback must keep the bar (labeled DST), not NaT
-    every ambiguous stamp in the file (or crash on pandas 2.x)."""
+    """A lone fold stamp is still ambiguous and must not be guessed."""
 
     def test_single_ambiguous_bar_is_kept(self, tmp_path: Path) -> None:
         csv = _write(
@@ -114,8 +186,8 @@ class TestLoneFoldBar:
             "2025-11-02 02:15,102,103,101,102.5,10\n",
         )
         _frame, report = load_ohlcv(csv, tz="America/Chicago")
-        assert report.bars_kept == 3
-        assert not report.dropped
+        assert report.bars_kept == 2
+        assert report.dropped == [(1, "unparseable, ambiguous, or nonexistent local timestamp")]
 
 
 class TestMultiTransitionFolds:
@@ -127,7 +199,7 @@ class TestMultiTransitionFolds:
         csv = _write(
             tmp_path,
             "Date,Open,High,Low,Close,Volume\n"
-            "2024-11-03 00:15,1,2,0,1,1\n"
+            "2024-11-03 00:15,1,2,0.5,1,1\n"
             "2024-11-03 01:15,2,3,1,2,1\n"  # CDT pass
             "2024-11-03 01:15,3,4,2,3,1\n"  # CST pass (real bar)
             "2024-11-03 02:15,4,5,3,4,1\n"
@@ -136,9 +208,9 @@ class TestMultiTransitionFolds:
             "2025-11-02 02:15,7,8,6,7,1\n",
         )
         frame, report = load_ohlcv(csv, tz="America/Chicago")
-        assert report.bars_kept == 7
+        assert report.bars_kept == 4
         assert report.duplicate_timestamps == 0
-        assert list(frame["open"]) == [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0]
+        assert list(frame["open"]) == [1.0, 4.0, 5.0, 7.0]
 
 
 class TestNonHourFoldWidth:
@@ -150,17 +222,15 @@ class TestNonHourFoldWidth:
         csv = _write(
             tmp_path,
             "Date,Open,High,Low,Close,Volume\n"
-            "2024-04-07 01:15,1,2,0,1,1\n"
+            "2024-04-07 01:15,1,2,0.5,1,1\n"
             "2024-04-07 01:45,2,3,1,2,1\n"  # DST pass (+11:00)
             "2024-04-07 01:45,3,4,2,3,1\n"  # standard pass (+10:30)
             "2024-04-07 02:15,4,5,3,4,1\n",
         )
         frame, report = load_ohlcv(csv, tz="Australia/Lord_Howe")
-        assert report.bars_kept == 4
-        assert list(frame["open"]) == [1.0, 2.0, 3.0, 4.0]
+        assert report.bars_kept == 2
+        assert list(frame["open"]) == [1.0, 4.0]
         assert [t.strftime("%H:%M") for t in frame["datetime"]] == [
             "14:15",
-            "14:45",
-            "15:15",
             "15:45",
         ]
