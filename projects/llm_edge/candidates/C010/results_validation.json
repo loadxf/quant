@@ -1,44 +1,81 @@
 {
  "candidate_id": "C010",
+ "research_identity": {
+  "candidate_ids": [
+   "C010"
+  ],
+  "spec_sha256": {
+   "C010": "2bcaf1aec350c1e2225b8e836bc3b4e7d69c8dcb2ad73302a6a33d0fed0a0b9e"
+  },
+  "signal_sha256": {
+   "C010": "4f3af1ab0bc5a56a9c4d0525126d227030561f105e59dda27b46e6fb74d4cca5"
+  },
+  "engine_sha256": "342f0f5248c5aa1169329b5aeb66305dc7a18ade15db58b1bc8718c677652e76",
+  "environment_sha256": "40eb75ca497e78acbc331a88a96ea5571f12ed832d8bc99c4440057f15b0ca27",
+  "data_manifest_sha256": "b5ba4c066e81ace34896f7a9d9091448d6bcd0838243ebdec8c1bfe24e667d4b",
+  "universe_sha256": "eb978a05f3bc72a0358e88ea18a974288b45f0f191ad0989aaa27160d2d90e43",
+  "universe_counts": {
+   "equities": 503,
+   "etfs": 71
+  }
+ },
  "params": {
   "hold": 1,
   "quantile": 0.1,
   "min_names": 20
  },
+ "data": {
+  "universe_size": 503,
+  "panel_start": "1970-01-02",
+  "evaluation_start": "2005-01-01",
+  "end": "2023-12-29"
+ },
  "train": {
-  "sr_net": 0.6887035330963845,
-  "nw_t": 2.808615451053656,
+  "sr_net": 0.6939815344130337,
+  "nw_t": 2.830577745652789,
   "n_obs": 3523
  },
  "validation": {
-  "sr_net": 0.5662582914669932,
-  "sr_gross": 0.7195910476507693,
-  "nw_t": 1.4104489060830894,
+  "sr_net": 0.5646331139576789,
+  "sr_gross": 0.7175544210725852,
+  "nw_t": 1.4057052920716788,
   "n_obs": 1258,
-  "mean_daily_turnover": 0.1782969398225075
+  "mean_daily_turnover": 0.17753363507565187,
+  "cost_sweep_sr": {
+   "0": 0.7175544210725852,
+   "5": 0.6410797414315308,
+   "10": 0.5646331139576789,
+   "25": 0.335498685817899
+  }
  },
- "cpcv": {
+ "combinatorial_subperiod_stability": {
+  "interpretation": "combinatorial_subperiod_stability_not_oos",
   "n_paths": 28,
-  "median_sr": 0.6717605950489289,
-  "q25_sr": 0.5366026287464425,
-  "min_sr": 0.1635172027518967,
+  "median_sr": 0.7115059590463473,
+  "q25_sr": 0.6304250435014829,
+  "min_sr": 0.42309301264117954,
   "frac_positive": 1.0
  },
  "gate1": {
   "val_sr_gt_0.5": true,
   "abs_t_gt_2": false,
   "sign_positive": true,
-  "cpcv_median_gt_0": true,
+  "stability_median_gt_0": true,
   "pass": false
  },
  "gate2": {
-  "subhalf1_sr": 0.8544569857714864,
-  "subhalf2_sr": 0.2613481669496846,
-  "hivol_sr": 0.8529851291938609,
-  "lovol_sr": 0.11397768376241606,
-  "cost25_sr": 0.3365260835590982,
-  "perturbations": {},
+  "subhalf1_sr": 0.8503079944956029,
+  "subhalf2_sr": 0.26254294069588563,
+  "hivol_sr": 0.8490078983642704,
+  "lovol_sr": 0.11610994092876888,
+  "cost25_sr": 0.335498685817899,
+  "perturbations": {
+   "EXPR[2]x0.75": 0.41313214760373784,
+   "EXPR[2]x1.25": 0.5075235204830474
+  },
+  "candidate_specific": {
+   "requirements_pass": true
+  },
   "pass": true
- },
- "strategy_returns_net_train_val": null
+ }
 }

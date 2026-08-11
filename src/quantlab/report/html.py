@@ -12,6 +12,7 @@ from jinja2 import Environment
 
 from quantlab import __version__
 from quantlab.metrics.core import Metrics
+from quantlab.metrics.costs import log_caveats
 from quantlab.metrics.scorecard import Verdict
 from quantlab.output import write_text
 from quantlab.prop.config import FirmConfig
@@ -336,16 +337,26 @@ def build_html_report(
     )
     template = Environment(autoescape=True).from_string(template_text)
 
-    fidelity_note = (
-        "MAE/MFE-refined intraday checks"
-        if log.has_excursions
-        else "trade-close only — intraday-sensitive prop rules are OPTIMISTIC"
+    fidelity_note = {
+        "full": "MAE/MFE-refined intraday checks",
+        "partial": "partial MAE/MFE — missing excursion sides remain optimistic",
+        "close-only": "trade-close only — intraday-sensitive prop rules are OPTIMISTIC",
+    }[log.excursion_fidelity]
+    warnings = log_caveats(
+        log, firm.day_boundary.to_boundary() if firm is not None else charts.FUTURES_DAY
     )
-    warnings = list(mc.warnings) if mc else []
+    if mc is not None:
+        warnings.extend(warning for warning in mc.warnings if warning not in warnings)
 
     strategy_charts = [
         _fig_html(charts.fig_equity_curve(log, metrics.starting_equity), include_js=True),
-        _fig_html(charts.fig_daily_pnl_hist(log), include_js=False),
+        _fig_html(
+            charts.fig_daily_pnl_hist(
+                log,
+                firm.day_boundary.to_boundary() if firm is not None else charts.FUTURES_DAY,
+            ),
+            include_js=False,
+        ),
     ]
 
     html = template.render(

@@ -19,6 +19,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from quantlab.errors import QuantLabError
 from quantlab.schema.trade import TradeLog
 
 
@@ -37,6 +38,10 @@ def permutation_drawdown(
     seed: int | None = 42,
     ruin_capital: float | None = None,
 ) -> DrawdownMC:
+    if n_iter < 1:
+        raise QuantLabError(f"n_iter must be >= 1 (got {n_iter})")
+    if ruin_capital is not None and (not np.isfinite(ruin_capital) or ruin_capital <= 0):
+        raise QuantLabError("ruin_capital must be finite and positive")
     pnls = np.array([t.pnl for t in log.trades], dtype=float)
     n = pnls.size
     if n == 0:
@@ -56,7 +61,7 @@ def permutation_drawdown(
     # 10k-trade log — where 512-path chunks bound peak memory and, because
     # the generator stream is consumed in the same order, produce
     # bit-identical results for a given seed.
-    chunk = 512
+    chunk = max(1, min(512, 2_000_000 // n))
     max_dd_parts: list[np.ndarray] = []
     ruin_hits = 0
     for start in range(0, n_iter, chunk):
@@ -66,7 +71,7 @@ def permutation_drawdown(
         peaks = np.maximum.accumulate(np.maximum(equity, 0.0), axis=1)  # peak incl. start=0
         max_dd_parts.append(np.max(peaks - equity, axis=1))
         if ruin_capital is not None:
-            ruin_hits += int(np.sum(np.min(equity, axis=1) <= -abs(ruin_capital)))
+            ruin_hits += int(np.sum(np.min(equity, axis=1) <= -ruin_capital))
     max_dd = np.concatenate(max_dd_parts)
     p_ruin: float | None = None
     if ruin_capital is not None:

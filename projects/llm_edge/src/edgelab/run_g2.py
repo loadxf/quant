@@ -10,15 +10,15 @@ Fitness never sees validation or holdout. Every evaluation is ledgered.
 
 from __future__ import annotations
 
-import json
 import sys
 
 import pandas as pd
 
-from . import CANDIDATES_DIR, REPO_ROOT, TRAIN_END
-from .data import load_panel
-from .gates import load_equity_fields
+from . import CANDIDATES_DIR, TRAIN_END, TRAIN_START
+from .costs import EQUITY_BPS, ETF_BPS
+from .gates import load_equity_fields, load_etf_fields
 from .grammar import build_terminals
+from .jsonutil import atomic_write_text, dumps
 from .search import evolve
 
 TOP_K = 12
@@ -27,12 +27,12 @@ VARIANTS = {
     "equities1": {
         "universe": "equities",
         "holding_days": 1,
-        "cost_bps": 10.0,
+        "cost_bps": EQUITY_BPS,
         "quantile": 0.1,
         "seed": 20260719,
         "population": 120,
         "generations": 8,
-        "train_start": None,
+        "train_start": TRAIN_START,
         "subsample": None,
     },
     # loop-2 variants (D2 addendum): search fitness on the 2010-2018 train
@@ -41,7 +41,7 @@ VARIANTS = {
     "equities5": {
         "universe": "equities",
         "holding_days": 5,
-        "cost_bps": 10.0,
+        "cost_bps": EQUITY_BPS,
         "quantile": 0.1,
         "seed": 20260720,
         "population": 100,
@@ -52,25 +52,15 @@ VARIANTS = {
     "etf5": {
         "universe": "etfs",
         "holding_days": 5,
-        "cost_bps": 5.0,
+        "cost_bps": ETF_BPS,
         "quantile": 0.2,
         "seed": 20260721,
         "population": 100,
         "generations": 6,
-        "train_start": None,
+        "train_start": TRAIN_START,
         "subsample": None,
     },
 }
-
-
-def load_etf_fields(end: str | None = None) -> dict[str, pd.DataFrame]:
-    universe = json.loads((REPO_ROOT / "data" / "universe.json").read_text())
-    fields = {}
-    for f in ["open", "high", "low", "close", "adjclose", "volume"]:
-        panel = load_panel(field=f, end=end)
-        etfs = [t for t in universe["etfs"] if t in panel.columns]
-        fields[f] = panel[etfs]
-    return fields
 
 
 def main() -> None:
@@ -82,9 +72,12 @@ def main() -> None:
         fields = load_etf_fields(end=TRAIN_END)
     if cfg["subsample"]:
         cols = sorted(fields["adjclose"].columns)[:: cfg["subsample"]]
-        fields = {k: v[[c for c in cols if c in v.columns]] for k, v in fields.items()}
-    if cfg["train_start"]:
-        fields = {k: v.loc[v.index >= pd.Timestamp(cfg["train_start"])] for k, v in fields.items()}
+        fields = {
+            key: value[[column for column in cols if column in value.columns]]
+            if isinstance(value, pd.DataFrame)
+            else value
+            for key, value in fields.items()
+        }
     terms = build_terminals(
         fields["open"],
         fields["high"],
@@ -105,6 +98,7 @@ def main() -> None:
         quantile=cfg["quantile"],
         split=f"train_g2_{name}",
         checkpoint_path=f"candidates/g2_checkpoint_{name}.json",
+        start_date=cfg["train_start"],
     )
     finite = [r for r in results if pd.notna(r.train_sharpe)]
     survivors = []
@@ -123,7 +117,7 @@ def main() -> None:
             seen_prefix.add(key)
         if len(survivors) >= TOP_K:
             break
-    (CANDIDATES_DIR / f"g2_survivors_{name}.json").write_text(json.dumps(survivors, indent=1))
+    atomic_write_text(CANDIDATES_DIR / f"g2_survivors_{name}.json", dumps(survivors, indent=1))
     print(f"[{name}] evaluated {len(results)} distinct expressions; wrote top {len(survivors)}")
     for s in survivors[:5]:
         print(f"  SR={s['train_sr_net']:.2f} fit={s['fitness']:.2f} {s['expr']}")

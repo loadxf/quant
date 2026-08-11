@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
+from quantlab.errors import QuantLabError
 from quantlab.prop.bootstrap import (
     IIDDayBootstrap,
     StationaryBlockBootstrap,
@@ -47,6 +49,15 @@ class TestIIDAndFactory:
         assert isinstance(make_bootstrapper("stationary"), StationaryBlockBootstrap)
         assert isinstance(make_bootstrapper("iid_day"), IIDDayBootstrap)
         assert isinstance(make_bootstrapper("iid_trade"), IIDDayBootstrap)
+
+    @pytest.mark.parametrize("shape", [(0, 1, 1), (1, 0, 1), (1, 1, 0)])
+    def test_invalid_dimensions_fail_cleanly(self, shape: tuple[int, int, int]) -> None:
+        with pytest.raises(QuantLabError, match="positive"):
+            IIDDayBootstrap().sample(*shape, np.random.default_rng(1))
+
+    def test_negative_block_length_rejected(self) -> None:
+        with pytest.raises(QuantLabError, match="positive"):
+            make_bootstrapper("stationary", -2)
 
 
 class TestOptimalBlockLength:

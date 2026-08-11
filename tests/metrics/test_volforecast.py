@@ -8,6 +8,7 @@ import math
 import numpy as np
 import pytest
 
+from quantlab.errors import QuantLabError
 from quantlab.metrics.volforecast import (
     arch_lm,
     compute_clustering,
@@ -54,6 +55,18 @@ class TestEwma:
     def test_burn_in_longer_than_series(self) -> None:
         res = ewma_sigma_path(np.array([1.0, -1.0]), burn_in=20)
         assert all(math.isnan(s) for s in res.sigma)
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [{"lam": 1.0}, {"burn_in": 0}],
+    )
+    def test_invalid_parameters_rejected(self, kwargs: dict) -> None:
+        with pytest.raises(QuantLabError):
+            ewma_sigma_path(np.array([1.0, 2.0]), **kwargs)
+
+    def test_nonfinite_series_rejected(self) -> None:
+        with pytest.raises(QuantLabError, match="finite"):
+            compute_clustering(np.array([1.0, float("nan")]))
 
 
 class TestClusteringTests:

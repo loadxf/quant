@@ -238,7 +238,8 @@ class TestSchemaV4:
         assert payload["policy"]["payout_policy"] == "keep_buffer"
         assert payload["policy"]["keep_buffer"] == 1500.0
         assert payload["policy"]["extract_weight"] == 0.5
-        assert payload["policy"]["base_contracts"] == 1.0  # log's max position
+        # The synthetic MNQ log is normalized to mini-equivalent units.
+        assert payload["policy"]["base_contracts"] == pytest.approx(0.1)
 
 
 class TestInertExtractionWarning:

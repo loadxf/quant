@@ -244,7 +244,7 @@ Position-sizing what-ifs:
 | `--scale 0.5` | Rerun everything at a fraction/multiple of your size (`--challenge-scale`/`--funded-scale` to split by phase). |
 | `--sizing vol_target` | Dynamic per-path EWMA vol-targeted sizing with strict day-start information; tune with `--vol-lambda` (default 0.94), `--vol-target` (default: median EWMA sigma of the log), `--vol-clip-lo/hi` (0.5/1.5). |
 | `--sizing cushion` | The prop-native heuristic: size by the live buffer above your drawdown floor — weight = cushion today / initial allowance, clipped to `--cushion-clip-lo/hi` (0.25/1.5). Auto de-risks toward the floor. |
-| `--base-contracts` | Your real contract allowance, used to bind **contract scaling plans** (Topstep XFA balance tiers, Apex 4.0 half-size-until-safety-net). Defaults to the log's max position — a warning states the assumption whenever the default is used. |
+| `--base-contracts` | Your real allowance in mini-equivalents (1 mini = 10 micros by default), used to bind **contract scaling plans** (Topstep XFA balance tiers, Apex 4.0 half-size-until-safety-net). Defaults to the log's peak concurrent gross exposure — a warning states the assumption whenever the default is used. |
 
 Funded-phase payout policy:
 
@@ -655,6 +655,12 @@ pre-registered protocol with a locked holdout. See its
 [README](projects/llm_edge/README.md) and final
 [REPORT.md](projects/llm_edge/REPORT.md); it does not affect the `quant`
 CLI.
+
+[`docs/rohonchain-review.md`](docs/rohonchain-review.md) — a claim-by-claim
+review of a widely-shared social-media quant corpus (Polymarket arbitrage,
+Kelly sizing, Markov regime models), tracing each claim to its academic
+source and separating the real math from the profit marketing. A worked
+example of the skepticism [§6](#6-reading-the-numbers-honestly) asks for.
 
 ## 8. Development
 

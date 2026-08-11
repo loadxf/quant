@@ -3,11 +3,14 @@ determinism, and behavioral sanity."""
 
 from __future__ import annotations
 
+import dataclasses
+import datetime as dt
 import json
 
 import numpy as np
 import pytest
 
+from quantlab.errors import QuantLabError
 from quantlab.prop.dayprofile import DayProfile
 from quantlab.prop.evaluator import evaluate
 from quantlab.prop.montecarlo import MCConfig, _simulate_phase, run_monte_carlo
@@ -133,6 +136,18 @@ class TestGoldenEquivalence:
         assert int(vector.lockout_days[0]) == scalar.lockout_days == 2
 
 
+def test_monte_carlo_discloses_overlapping_excursion_limitation() -> None:
+    base = day_trades([[simple(100.0), simple(-50.0)]] * 20)
+    first, second, *rest = base.trades
+    second = dataclasses.replace(
+        second,
+        entry_time=first.entry_time + dt.timedelta(minutes=5),
+    )
+    log = type(base)([first, second, *rest], source=base.source)
+    report = run_monte_carlo(log, load_firm("topstep_50k"), MCConfig(n_paths=10, seed=1))
+    assert any("portfolio equity path" in warning for warning in report.warnings)
+
+
 class TestDeterminismAndScaling:
     def test_same_seed_identical_json(self, marginal_log) -> None:
         firm = load_firm("topstep_50k")
@@ -179,6 +194,64 @@ class TestDeterminismAndScaling:
         # At 5% size a winner can barely reach the target inside the horizon
         assert tiny.economics.pass_prob < base.economics.pass_prob
 
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {"n_paths": 0},
+            {"challenge_horizon_days": 0},
+            {"scale": 0},
+            {"scale": float("nan")},
+            {"block_len": -1},
+            {"vol_lambda": 1.0},
+            {"vol_clip": (2.0, 1.0)},
+            {"keep_buffer": float("inf")},
+        ],
+    )
+    def test_config_rejects_invalid_domains(self, kwargs: dict) -> None:
+        with pytest.raises(QuantLabError):
+            MCConfig(**kwargs)
+
+    @pytest.mark.parametrize(
+        "kwargs",
+        [
+            {"n_paths": 1.5},
+            {"n_paths": True},
+            {"sample_paths_kept": 1.5},
+            {"block_len": 1.5},
+            {"seed": -1},
+            {"seed": 1.5},
+            {"vol_clip": (0.5,)},
+            {"vol_clip": ("low", "high")},
+        ],
+    )
+    def test_config_rejects_invalid_types(self, kwargs: dict) -> None:
+        with pytest.raises(QuantLabError):
+            MCConfig(**kwargs)
+
+    def test_iid_trade_reports_observed_days_not_synthetic_pool(self) -> None:
+        log = day_trades([[simple(1)]] * 10)
+        report = run_monte_carlo(
+            log,
+            load_firm("topstep_50k"),
+            MCConfig(
+                n_paths=20,
+                seed=1,
+                bootstrap="iid_trade",
+                challenge_horizon_days=2,
+                funded_horizon_days=2,
+            ),
+        )
+        assert report.source_days == 10
+        assert report.block_len is None
+
+
+class TestTradingDrawdown:
+    def test_profitable_trade_counts_intratrade_high_to_low_excursion(self) -> None:
+        firm = make_firm([], target=10_000)
+        log = day_trades([[(100, -500, 200)]])
+        outcome = identity_phase_run(log, firm, "challenge")
+        assert float(outcome.max_drawdown[0]) == pytest.approx(700.0)
+
 
 class TestPayoutMechanics:
     def test_xfa_payout_flow(self) -> None:
@@ -199,6 +272,24 @@ class TestPayoutMechanics:
         # day5 balance 1000 -> withdraw 500; subsequent payouts every 5 days
         assert float(outcome.total_withdrawn[0]) > 0
         assert int(outcome.payout_count[0]) >= 5  # type: ignore[index]
+
+    def test_funded_equity_samples_include_payout_day_withdrawals(self) -> None:
+        firm = load_firm("topstep_50k")
+        log = day_trades([[simple(200)]] * 10)
+        boundary = DayBoundary(firm.day_boundary.tz, firm.day_boundary.cutoff_hour)
+        profile = DayProfile.from_log(log, boundary)
+        idx = np.arange(profile.n_days, dtype=np.int64)[None, :]
+        from quantlab.prop.montecarlo import _resolve_payout, _resolve_rules
+
+        gates = _resolve_rules(firm.funded, firm, 0.0).payout_gate_pcts
+        payout = _resolve_payout(firm, 0.0, gates)
+        outcome = _simulate_phase(profile, idx, firm.funded, firm, payout, 1, base_contracts=1)
+
+        assert outcome.total_withdrawn is not None
+        assert float(outcome.total_withdrawn[0]) == pytest.approx(1250.0)
+        assert outcome.equity_samples[0, 4] == pytest.approx(500.0)
+        assert outcome.equity_samples[0, -1] == pytest.approx(750.0)
+        assert outcome.equity_samples[0, -1] == pytest.approx(outcome.final_balance[0])
 
     def test_apex_lifetime_cap_retires_account(self) -> None:
         firm = load_firm("apex40_50k_eod")

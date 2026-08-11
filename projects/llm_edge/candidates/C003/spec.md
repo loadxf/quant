@@ -21,10 +21,13 @@ fresh-data statistics consulted. Provenance at best P-ambiguous.
 3. Abandonment trigger at t: episode exists AND `volz(t) < 0` AND `volz(t-1) >= 0`
    (first crossing back below baseline).
 4. Episode return: cumulative `ret` from the first `volz > 2` day of the episode through t-1.
-5. **Candidate signal at trigger day t: `-(episode return)`; zero otherwise. Position held
-   10 days** (rolling-mean overlap).
-6. Gate-2 comparisons: must outperform (a) entry AT the spike day with the same -episode-return
-   direction and holding, and (b) plain `-ret5` reversal — the timing is the novelty claim.
+5. **Candidate signal at trigger day t: `-(episode return)`; inactive/NaN otherwise. Position
+   held 10 days** (rolling-mean overlap). On rows with at least 20 valid triggers, preselect the
+   top/bottom deciles; on thinner rows, preselect the top/bottom terciles. The engine's
+   median split over that two-tail pool implements those original-universe tails.
+6. Gate-2 comparisons: must outperform (a) the declared B003 spike-entry baseline (`-ret5`
+   when `volz > 2`, held 10 days), and (b) plain `-ret5` reversal held 10 days — the timing
+   is the novelty claim.
 
 **Universe:** S&P 500 equities. **Portfolio:** decile long-short among nonzero-signal names
 (tercile if breadth is thin), daily, t+2 execution. **Predicted sign:** positive.

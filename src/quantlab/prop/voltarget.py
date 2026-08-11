@@ -27,6 +27,7 @@ proportionally, exactly the same-fill assumption.
 from __future__ import annotations
 
 import dataclasses
+import math
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -55,16 +56,21 @@ class VolSizingParams:
     def __post_init__(self) -> None:
         # np.clip with lo > hi silently returns hi everywhere — "vol
         # targeting" would degrade to a constant relabeled scale.
+        numeric = (self.lam, self.target_vol, self.seed_var, self.clip_lo, self.clip_hi, self.band)
+        if not all(math.isfinite(value) for value in numeric):
+            raise ValueError("vol sizing parameters must be finite")
         if not 0.0 < self.clip_lo <= self.clip_hi:
             raise ValueError(
                 f"vol clip bounds must satisfy 0 < lo <= hi (got {self.clip_lo}, {self.clip_hi})"
             )
         if not 0.0 < self.lam < 1.0:
             raise ValueError(f"lam must be in (0, 1) (got {self.lam})")
-        if self.target_vol <= 0:
+        if self.target_vol <= 0 or self.seed_var < 0:
             # target/sigma <= 0 would pin every weight at clip_lo: "vol
             # targeting" silently degrades to a constant down-scale.
-            raise ValueError(f"--vol-target must be positive (got {self.target_vol})")
+            raise ValueError("target_vol must be positive and seed_var non-negative")
+        if self.burn_in < 0 or self.band < 0:
+            raise ValueError("burn_in and band must be non-negative")
 
 
 class EwmaSizer:
@@ -122,6 +128,8 @@ class CushionParams:
     clip_hi: float = 1.5
 
     def __post_init__(self) -> None:
+        if not all(math.isfinite(value) for value in (self.cushion_0, self.clip_lo, self.clip_hi)):
+            raise ValueError("cushion parameters must be finite")
         if not 0.0 < self.clip_lo <= self.clip_hi:
             raise ValueError(
                 f"cushion clip bounds must satisfy 0 < lo <= hi "
@@ -267,8 +275,13 @@ def compute_voltarget(
     from quantlab.prop.montecarlo import MCConfig, run_monte_carlo
     from quantlab.schema.trade import FUTURES_DAY
 
+    if burn_in < 1 or not math.isfinite(band) or band < 0:
+        raise ValueError("burn_in must be >= 1 and band finite/non-negative")
+
     boundary = firm.day_boundary.to_boundary() if firm is not None else FUTURES_DAY
     days = log.daily_groups(boundary) if precomputed_days is None else precomputed_days
+    if not days:
+        raise ValueError("vol-target counterfactual needs at least one trading day")
     day_pnl = log.daily_pnl(boundary, days=days)
     target = auto_target_vol(day_pnl, lam=lam, burn_in=burn_in)
     seed_var = float(np.mean(day_pnl[: min(burn_in, day_pnl.size)] ** 2))

@@ -2,8 +2,8 @@
 
 **Generation trace (provenance).** Prompted by the post-cutoff `sector_etf_lead_lag` panel
 (`report/g1_panels.json`, 2026-02-02..2026-07-17): the correlation between a sector ETF's
-daily return and its member stocks' NEXT-day mean return is negative for 8 of 11 sectors
-(XLI -0.149, XLY -0.147, HYG-adjacent financials -0.089), opposite in sign to the classic
+daily return and its member stocks' NEXT-day mean return is negative for 7 of 11 sectors
+(XLI -0.149, XLY -0.147, XLF financials -0.089), opposite in sign to the classic
 documented industry lead-lag (Moskowitz-Grinblatt; Hou 2007), which is positive continuation
 at weekly/monthly horizons. P-derived claimed, subject to Phase D (prior-art risk: index-level
 daily reversal is documented in older samples; the sector-relative daily granularity is the

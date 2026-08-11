@@ -1,40 +1,106 @@
 {
+ "research_identity": {
+  "artifact_sha256": "ed2786aebf09678fce7cebcf7ae588b4ce78294f42dc5bf14f46c59e8a1bf0e9",
+  "candidate_ids": [
+   "B002",
+   "B003",
+   "C001",
+   "C002",
+   "C003",
+   "C004",
+   "C005",
+   "C006",
+   "C007",
+   "C008",
+   "C009",
+   "C010",
+   "C011",
+   "C012",
+   "C013",
+   "C014",
+   "C015",
+   "C016"
+  ],
+  "data_manifest_sha256": "b5ba4c066e81ace34896f7a9d9091448d6bcd0838243ebdec8c1bfe24e667d4b",
+  "engine_sha256": "342f0f5248c5aa1169329b5aeb66305dc7a18ade15db58b1bc8718c677652e76",
+  "environment_sha256": "40eb75ca497e78acbc331a88a96ea5571f12ed832d8bc99c4440057f15b0ca27",
+  "signal_sha256": {
+   "B002": "d5a5cef478cb57b6b09527e74c412f5013858dd62bffdaffc2aba336a67094a4",
+   "B003": "23f38384860cacbc05359230e20d67001d024ca16aa3ee48ec71cc4da2adb526",
+   "C001": "9b7b2a4728b333e8518d665cea04fcbfa7db56260dd990e198d5b7a93b2f9292",
+   "C002": "8d59f274e07e3d4982b3c6d0c1d306b1a4762443efdc251bdf0fede053635290",
+   "C003": "ff97cc28287bc718f5934162b6f8c10f9ceea50606ff55e9d3fcd1954881a52f",
+   "C004": "bf03cd0b16daf218ca986b4574f3f2b84f38337c54798b1643c8bf66933582b5",
+   "C005": "8ff6b95d19512d6c3d8bccf72389e134bc7c6f9eb30598fe560edbb493f55ac0",
+   "C006": "79bfebbc338ea04cc3a174b559a9ac4eed1244881816335db7fb191863ad7a68",
+   "C007": "b14e7cb84ef474c3873b28b4eceaf417a7d6870f4d46487693c636b4e1da454e",
+   "C008": "baed1f97308296e1e54b6dcad14df52cfe316451c42b16368273d63ab4e53e9d",
+   "C009": "7be03445e963d1ecc95be8cfc4e31794fc4131fba94f192484055d2305fc1563",
+   "C010": "4f3af1ab0bc5a56a9c4d0525126d227030561f105e59dda27b46e6fb74d4cca5",
+   "C011": "26f23df8a0ac63e4c32a88d678227de19dee7d1e0bc337dc3e19c6370f2d6b1d",
+   "C012": "595afe1ec5cbbcd868a0de53a2de9b4f7ba3c4d81fcbc16d330e56a02a10117d",
+   "C013": "1ac494d15d1d40dc635ea7f239cdda81e7a6c44306be1070ca7c05ce40a4fa46",
+   "C014": "efcbfc8d639a9553d068f7c6737edef07407c2dea95aee6d7ecf5f159e6f4aa2",
+   "C015": "101063d3560dce81147f9cf35da29f26b13da7f36fbf301cdbe5f9e34b419d2e",
+   "C016": "478c88adc094124737d1d4cb79ecece98f11d888c5e72cf21bdf47ee170f78f3"
+  },
+  "spec_sha256": {
+   "B002": "99f5ac01fb1cbbc72a740bc1984efd265b029564dc06b1a325b96939e36bcc45",
+   "B003": "aa0f1897dd0005ee3fcae71392c9a09cde03f320ca93d39a24a0920b2ceac469",
+   "C001": "0d82d78cf3931f7766e484dd79b0b6801fcf8e10fc7649bbbe15d68919860e35",
+   "C002": "81c557dca4c8f01c65c240e65a4fd8366dc066264d774f029350d0ddaac42cb1",
+   "C003": "5936a43ba58c90fcc939ff6fbd6f06c753fad721ed9ec0159cd8aeda71efdf30",
+   "C004": "7d896e4bbaca6db74312f190d72d66fd314c4750d3a0bb1f447b3eaf6105494f",
+   "C005": "735027c27e88b7c710245bf238d0e6c1ec4678bee51f50867661936bc532098a",
+   "C006": "0b2e42b3337fb5c1579def2883eb4e611753140252f65378001145625a714ea1",
+   "C007": "99d399d54f6163740809d1a6fb8f770b8ed6cf0e530b58f0ca832e0f708ad7de",
+   "C008": "812ff09895cb3b2a099806d199012518e9f889f87114cf260fba11e957b6f0c0",
+   "C009": "694b06cbca8c2eb961eaf1ade61868e969c779113d25118ed634b3873d4bb34b",
+   "C010": "2bcaf1aec350c1e2225b8e836bc3b4e7d69c8dcb2ad73302a6a33d0fed0a0b9e",
+   "C011": "dbe0c2ce86acf908b5af59f0e384becf4456639b7a824e1bb66c1269c6ea76dd",
+   "C012": "d4bd17096d1cce0c71e081e46bc154a9d3397d851be68a4dd9f41132005ef451",
+   "C013": "40fb14d8e60e71dafe6d0424fc40c00c16d3a14f94b1b90acdecd138daef1011",
+   "C014": "e30a8b0e193f31f85a0ce68c27a4963c032390c581750a0ed20458aaaa37e974",
+   "C015": "96f56f29244e3c8f8371bb3c74bb58240656d5cc8c8560f4a719a1908a1f4af6",
+   "C016": "1f81614a643b38ec02a7d2bd4f6e9c72090b972c3295d2f8a8ef1f1a77cde6b2"
+  },
+  "universe_counts": {
+   "equities": 503,
+   "etfs": 71
+  },
+  "universe_sha256": "eb978a05f3bc72a0358e88ea18a974288b45f0f191ad0989aaa27160d2d90e43"
+ },
  "reality_check_validation": {
-  "p_value": 0.171,
-  "statistic": 0.026856393131596993,
+  "p_value": 0.4305694305694306,
+  "statistic": 0.04102348408282567,
+  "statistic_name": "maximum_daily_sharpe",
   "n_candidates": 18,
   "n_obs": 1258,
   "n_boot": 1000
  },
- "reality_check_note": "H0: best candidate of the gated family has zero mean net validation return; p-value from stationary-bootstrap max statistic (White 2000 style)",
- "c015_dsr_full_ledger": {
-  "sr_annualized": 0.6561316029820972,
-  "sr_daily": 0.04133240592430464,
-  "n_obs": 1258,
-  "n_trials": 1998,
-  "var_sr_trials_annualized": 4.141736038124641,
-  "sr0_daily_benchmark": 0.4419110598422737,
-  "dsr": 2.334659004539767e-46
- },
+ "reality_check_note": "H0: best candidate of the gated family has zero expected net validation return; p-value from the pre-registered stationary-bootstrap maximum-Sharpe statistic",
  "c015_leg_decomposition_validation": {
-  "long_leg_minus_ew_sr": 0.7328059945540383,
-  "short_leg_minus_ew_sr": -0.6073740081149621,
-  "long_leg_sr": 0.9477255771430494,
-  "short_leg_sr": 0.803472191342172,
+  "long_leg_minus_ew_sr": 0.7231524431141143,
+  "short_leg_minus_ew_sr": -0.6795304080508453,
+  "long_leg_sr": 0.9443017599057477,
+  "short_leg_sr": 0.745721099311176,
   "note": "if the premium lives in the long (high-vol) leg beating the market on current constituents, survivorship inflation is the prime suspect"
  },
  "rangevol_on_etfs_validation": {
-  "sr_net": 0.47115506017597103,
-  "nw_t": 1.1485850489084222,
+  "sr_net": 0.45343044477708394,
+  "nw_t": 1.099999691016114,
   "n_obs": 1258
  },
  "rangevol_equities_subperiods": {
-  "2005_2011_sr": 0.7245327158713623,
-  "2012_2018_sr": 1.0051187908531818,
-  "2019_2023_sr": 0.6561316029820972
+  "2005_2011_sr": 0.7251721348546496,
+  "2012_2018_sr": 1.0088440946289257,
+  "2019_2023_sr": 0.6512276207794403
  },
+ "c015_dsr_full_ledger": null,
+ "c015_dsr_unavailable_reason": "historical validation-labeled rows contain train-plus-validation Sharpe values; their mixed trial dispersion is not a calibrated DSR input (retrospective deviation D5)",
  "ledger": {
-  "n_trials": 1998,
-  "var_sr_annualized": 4.141736038124641
+  "n_trials": 2854,
+  "raw_mixed_var_sr_annualized": 3.6238015018420526,
+  "trial_variance_comparable": false
  }
 }

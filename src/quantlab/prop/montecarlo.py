@@ -3,8 +3,9 @@
 Paths are bootstrap-resampled sequences of source trading DAYS; each day
 replays its trades step-by-step (padded per-trade arrays from
 DayProfile), with every rule check vectorized across paths. The
-semantics per trade are identical to the DeterministicEvaluator —
-high -> low -> close, first-hit resolution by highest level, lockout
+semantics per trade are identical to the DeterministicEvaluator — normally
+high -> low -> close, but low -> close for MAE-only records; first-hit
+resolution is by highest level, lockout
 truncation at exactly -width, pass at trade close — which a golden
 equivalence test enforces.
 
@@ -18,13 +19,14 @@ days at that baseline, scaled by the same density (see economics.py).
 
 from __future__ import annotations
 
-import datetime as dt
 import math
 from dataclasses import dataclass
+from numbers import Integral, Real
 
 import numpy as np
 
 from quantlab.errors import ConfigError, QuantLabError
+from quantlab.metrics.core import observed_sessions_per_week
 from quantlab.prop.bootstrap import (
     MIN_DAYS_FOR_BLOCKS,
     BootstrapName,
@@ -46,6 +48,7 @@ from quantlab.prop.config import (
 )
 from quantlab.prop.dayprofile import DayProfile
 from quantlab.prop.economics import summarize
+from quantlab.prop.exposure import firm_scaling_contract_limit, scaling_base_contracts
 from quantlab.prop.outcomes import (
     OUTCOME_ACTIVE,
     OUTCOME_BREACHED,
@@ -68,6 +71,10 @@ from quantlab.schema.trade import TradeLog
 DEFAULT_SESSIONS_PER_WEEK = 5.0
 
 
+def _finite_number(value: object) -> bool:
+    return isinstance(value, Real) and not isinstance(value, bool) and math.isfinite(float(value))
+
+
 def ensure_crn_seed(cfg: MCConfig) -> MCConfig:
     """A concrete seed for grid analyses (frontier, policies): common
     random numbers require one — default_rng(None) pulls fresh OS entropy
@@ -87,41 +94,9 @@ PAYOUT_FLOOR_MARGIN = 0.01
 def calendar_to_trading_days(
     calendar_days: int, sessions_per_week: float = DEFAULT_SESSIONS_PER_WEEK
 ) -> int:
+    if calendar_days < 1 or not math.isfinite(sessions_per_week) or sessions_per_week <= 0:
+        raise QuantLabError("calendar_days and sessions_per_week must be positive")
     return max(1, math.ceil(calendar_days * sessions_per_week / 7))
-
-
-def observed_sessions_per_week(log: TradeLog, boundary, days: list | None = None) -> float:
-    """Trading density of the source log (sessions/week), capped at 7.
-
-    Counts sessions over COMPLETE Mon-Sun weeks only (weeks whose full
-    range lies inside the log's span). Partial edge weeks bias every
-    simpler estimator: the raw endpoint ratio rates a Mon-Fri week at
-    7.0/week (span excludes the weekend), while padding the span to
-    whole weeks rates a full 22-session month at 4.4/week (a barely
-    started final week fully counts in the denominator). Fewer than two
-    complete weeks is too little cadence evidence — use the default.
-    """
-    if days is None:
-        days = log.daily_groups(boundary)
-    if len(days) < 2:
-        return DEFAULT_SESSIONS_PER_WEEK
-    first, last = days[0][0], days[-1][0]
-    week_of_first = first - dt.timedelta(days=first.weekday())
-    start = week_of_first if week_of_first == first else week_of_first + dt.timedelta(days=7)
-    counts: dict[dt.date, int] = {}
-    for session_date, _ in days:
-        monday = session_date - dt.timedelta(days=session_date.weekday())
-        counts[monday] = counts.get(monday, 0) + 1
-    n_weeks = 0
-    n_sessions = 0
-    monday = start
-    while monday + dt.timedelta(days=6) <= last:
-        n_weeks += 1
-        n_sessions += counts.get(monday, 0)  # vacation weeks count as 0
-        monday += dt.timedelta(days=7)
-    if n_weeks < 2 or n_sessions == 0:
-        return DEFAULT_SESSIONS_PER_WEEK
-    return min(7.0, n_sessions / n_weeks)
 
 
 @dataclass
@@ -171,6 +146,61 @@ class MCConfig:
     # so a dominant early day keeps the gate shut LONGER under
     # extraction. The grid prices exactly this.
     extract_weight: float | None = None
+
+    def __post_init__(self) -> None:
+        positive_ints = {
+            "n_paths": self.n_paths,
+            "challenge_horizon_days": self.challenge_horizon_days,
+            "funded_horizon_days": self.funded_horizon_days,
+        }
+        for name, value in positive_ints.items():
+            if not isinstance(value, Integral) or isinstance(value, bool) or value < 1:
+                raise QuantLabError(f"{name} must be an integer >= 1 (got {value})")
+        if (
+            not isinstance(self.sample_paths_kept, Integral)
+            or isinstance(self.sample_paths_kept, bool)
+            or self.sample_paths_kept < 0
+        ):
+            raise QuantLabError("sample_paths_kept must be >= 0")
+        if self.bootstrap not in ("stationary", "iid_day", "iid_trade"):
+            raise QuantLabError(f"unknown bootstrap {self.bootstrap!r}")
+        if self.block_len is not None and (
+            not isinstance(self.block_len, Integral)
+            or isinstance(self.block_len, bool)
+            or self.block_len < 1
+        ):
+            raise QuantLabError("block_len must be a positive integer")
+        if self.seed is not None and (
+            not isinstance(self.seed, Integral) or isinstance(self.seed, bool) or self.seed < 0
+        ):
+            raise QuantLabError("seed must be a non-negative integer or None")
+        for name in ("scale", "challenge_scale", "funded_scale", "base_contracts"):
+            value = getattr(self, name)
+            if value is not None and (not _finite_number(value) or value <= 0):
+                raise QuantLabError(f"{name} must be finite and positive (got {value})")
+        if self.sizing not in ("fixed", "vol_target", "cushion"):
+            raise QuantLabError(f"unknown sizing mode {self.sizing!r}")
+        if not _finite_number(self.vol_lambda) or not 0 < self.vol_lambda < 1:
+            raise QuantLabError("vol_lambda must be in (0, 1)")
+        if self.vol_target is not None and (
+            not _finite_number(self.vol_target) or self.vol_target <= 0
+        ):
+            raise QuantLabError("vol_target must be finite and positive")
+        for name in ("vol_clip", "cushion_clip"):
+            bounds = getattr(self, name)
+            if not isinstance(bounds, (tuple, list)) or len(bounds) != 2:
+                raise QuantLabError(f"{name} must contain exactly two bounds")
+            lo, hi = bounds
+            if not all(_finite_number(value) for value in (lo, hi)) or not 0 < lo <= hi:
+                raise QuantLabError(f"{name} must satisfy finite 0 < low <= high")
+        if self.payout_policy not in ("asap", "keep_buffer"):
+            raise QuantLabError(f"unknown payout policy {self.payout_policy!r}")
+        if not _finite_number(self.keep_buffer) or self.keep_buffer < 0:
+            raise QuantLabError("keep-buffer must be finite and non-negative")
+        if self.extract_weight is not None and (
+            not _finite_number(self.extract_weight) or not 0 < self.extract_weight <= 1
+        ):
+            raise QuantLabError("extract-weight must be finite and in (0, 1]")
 
 
 @dataclass
@@ -359,7 +389,7 @@ def _simulate_phase(
     is_funded = target is None
 
     # Contract scaling plan (M11): allowed contracts -> a weight cap via
-    # base_contracts (the log's max observed position unless overridden).
+    # base_contracts (peak concurrent gross mini-equivalents unless overridden).
     tier_mins = tier_allowed = None
     half_cap_weight: float | None = None
     unlocked = None
@@ -497,10 +527,22 @@ def _simulate_phase(
                 high = day_open + w * high_rel[d, i]
                 low = day_open + w * low_rel[d, i]
                 close = day_open + w * close_rel[d, i]
+            low_first = profile.low_first[d, i] & stepping
+
+            # MAE-only trades visit low before their profitable close. Using
+            # the close as a pre-low peak inflates drawdown and can fabricate
+            # a trailing breach. Other records retain conservative high-first
+            # chronology because MAE/MFE ordering is not exported.
+            prior_peak = peak
+            high_first_peak = np.maximum(prior_peak, high)
+            path_dd = np.where(low_first, prior_peak - low, high_first_peak - low)
+            max_dd = np.where(stepping, np.maximum(max_dd, path_dd), max_dd)
+            peak = np.where(stepping & ~low_first, high_first_peak, peak)
 
             for r, tr in enumerate(rules.trailing):
                 if tr.intraday:
-                    hwms[r] = np.where(stepping, np.maximum(hwms[r], high), hwms[r])
+                    high_first = stepping & ~low_first
+                    hwms[r] = np.where(high_first, np.maximum(hwms[r], high), hwms[r])
 
             # First-hit resolution: highest hit level wins; fail >= lockout.
             best_fail_level = np.full(n_paths, -np.inf)
@@ -553,6 +595,14 @@ def _simulate_phase(
 
             still = stepping & ~fail_wins & ~newly_locked
             balance = np.where(still, close, balance)
+            peak = np.where(still & low_first, np.maximum(peak, high), peak)
+
+            # Low-first paths ratchet only if they survived far enough to
+            # reach the close/high.
+            for r, tr in enumerate(rules.trailing):
+                if tr.intraday:
+                    reached_high = still & low_first
+                    hwms[r] = np.where(reached_high, np.maximum(hwms[r], high), hwms[r])
 
             # Up-then-down catch at close (intraday ratchet raised the floor
             # above this trade's close). Mathematically implied by the low
@@ -616,12 +666,6 @@ def _simulate_phase(
         )
         peak = np.maximum(peak, balance)
         max_dd = np.maximum(max_dd, peak - balance)
-        equity_samples[:, t] = np.where(
-            (outcome[:n_samples] == OUTCOME_ACTIVE) | (end_day[:n_samples] == t),
-            balance[:n_samples],
-            np.nan,
-        )
-
         if payout is not None:
             qual_days = np.where(alive & (day_pnl >= payout.q_min_profit), qual_days + 1, qual_days)
             days_since_payout = np.where(alive, days_since_payout + 1, days_since_payout)
@@ -684,6 +728,15 @@ def _simulate_phase(
                         outcome[retired] = OUTCOME_RETIRED
                         end_day[retired] = t
 
+        # Samples are true end-of-day account equity. Capture them after any
+        # withdrawal and lifetime-retirement transition so plotted funded
+        # paths agree with final_balance and total_withdrawn.
+        equity_samples[:, t] = np.where(
+            (outcome[:n_samples] == OUTCOME_ACTIVE) | (end_day[:n_samples] == t),
+            balance[:n_samples],
+            np.nan,
+        )
+
     return PhaseOutcome(
         phase=phase.name,
         initial_balance=initial,
@@ -711,15 +764,17 @@ def _iid_trade_profile(
 ) -> DayProfile:
     if days is None:
         days = log.daily_groups(boundary)
-    if not days:
-        raise QuantLabError("Trade log has no trading days")
+    if not days or not log.trades:
+        raise QuantLabError("iid_trade bootstrap requires at least one source trade and day")
     sizes = np.array([len(trades) for _, trades in days])
     all_trades = log.trades
     synth = []
     for _ in range(n_synth_days):
         n = int(sizes[rng.integers(len(sizes))])
         synth.append([all_trades[int(j)] for j in rng.integers(len(all_trades), size=n)])
-    return DayProfile.from_day_lists(synth, log.has_excursions)
+    return DayProfile.from_day_lists(
+        synth, log.has_excursions, excursion_fidelity=log.excursion_fidelity
+    )
 
 
 def run_monte_carlo(
@@ -731,12 +786,26 @@ def run_monte_carlo(
     source_day_groups = log.daily_groups(boundary)  # single scan serves density + profile
     sessions_per_week = observed_sessions_per_week(log, boundary, days=source_day_groups)
     warnings: list[str] = []
+    if log.has_overlapping_trades:
+        warnings.append(
+            "trade intervals overlap: per-trade MAE/MFE cannot reconstruct the concurrent "
+            "portfolio equity path, so intraday breach chronology is approximate; verify "
+            "against a mark-to-market equity chart"
+        )
+    cross_session = log.cross_session_trade_count(boundary)
+    if cross_session:
+        warnings.append(
+            f"{cross_session} trade(s) cross the firm's daily reset: whole-trade PnL and "
+            "excursions are assigned to the exit session, so resampled daily-rule results "
+            "are approximate; verify against mark-to-market equity data"
+        )
 
     bootstrap_name: BootstrapName = cfg.bootstrap
     block_len_used = cfg.block_len  # resolved below only for the stationary scheme
     if bootstrap_name == "iid_trade":
         profile = _iid_trade_profile(log, boundary, rng, days=source_day_groups)
         sampler = make_bootstrapper("iid_day")
+        block_len_used = None
     else:
         profile = DayProfile.from_log(log, boundary, days=source_day_groups)
         # Fallback policy + Politis-White block length live in ONE place
@@ -753,16 +822,21 @@ def run_monte_carlo(
             )
         bootstrap_name = resolved
 
-    if not profile.has_excursions:
+    if profile.excursion_fidelity != "full":
+        limitation = (
+            "run at trade-close fidelity"
+            if profile.excursion_fidelity == "close-only"
+            else "use available MAE/MFE, with missing excursion sides falling back to trade closes"
+        )
         warnings.append(
-            "trade log has no MAE/MFE columns: intraday-sensitive checks "
-            "(intraday trailing, daily loss) run at trade-close fidelity and "
-            "are OPTIMISTIC"
+            f"trade log has {profile.excursion_fidelity} excursion fidelity: "
+            "intraday-sensitive checks "
+            f"(intraday trailing, daily loss) {limitation} and are OPTIMISTIC"
         )
 
     base_contracts = cfg.base_contracts
     if base_contracts is None:
-        base_contracts = log.max_abs_quantity()
+        base_contracts = scaling_base_contracts(log, firm_scaling_contract_limit(firm))
     return _run_from_profile(
         profile,
         firm,
@@ -814,9 +888,9 @@ def _run_from_profile(
     # assumption, so it draws no warning.
     if _firm_has_scaling(firm) and base_contracts is not None and cfg.base_contracts is None:
         warnings.append(
-            f"scaling plan enforced assuming the log's max position "
-            f"({base_contracts:g} contracts) IS the full allowance — pass "
-            "--base-contracts if you traded below your limit"
+            "scaling plan enforced assuming the source log's peak concurrent gross "
+            f"exposure ({base_contracts:g} mini-equivalents) IS the full allowance — "
+            "pass --base-contracts in mini-equivalents if you traded below your limit"
         )
     challenge_scale = cfg.challenge_scale if cfg.challenge_scale is not None else cfg.scale
     funded_scale = cfg.funded_scale if cfg.funded_scale is not None else cfg.scale
@@ -839,10 +913,6 @@ def _run_from_profile(
 
     def _make_sizing(p: DayProfile) -> VolSizingParams | None:
         if cfg.sizing != "vol_target":
-            if cfg.sizing not in ("fixed", "cushion"):
-                raise QuantLabError(
-                    f"unknown sizing mode {cfg.sizing!r}: choose fixed, vol_target, or cushion"
-                )
             return None
         dp = p.day_pnl
         target = (
@@ -878,21 +948,7 @@ def _run_from_profile(
     challenge_base = base_contracts * challenge_scale if base_contracts is not None else None
     funded_base = base_contracts * funded_scale if base_contracts is not None else None
 
-    if cfg.payout_policy not in ("asap", "keep_buffer"):
-        raise QuantLabError(
-            f"unknown payout policy {cfg.payout_policy!r}: choose asap or keep_buffer"
-        )
     keep_buffer = cfg.keep_buffer if cfg.payout_policy == "keep_buffer" else 0.0
-    if keep_buffer < 0:
-        raise QuantLabError(f"--keep-buffer must be >= 0 (got {keep_buffer})")
-    if cfg.extract_weight is not None and not 0.0 < cfg.extract_weight <= 1.0:
-        raise QuantLabError(
-            f"--extract-weight must be in (0, 1] — extraction protects banked "
-            f"qualifying days, it never levers up (got {cfg.extract_weight})"
-        )
-
-    if cfg.n_paths < 1:
-        raise QuantLabError("n_paths must be >= 1")
 
     phase_outcomes: list[PhaseOutcome] = []
     for phase in firm.phases:
@@ -943,8 +999,10 @@ def _run_from_profile(
         funded=funded_outcome,
         cfg=cfg,
         bootstrap_used=bootstrap_name,
-        fidelity="mae_mfe" if profile.has_excursions else "trade_close",
-        source_days=source_days if source_days is not None else profile.n_days,
+        fidelity={"full": "mae_mfe", "partial": "partial_mae_mfe"}.get(
+            profile.excursion_fidelity, "trade_close"
+        ),
+        source_days=profile.n_days if source_days is None else source_days,
         source_trades=source_trades,
         scale_challenge=challenge_scale,
         scale_funded=funded_scale,

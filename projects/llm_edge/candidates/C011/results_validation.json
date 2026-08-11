@@ -1,44 +1,83 @@
 {
  "candidate_id": "C011",
+ "research_identity": {
+  "candidate_ids": [
+   "C011"
+  ],
+  "spec_sha256": {
+   "C011": "dbe0c2ce86acf908b5af59f0e384becf4456639b7a824e1bb66c1269c6ea76dd"
+  },
+  "signal_sha256": {
+   "C011": "26f23df8a0ac63e4c32a88d678227de19dee7d1e0bc337dc3e19c6370f2d6b1d"
+  },
+  "engine_sha256": "342f0f5248c5aa1169329b5aeb66305dc7a18ade15db58b1bc8718c677652e76",
+  "environment_sha256": "40eb75ca497e78acbc331a88a96ea5571f12ed832d8bc99c4440057f15b0ca27",
+  "data_manifest_sha256": "b5ba4c066e81ace34896f7a9d9091448d6bcd0838243ebdec8c1bfe24e667d4b",
+  "universe_sha256": "eb978a05f3bc72a0358e88ea18a974288b45f0f191ad0989aaa27160d2d90e43",
+  "universe_counts": {
+   "equities": 503,
+   "etfs": 71
+  }
+ },
  "params": {
   "hold": 1,
   "quantile": 0.1,
   "min_names": 20
  },
+ "data": {
+  "universe_size": 503,
+  "panel_start": "1970-01-02",
+  "evaluation_start": "2005-01-01",
+  "end": "2023-12-29"
+ },
  "train": {
-  "sr_net": -0.5458384133981649,
-  "nw_t": -2.0323156753191425,
+  "sr_net": -0.53524806346043,
+  "nw_t": -1.9853693348722266,
   "n_obs": 3523
  },
  "validation": {
-  "sr_net": -0.23621454941569395,
-  "sr_gross": 0.48081271652664725,
-  "nw_t": -0.5767012757002968,
+  "sr_net": -0.2382076341711256,
+  "sr_gross": 0.4789249082176041,
+  "nw_t": -0.5809626750767436,
   "n_obs": 1258,
-  "mean_daily_turnover": 0.8010375789188591
+  "mean_daily_turnover": 0.8009706044579994,
+  "cost_sweep_sr": {
+   "0": 0.4789249082176041,
+   "5": 0.12041090516825365,
+   "10": -0.2382076341711256,
+   "25": -1.3142310144218299
+  }
  },
- "cpcv": {
+ "combinatorial_subperiod_stability": {
+  "interpretation": "combinatorial_subperiod_stability_not_oos",
   "n_paths": 28,
-  "median_sr": 0.4388739932028064,
-  "q25_sr": 0.3054159985539456,
-  "min_sr": -0.49388657882924014,
-  "frac_positive": 0.8928571428571429
+  "median_sr": -0.632601893369187,
+  "q25_sr": -0.8609597762225873,
+  "min_sr": -1.1815422436607108,
+  "frac_positive": 0.0
  },
  "gate1": {
   "val_sr_gt_0.5": false,
   "abs_t_gt_2": false,
   "sign_positive": false,
-  "cpcv_median_gt_0": true,
+  "stability_median_gt_0": false,
   "pass": false
  },
  "gate2": {
-  "subhalf1_sr": 0.16871261609133223,
-  "subhalf2_sr": -0.851576090947382,
-  "hivol_sr": 0.28145592207730546,
-  "lovol_sr": -1.3241569236895998,
-  "cost25_sr": -1.3118925275711382,
-  "perturbations": {},
+  "subhalf1_sr": 0.16681955081449643,
+  "subhalf2_sr": -0.8556987658369293,
+  "hivol_sr": 0.2866973375383019,
+  "lovol_sr": -1.3432806970464837,
+  "cost25_sr": -1.3142310144218299,
+  "perturbations": {
+   "RETURN_WINDOWx0.75": -0.3569334880731584,
+   "RETURN_WINDOWx1.25": -0.21431117332472668,
+   "EXPR[2]x0.75": -0.25218017290620154,
+   "EXPR[2]x1.25": -0.22721858546619855
+  },
+  "candidate_specific": {
+   "requirements_pass": true
+  },
   "pass": false
- },
- "strategy_returns_net_train_val": null
+ }
 }

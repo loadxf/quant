@@ -43,6 +43,7 @@ def make_firm(
 def day_trades(
     daily: Sequence[Sequence[tuple[float, float | None, float | None]]],
     quantity: float = 1,
+    symbol: str = "MNQ",
 ) -> TradeLog:
     """Build a log from per-day lists of (pnl, mae, mfe) tuples.
 
@@ -63,7 +64,7 @@ def day_trades(
                 Trade(
                     entry_time=entry,
                     exit_time=entry + dt.timedelta(minutes=20),
-                    symbol="MNQ",
+                    symbol=symbol,
                     side=Side.LONG,
                     quantity=quantity,
                     pnl=pnl,

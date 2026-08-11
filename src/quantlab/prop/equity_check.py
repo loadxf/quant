@@ -16,12 +16,12 @@ profit targets) need fills, which the trade-log evaluator already
 handles at full fidelity. The curve's own resolution bounds the check:
 daily-sampled charts still miss intra-bar excursions (reported).
 
-Lockout caveat: a rule-free backtest keeps trading through a daily-loss
-lockout the ruled account would have sat out. The locked remainder of
-that session is ignored (phantom under the rules), but LATER sessions
-replay the raw curve — the ruled account's balances would have diverged
-at the lockout, so results after a locked session are indicative, not
-exact (a warning says so).
+Lockout handling: a rule-free backtest keeps trading through a
+daily-loss lockout the ruled account would have sat out. The locked
+remainder of that session is ignored (phantom under the rules) and the
+day closes at the lockout level; the NEXT session's raw chart is
+rebased onto that flattened balance, so later sessions replay what the
+ruled account would actually have carried forward.
 
 Alignment convention: the curve's first mark is the backtest's starting
 capital, mapped to the phase's initial balance — balance_t = initial +
@@ -87,93 +87,88 @@ def check_equity_curve(
     initial = phase.resolved_initial(firm.account_size)
     boundary = firm.day_boundary.to_boundary()
 
-    # Rule LISTS, exactly like the evaluator: a phase may carry several
-    # rules of one type (two trailing floors, fail + lockout daily loss),
-    # and every one must be replayed — keeping only the last silently
-    # misses real breaches.
     trailing: list[TrailingDrawdownRule] = []
     static: list[StaticMaxLossRule] = []
-    daily: list[tuple[DailyLossRule, bool]] = []  # (rule, fails_account)
+    daily_fail: list[DailyLossRule] = []
+    daily_lock: list[DailyLossRule] = []
     for spec in phase.rules:
         if isinstance(spec, TrailingDrawdownSpec):
             trailing.append(TrailingDrawdownRule(spec, initial, firm.account_size))
         elif isinstance(spec, StaticMaxLossSpec):
             static.append(StaticMaxLossRule(spec, initial, firm.account_size))
         elif isinstance(spec, DailyLossLimitSpec):
-            daily.append((DailyLossRule(spec, firm.account_size), spec.effect == "fail"))
+            rule = DailyLossRule(spec, firm.account_size)
+            (daily_fail if spec.effect == "fail" else daily_lock).append(rule)
 
     points = sorted(curve.points, key=lambda p: p.time)
-    base = points[0].equity
+    offset = initial - points[0].equity
     sessions: set = set()
     first_breach: EquityBreach | None = None
     dll_hits: list[EquityBreach] = []
     current_session = None
     day_open = initial
     last_balance = initial
-    dll_hit_today: set[int] = set()
-    locked_today = False
-    locked_sessions = 0
+    locked_session = False
 
     for point in points:
-        balance = initial + (point.equity - base)
         session = boundary.session_date(point.time)
         if session != current_session:
-            if current_session is not None:
-                for tr_rule in trailing:
-                    tr_rule.day_close(last_balance)
+            for trailing_rule in trailing:
+                if current_session is not None:
+                    trailing_rule.day_close(last_balance)
+            if locked_session:
+                # Ignore every prohibited mark after a lockout and rebase the
+                # next session's raw chart to the flattened prop balance.
+                offset = last_balance - point.equity
             current_session = session
             sessions.add(session)
             day_open = last_balance
-            dll_hit_today.clear()
-            locked_today = False
-            for dl_rule, _ in daily:
-                dl_rule.day_start(day_open)
+            locked_session = False
+            for daily_rule in (*daily_fail, *daily_lock):
+                daily_rule.day_start(day_open)
+
+        if locked_session:
+            continue
+        balance = point.equity + offset
 
         day_index = len(sessions) - 1
-        # After a hard breach the account is liquidated (later marks are
-        # phantom); after a lockout the rest of THIS session is phantom —
-        # the firm flattened the account at the lockout level, so equity
-        # below it never happened under the rules.
-        if first_breach is None and not locked_today:
-            # First-hit resolution at the mark, matching the evaluator:
-            # equity descends, so among all levels crossed the HIGHEST
-            # fired first; a fail rule beats a lockout on exact ties.
-            fail_hits: list[EquityBreach] = []
-            for tr_rule in trailing:
-                tr_rule.observe_high(balance)
-                event = tr_rule.check(balance, session, day_index, -1)
-                if event is not None:
-                    fail_hits.append(_to_breach(event, point.time))
-            for st_rule in static:
-                event = st_rule.check(balance, session, day_index, -1)
-                if event is not None:
-                    fail_hits.append(_to_breach(event, point.time))
-            lock_hits: list[EquityBreach] = []
-            for k, (dl_rule, fails) in enumerate(daily):
-                if k in dll_hit_today or not dl_rule.hit(balance):
-                    continue
-                dll_hit_today.add(k)
-                hit = EquityBreach(
-                    rule="daily_loss_limit",
-                    when=point.time.isoformat(),
-                    balance=balance,
-                    threshold=dl_rule.level,
-                    detail=(
-                        f"balance {balance:,.2f} crossed day floor "
-                        f"{dl_rule.level:,.2f} (day open {day_open:,.2f})"
-                    ),
+        for trailing_rule in trailing:
+            trailing_rule.observe_high(balance)
+
+        fail_hits = []
+        for trailing_rule in trailing:
+            event = trailing_rule.check(balance, session, day_index, -1)
+            if event is not None:
+                fail_hits.append((event.threshold, event, False))
+        for static_rule in static:
+            event = static_rule.check(balance, session, day_index, -1)
+            if event is not None:
+                fail_hits.append((event.threshold, event, False))
+        for daily_rule in daily_fail:
+            if daily_rule.hit(balance):
+                fail_hits.append(
+                    (
+                        daily_rule.level,
+                        daily_rule.breach_event(balance, session, day_index, -1),
+                        True,
+                    )
                 )
-                dll_hits.append(hit)
-                (fail_hits if fails else lock_hits).append(hit)
-            best_fail = max(fail_hits, key=lambda b: b.threshold, default=None)
-            best_lock = max(lock_hits, key=lambda b: b.threshold, default=None)
-            if best_fail is not None and (
-                best_lock is None or best_fail.threshold >= best_lock.threshold
-            ):
-                first_breach = best_fail
-            elif best_lock is not None:
-                locked_today = True
-                locked_sessions += 1
+        lock_hits = [daily_rule for daily_rule in daily_lock if daily_rule.hit(balance)]
+        best_fail = max(fail_hits, key=lambda item: item[0]) if fail_hits else None
+        best_lock = max(lock_hits, key=lambda daily_rule: daily_rule.level) if lock_hits else None
+
+        if best_fail is not None and (best_lock is None or best_fail[0] >= best_lock.level):
+            first_breach = _to_breach(best_fail[1], point.time)
+            if best_fail[2]:
+                dll_hits.append(first_breach)
+            last_balance = best_fail[0]
+            break
+        if best_lock is not None:
+            hit = _to_breach(best_lock.breach_event(balance, session, day_index, -1), point.time)
+            dll_hits.append(hit)
+            last_balance = best_lock.level
+            locked_session = True
+            continue
         last_balance = balance
 
     n_sessions = len(sessions)
@@ -185,20 +180,13 @@ def check_equity_curve(
         first_breach=first_breach,
         daily_loss_hits=dll_hits,
     )
-    if locked_sessions:
-        result.warnings.append(
-            f"the curve kept trading through {locked_sessions} locked-out "
-            "session(s) the ruled account would have sat out — rule state "
-            "after those sessions is approximate; treat later results as "
-            "indicative, not exact"
-        )
     if not result.intraday_marks:
         result.warnings.append(
             "equity chart is ~daily-sampled: intra-session excursions between "
             "marks remain invisible — this check tightens the trade-log verdict "
             "but is still an optimistic bound"
         )
-    if not trailing and not static and not daily:
+    if not trailing and not static and not daily_fail and not daily_lock:
         result.warnings.append(f"phase {name!r} has no equity-path rules to check")
     return result
 

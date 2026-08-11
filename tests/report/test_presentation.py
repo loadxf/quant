@@ -8,7 +8,9 @@ must appear, identically formatted, on the others.
 
 from __future__ import annotations
 
+import datetime as dt
 import json
+from zoneinfo import ZoneInfo
 
 import pytest
 from rich.console import Console
@@ -23,6 +25,7 @@ from quantlab.report.html import build_html_report
 from quantlab.report.jsonout import combined_json
 from quantlab.report.terminal import render_reality, render_report
 from quantlab.schema.io import write_trade_log
+from quantlab.schema.trade import Side, Trade, TradeLog
 
 from ..conftest import random_log
 from ..prop.conftest import day_trades, simple
@@ -162,6 +165,20 @@ class TestFrontierRenderers:
 
 
 class TestCliEndToEnd:
+    def test_verdict_json_stays_parseable_when_html_is_also_requested(self, tmp_path) -> None:
+        from typer.testing import CliRunner
+
+        from quantlab.cli.app import app
+
+        parquet = tmp_path / "t.parquet"
+        html = tmp_path / "verdict.html"
+        write_trade_log(random_log(n_days=30, seed=7), parquet)
+        result = CliRunner().invoke(app, ["verdict", str(parquet), "--json", "--html", str(html)])
+        assert result.exit_code == 0, result.output
+        assert json.loads(result.stdout)["verdict"]["overall"]
+        assert "HTML report written" in result.stderr
+        assert html.is_file()
+
     def test_report_command_all_surfaces_agree(self, tmp_path) -> None:
         from typer.testing import CliRunner
 
@@ -251,6 +268,32 @@ class TestReviewLoopFixes:
         from quantlab.metrics.costs import log_caveats
 
         assert payload["metrics"]["warnings"] == log_caveats(bundle["log"])
+
+    def test_firm_boundary_warning_matches_html_and_json(self, tmp_path) -> None:
+        prague = ZoneInfo("Europe/Prague")
+        entry = dt.datetime(2026, 1, 5, 23, 30, tzinfo=prague)
+        log = TradeLog(
+            [
+                Trade(
+                    entry_time=entry,
+                    exit_time=entry + dt.timedelta(hours=1),
+                    symbol="EURUSD",
+                    side=Side.LONG,
+                    quantity=1,
+                    pnl=100,
+                )
+            ]
+        )
+        firm = load_firm("ftmo_1step_100k")
+        boundary = firm.day_boundary.to_boundary()
+        metrics = compute_metrics(log, starting_equity=firm.account_size, boundary=boundary)
+        verdict = compute_scorecard(log, metrics, boundary=boundary, firm=firm)
+        mc = run_monte_carlo(log, firm, MCConfig(n_paths=5, seed=1))
+        html_path = tmp_path / "ftmo.html"
+        build_html_report(log, metrics, verdict, html_path, mc=mc, firm=firm)
+        payload = combined_json(metrics, verdict, mc, log=log, boundary=boundary)
+        assert any("daily reset" in warning for warning in payload["metrics"]["warnings"])
+        assert "daily reset" in html_path.read_text()
 
     def test_report_accepts_overhead_and_ohlcv_flags(self, tmp_path) -> None:
         # Was: quant report silently reverted to zero overhead while

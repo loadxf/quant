@@ -71,6 +71,15 @@ def test_dsr_penalizes_many_trials():
     assert many["sr0_daily_benchmark"] > few["sr0_daily_benchmark"]
 
 
+@pytest.mark.parametrize("trial_variance", [float("nan"), 0.0, -0.1])
+def test_dsr_is_unavailable_when_multi_trial_dispersion_is_unestimable(trial_variance):
+    rng = np.random.default_rng(51)
+    returns = pd.Series(rng.normal(0.002, 0.01, 300))
+    result = deflated_sharpe_ratio(returns, n_trials=100, var_sr_trials=trial_variance)
+    assert np.isnan(result["sr0_daily_benchmark"])
+    assert np.isnan(result["dsr"])
+
+
 def test_newey_west_iid_matches_ols_t():
     rng = np.random.default_rng(9)
     r = pd.Series(rng.normal(0.001, 0.01, 5000))
@@ -88,6 +97,12 @@ def test_stationary_bootstrap_properties():
     assert continuations == pytest.approx(1 - 1 / 20.0, abs=0.02)
 
 
+@pytest.mark.parametrize("args", [(0, 20.0), (10, 0.0), (10, float("nan"))])
+def test_stationary_bootstrap_rejects_invalid_inputs(args):
+    with pytest.raises(ValueError, match="positive"):
+        stationary_bootstrap_indices(*args, rng=np.random.default_rng(1))
+
+
 def test_reality_check_null_uniformish_and_power():
     rng = np.random.default_rng(2)
     null_panel = pd.DataFrame(rng.normal(0, 0.01, size=(750, 10)))
@@ -97,6 +112,41 @@ def test_reality_check_null_uniformish_and_power():
     signal_panel[0] = rng.normal(0.002, 0.01, 750)  # one strong true effect
     p_sig = reality_check_pvalue(signal_panel, n_boot=300)["p_value"]
     assert p_sig < 0.05
+
+
+def test_reality_check_uses_common_support_and_nonzero_pvalue():
+    rng = np.random.default_rng(4)
+    panel = pd.DataFrame(rng.normal(size=(100, 2)))
+    panel.loc[:19, 1] = np.nan
+    out = reality_check_pvalue(panel, n_boot=20, seed=2)
+    assert out["n_obs"] == 80
+    assert out["p_value"] >= 1 / 21
+    assert out["statistic_name"] == "maximum_daily_sharpe"
+
+
+def test_reality_check_rejects_invalid_bootstrap_count():
+    with pytest.raises(ValueError, match="positive"):
+        reality_check_pvalue(pd.DataFrame({"a": range(100)}), n_boot=0)
+
+
+@pytest.mark.parametrize(
+    "kwargs",
+    [
+        {"n_boot": 4.0},
+        {"n_boot": True},
+        {"mean_block": True},
+        {"seed": 1.5},
+    ],
+)
+def test_reality_check_rejects_non_integer_or_boolean_controls(kwargs):
+    with pytest.raises(ValueError, match="positive"):
+        reality_check_pvalue(pd.DataFrame({"a": range(100)}), **kwargs)
+
+
+@pytest.mark.parametrize("lags", [1.5, True])
+def test_newey_west_rejects_non_integer_lags(lags):
+    with pytest.raises(ValueError, match="lags"):
+        newey_west_tstat(pd.Series(np.arange(20.0)), lags=lags)
 
 
 def test_psr_pinned_to_sharpe_frontier_paper():

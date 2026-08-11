@@ -23,10 +23,23 @@ DEFAULT_PREFIX = "quantlab"
 
 
 def default_key(symbol: str) -> str:
-    return f"{DEFAULT_PREFIX}/{symbol.lower()}.csv"
+    if not isinstance(symbol, str) or not symbol.strip():
+        raise QuantLabError("Object Store symbol must be non-empty")
+    return f"{DEFAULT_PREFIX}/{symbol.strip().lower()}.csv"
 
 
 def upload(path: Path, key: str) -> str:
+    if not path.is_file():
+        raise QuantLabError(f"Object Store upload file not found: {path}")
+    if (
+        not isinstance(key, str)
+        or not key
+        or key.startswith("/")
+        or ".." in Path(key).parts
+        or "\\" in key
+        or any(ord(char) < 32 for char in key)
+    ):
+        raise QuantLabError(f"Invalid Object Store key: {key!r}")
     size_mb = path.stat().st_size / 1e6
     if size_mb > 45:
         raise CloudUnavailableError(

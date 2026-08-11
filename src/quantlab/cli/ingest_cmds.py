@@ -48,7 +48,12 @@ def ingest_trades(
     table.add_row("Rows dropped", str(report.rows_dropped))
     table.add_row("Mapping", "auto-detected" if report.autodetected else "user-provided")
     table.add_row(
-        "MAE/MFE present", "yes" if log.has_excursions else "no (intraday checks optimistic)"
+        "MAE/MFE fidelity",
+        {
+            "full": "full",
+            "partial": "partial (missing sides optimistic)",
+            "close-only": "none (intraday checks optimistic)",
+        }[log.excursion_fidelity],
     )
     table.add_row("Output", str(output))
     console.print(table)

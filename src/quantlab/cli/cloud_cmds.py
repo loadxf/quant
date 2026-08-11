@@ -3,16 +3,18 @@
 from __future__ import annotations
 
 import json
+import secrets
 from pathlib import Path
 
 import typer
 from rich.console import Console
 
 from quantlab.errors import QuantLabError
-from quantlab.output import prepared, write_text
+from quantlab.output import prepared
 from quantlab.qc import runner
 from quantlab.qc.api import QCClient
 from quantlab.qc.results import parse_closed_trades, parse_equity_chart
+from quantlab.report.jsonout import sanitize
 from quantlab.schema.io import write_trade_log
 
 cloud_app = typer.Typer(no_args_is_help=True)
@@ -95,7 +97,14 @@ def results_cmd(
     if save_json is not None:
         # Written BEFORE any status check so a crashed backtest's raw
         # payload is still retrievable for diagnosis.
-        write_text(save_json, json.dumps(backtest, indent=2, default=str))
+        serialized = json.dumps(sanitize(backtest), indent=2, default=str, allow_nan=False)
+        save_json.parent.mkdir(parents=True, exist_ok=True)
+        temporary = save_json.with_name(f".{save_json.name}.{secrets.token_hex(6)}.tmp")
+        try:
+            temporary.write_text(serialized, encoding="utf-8")
+            temporary.replace(save_json)
+        finally:
+            temporary.unlink(missing_ok=True)
         console.print(f"raw result saved to {save_json}")
 
     error_text = str(backtest.get("error") or backtest.get("stacktrace") or "").strip()

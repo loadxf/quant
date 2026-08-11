@@ -20,6 +20,14 @@ from quantlab.errors import QuantLabError
 BootstrapName = Literal["stationary", "iid_day", "iid_trade"]
 
 
+def _validate_shape(n_days: int, n_paths: int, horizon: int) -> None:
+    if n_days < 1 or n_paths < 1 or horizon < 1:
+        raise QuantLabError(
+            "bootstrap dimensions must be positive "
+            f"(days={n_days}, paths={n_paths}, horizon={horizon})"
+        )
+
+
 class Bootstrapper(Protocol):
     def sample(
         self, n_days: int, n_paths: int, horizon: int, rng: np.random.Generator
@@ -29,6 +37,8 @@ class Bootstrapper(Protocol):
 
 
 def default_block_length(n_days: int) -> int:
+    if n_days < 1:
+        raise QuantLabError(f"n_days must be positive (got {n_days})")
     return max(2, round(n_days ** (1 / 3)))
 
 
@@ -85,6 +95,7 @@ class StationaryBlockBootstrap:
     def sample(
         self, n_days: int, n_paths: int, horizon: int, rng: np.random.Generator
     ) -> np.ndarray:
+        _validate_shape(n_days, n_paths, horizon)
         length = (
             self.expected_block_len
             if self.expected_block_len is not None
@@ -106,10 +117,13 @@ class IIDDayBootstrap:
     def sample(
         self, n_days: int, n_paths: int, horizon: int, rng: np.random.Generator
     ) -> np.ndarray:
+        _validate_shape(n_days, n_paths, horizon)
         return rng.integers(0, n_days, size=(n_paths, horizon))
 
 
 def make_bootstrapper(name: BootstrapName, block_len: int | None = None) -> Bootstrapper:
+    if block_len is not None and block_len < 1:
+        raise QuantLabError(f"block_len must be positive (got {block_len})")
     if name == "stationary":
         return StationaryBlockBootstrap(block_len)
     if name in ("iid_day", "iid_trade"):  # iid_trade resamples the *profile*, then IID days

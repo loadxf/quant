@@ -1,3446 +1,4028 @@
 {
  "A": {
-  "end": "2026-07-17",
-  "rows": 6704,
-  "sha256": "7a4b28b3625be32233fed703c035e65708e15eab10e1a2808e46d408b216519c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6720,
+  "sha256": "210577edd459e75b2ea9ab0ae4d2cdd0a0b47d56a3e8b80367006e7bae80bb98",
   "start": "1999-11-18"
  },
  "AAPL": {
-  "end": "2026-07-17",
-  "rows": 11490,
-  "sha256": "f787e3c8c0df4f22e27d5144ce5fa2fe1ef10d8fdcbf7a1609c5adeb2d3203b6",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11506,
+  "sha256": "b7ec0ae7399ac602290bd830bf40bde23bd045f0d5fa9555806d4e8447aca8dd",
   "start": "1980-12-12"
  },
  "ABBV": {
-  "end": "2026-07-17",
-  "rows": 3405,
-  "sha256": "eafd0d2479e47f96eec630561be61981b4b1a704d97c538f27d123608357f2f9",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3421,
+  "sha256": "dacb3d0eda363dbd56d2566f560b12094a34adb2b8219fd3de291c15fc062b80",
   "start": "2013-01-02"
  },
  "ABNB": {
-  "end": "2026-07-17",
-  "rows": 1405,
-  "sha256": "635c52e757e5b9be7a656db126da250737fb69c9f1a96f3dfcd2558bd86eace2",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 1421,
+  "sha256": "3ee5fd7cc9479a744cda9e745cce8df72aa24c23275b891eeb20f0dfb69b21c4",
   "start": "2020-12-10"
  },
  "ABT": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "274debee86b1791bc77f3bd8ded033dae770dfbbb8d11d599f064dc3090095a6",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "23bd401a42d52dbf22297f2284efa5e147d548eef3dcd528c4bd3d13445a5175",
   "start": "1980-03-17"
  },
  "ACGL": {
-  "end": "2026-07-17",
-  "rows": 7760,
-  "sha256": "ee827291d43fa1803f16f294ad04a75f6a2f5ad585db8ae263d03b9af1f3109e",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7776,
+  "sha256": "3df2e481ee3d94fec683517d121149df3d431652c7fb083b8abcce1c300b1609",
   "start": "1995-09-14"
  },
  "ACN": {
-  "end": "2026-07-17",
-  "rows": 6285,
-  "sha256": "aefb50c9b4599b4867f7e4b3a6696edc88a47a9daffb8eab9ba1de5639bc69c8",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6301,
+  "sha256": "fea9e76bf58d21d5e26ec47b6e9f789b7668155dff2981b6a5106f7b0253500b",
   "start": "2001-07-19"
  },
  "ADBE": {
-  "end": "2026-07-17",
-  "rows": 10058,
-  "sha256": "d278df09be628a6361d7eb7e350f72c4cc55931b086bd9d0cfe970a7b8c5d49d",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10074,
+  "sha256": "527d2009316daa9bcf9b77ca836e0317131749e3219f5b4a17ceb17ec9310d84",
   "start": "1986-08-13"
  },
  "ADI": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "d81650fc7baf7c6d48ea1b8652cb19763a54e6a05cc6d3b99130d9d588213611",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "57720aeb977bcccf85ee95e2c66328feb139752fd548178de1c3c2726460e4ea",
   "start": "1980-03-17"
  },
  "ADM": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "dfd3334160c6d7e5429efe6b8b776c9c9623f23dbdef2d8fbe76aa121caea8d8",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 11694,
+  "sha256": "8fea282da4382045142015d9182be9cecaf8e39a736468d87d6fdadde43391de",
   "start": "1980-03-17"
  },
  "ADP": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "a7926b1efbf19c5c54865f135e211cd0b57d05a1883749f6a8e9e19327d64efb",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "8cbcea8fb1eab822ddc40becf9acc268f9fda7ace7bdc3f302eb136b014ada58",
   "start": "1980-03-17"
  },
  "ADSK": {
-  "end": "2026-07-17",
-  "rows": 10341,
-  "sha256": "adce7d42d9529f6686ebfb3483abee9071a046e297c77b645f7ccfaa2b9e3943",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10357,
+  "sha256": "0168c011b0b154019e464800d3b4d1cf1ffc0517deceab5a38e17a9805219717",
   "start": "1985-06-28"
  },
  "AEE": {
-  "end": "2026-07-17",
-  "rows": 7178,
-  "sha256": "36ff5e690ab69cd545d1e98758124ccabbdf395c35741b348050d607c441fd0e",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7194,
+  "sha256": "b39dbaf533386eff4a58f8dcc745a662dbb000b8a066165a04d1589fd8d02f89",
   "start": "1998-01-02"
  },
  "AEP": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "50ebdf14bc628e72d6a85bc3e5e46df8082f6cbc07ca6236fd3a80e01a85fe3d",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 14272,
+  "sha256": "27530af3de5a9e6f707df2f18baf34d3c64c04f2c20951d76938d9b725b231e1",
   "start": "1970-01-02"
  },
  "AES": {
-  "end": "2026-07-17",
-  "rows": 8827,
-  "sha256": "ee75af24359496494bfeb683dc22efcd557691e44a619bf8750d184f6ec99abf",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8843,
+  "sha256": "4c5c65d34f0fdef20571e4c6b98db33b4a94f330e2d903fe8ea725ec8cffa46c",
   "start": "1991-06-26"
  },
  "AFL": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "6cd8e4753967e4c293a9efe721f2e2c7f11f95acc5123923e59aa04ab089f81f",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "2e9c2d941398fff0f270ba32385e6aea6a3765b7eaa026a764763a363be10d1c",
   "start": "1980-03-17"
  },
  "AGG": {
-  "end": "2026-07-17",
-  "rows": 5736,
-  "sha256": "8557adf7747c37256ecd7678e008144afcbb2507ae6cb4e13306027cac9eaa8e",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5752,
+  "sha256": "5dcd9969a45b2ba2620289308166c4512124fc10da61343be589993cbacbfe6f",
   "start": "2003-09-29"
  },
  "AIG": {
-  "end": "2026-07-17",
-  "rows": 13498,
-  "sha256": "59245735f89a8b6caf76a88d0da8d51748d3418175078a23db7516f097b12967",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13514,
+  "sha256": "73f225ceb2b51470dbc4323b94d0520639fb74f6772465774476901bd0103574",
   "start": "1973-01-02"
  },
  "AIZ": {
-  "end": "2026-07-17",
-  "rows": 5647,
-  "sha256": "ef13b77721eaa815585969cdccee2525cab759965444b63a40522b59f5e752d7",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5663,
+  "sha256": "d1497364b19a4d82e99cb9cf27f30511d20e0f288919efbfadd9d18dc5308996",
   "start": "2004-02-05"
  },
  "AJG": {
-  "end": "2026-07-17",
-  "rows": 10600,
-  "sha256": "fa922794b33b3f13461b5f9f824389417314b9d7ef9b039961e07a5977f75edb",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10616,
+  "sha256": "7c07041d91e024548c7b2ddca99262c39a5d506ba469cdcb0624b4194aaf4467",
   "start": "1984-06-20"
  },
  "AKAM": {
-  "end": "2026-07-17",
-  "rows": 6718,
-  "sha256": "1a262c09ae8005b631b23b15001d849d5a51f625d53b403ed923d9c5729bfa38",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6734,
+  "sha256": "112f21e59568c7ddb9c6f2195a32b9aa68a67bf8398cdb9373e529111997c9a6",
   "start": "1999-10-29"
  },
  "ALB": {
-  "end": "2026-07-17",
-  "rows": 8154,
-  "sha256": "144590237dc14919f084f4ecf8c966302972db99502ddb755200140a4960f4bb",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8170,
+  "sha256": "d4d79fdfd41d01c7f2ec4d8a53ef2888894ae91fea7a5dcbe5ed6800011b1cb6",
   "start": "1994-02-22"
  },
  "ALGN": {
-  "end": "2026-07-17",
-  "rows": 6403,
-  "sha256": "96151f689e746bf8a4d03e5d75d4e494a3e5284c13e00e017ad4f65ef57629ab",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6419,
+  "sha256": "8d2bc077659c6fde599c7d8201d8853f2e8ba152ee98d2e6d5f0f648eb5e7daf",
   "start": "2001-01-30"
  },
  "ALL": {
-  "end": "2026-07-17",
-  "rows": 8337,
-  "sha256": "bf2b9d5f1136b55fb150ee4a325bcce71f3bd6a4092dc5eb7228402a2c422d28",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8353,
+  "sha256": "10bdb7041829e1eae4bca6f2d1b7dfab7d4b793159bad5f2bd2b8a0e4bfe7247",
   "start": "1993-06-03"
  },
  "ALLE": {
-  "end": "2026-07-17",
-  "rows": 3183,
-  "sha256": "07a36b2a294fd616cb24c0c108b61f3a1c9d15adb160a6ef2feb240643132b2f",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 3199,
+  "sha256": "d3e44dabdaaf16f26d253ffa8f794590ed6ea719597c94a6c501344b0dd9b07f",
   "start": "2013-11-18"
  },
  "AMAT": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "f5ea2e5be53bd032e800e3762b9e4e5675eda472bf5dcc4d15d15eaec9b166e0",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "67b0bc96bf969ad60da7b9e540259b952ad454d63ccdecfd3003355954c67322",
   "start": "1980-03-17"
  },
  "AMCR": {
-  "end": "2026-07-17",
-  "rows": 3563,
-  "sha256": "9ad6326e70432f9c5b2c28f676cd2c00ec368e7a383cf803145a8a958ae46d14",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 3579,
+  "sha256": "2eb6b338981822d858412fa2038f06ccd5a9a7d3471d02d107c2066ad55cc954",
   "start": "2012-05-15"
  },
  "AMD": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "dd81d5f252a2a0a39b8d039080a4cc8f92cc682f454bdd170ece944f17bfaf63",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "e4e01dbd9e909b1a8481c08a734025cf80268359fb3e37334bbc4fbaf9819a12",
   "start": "1980-03-17"
  },
  "AME": {
-  "end": "2026-07-17",
-  "rows": 10580,
-  "sha256": "45f16d4ade3f1ea7738d219dcbf7b55b7989698268443f5f18dc00a9e0d58732",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10596,
+  "sha256": "a57c9a775a3481d0861e09788b1df1b659c1bcd738ee4263574ae7e428e941f4",
   "start": "1984-07-19"
  },
  "AMGN": {
-  "end": "2026-07-17",
-  "rows": 10855,
-  "sha256": "d416ebda9f30f59d8a0e8bcae334f6d0daed4fd2c66f7318cb17209239ebd31a",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10871,
+  "sha256": "32fb577ea87e86e4390514cedd2d2ee871c2dd093a9f30bc93ba149d65d51315",
   "start": "1983-06-17"
  },
  "AMP": {
-  "end": "2026-07-17",
-  "rows": 5241,
-  "sha256": "d84dd100eb35e0a5c02cbbcdba17fae86797b1d41bb00f2962fa5377cde64e84",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5257,
+  "sha256": "4a2b674e718c51399573262952ddfd57f340e4169b5419717baabf796ef2fd0a",
   "start": "2005-09-15"
  },
  "AMT": {
-  "end": "2026-07-17",
-  "rows": 7140,
-  "sha256": "ec1c355e055b77c292f67fa7ac38a21035e7f09ebc10a67cc0b8058f8dc748d5",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7156,
+  "sha256": "2497de8078bdba12da0eb076b3da00c80a9b4f0172172aa2ba9024077f2c8fe7",
   "start": "1998-02-27"
  },
  "AMZN": {
-  "end": "2026-07-17",
-  "rows": 7338,
-  "sha256": "4822e49dbc9c4671d28634f53df1fa08d22a4201336e9348bb04643024682a69",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7354,
+  "sha256": "6b53f32fa983379e1b27c4c0b1905d30ee2c1224c3c86b4157db5415ee82787a",
   "start": "1997-05-15"
  },
  "ANET": {
-  "end": "2026-07-17",
-  "rows": 3046,
-  "sha256": "3891abf937ab1e1693b48b8f127cabfa6cb74766063128b0bf5c951e8ffeec27",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3062,
+  "sha256": "885a295cff59c93fb25ea0f5ad5e640f2c399eea248b9758a60e639222b99178",
   "start": "2014-06-06"
  },
  "AON": {
-  "end": "2026-07-17",
-  "rows": 11625,
-  "sha256": "64937536fd172cb5e95788b00ea387f681e491d034afa3b4a971dfc81c5c8157",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11641,
+  "sha256": "7256f5e0b1646f286e603ef5b9f18748fd2b2b8d84678faaf6ec1b7151c6839b",
   "start": "1980-06-02"
  },
  "AOS": {
-  "end": "2026-07-17",
-  "rows": 10782,
-  "sha256": "c858fe145a01ecdb601a7a120186b6bfd9623b72642013c742fef1455960dcf1",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10798,
+  "sha256": "098c30940083fb145e38ef3f785d895d5103507360ebec4a2ef82029969184c1",
   "start": "1983-09-30"
  },
  "APA": {
-  "end": "2026-07-17",
-  "rows": 11890,
-  "sha256": "891a4c8a9d05514baeff797a14dc4694f4240d6b747e3dc9f5fd6d1166c87edc",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11906,
+  "sha256": "bb6ddaafbec4fc6aa885c35c554b8e969354663f66da1deb4b649c121c3def45",
   "start": "1979-05-15"
  },
  "APD": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "df43c27b85c8aca8eb478a0314e211ee8f4cf343e63ab8bcc97df6b7be788fde",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "0f08c96a3b22a7109a50797ed406e2aa38b7c4ff4de1d997fbfb5d55d8737301",
   "start": "1980-03-17"
  },
  "APH": {
-  "end": "2026-07-17",
-  "rows": 8732,
-  "sha256": "7043163ff737afacad6346b265e3ef3e05ec2c789752698aff5fd64506fe8263",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8748,
+  "sha256": "a47f45969c3587d2e38658ee90a8f5aaa3ce112d01a70319210e731912150c29",
   "start": "1991-11-08"
  },
  "APO": {
-  "end": "2026-07-17",
-  "rows": 3847,
-  "sha256": "ea4ee461021d8489d0aa726db421b204182e429f9d518ac038661a1632fbd199",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 3863,
+  "sha256": "550d7f6aa39494c125b7c53469d8ec311d21bd35b61a367619c1df52f267a7c8",
   "start": "2011-03-30"
  },
  "APP": {
-  "end": "2026-07-17",
-  "rows": 1320,
-  "sha256": "cf483b2afa491571ebbc5aacbbe209edf42b6a5999ec92f73b8f7fb05fc0bcc9",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 1336,
+  "sha256": "800a7d184c48da15ccc21c0b392c80a61fe4d7aad4229c331ccc8e58a2564222",
   "start": "2021-04-15"
  },
  "APTV": {
-  "end": "2026-07-17",
-  "rows": 3685,
-  "sha256": "8408442714eeb53d6c39dd7497bc86726f0773bf3f0256eafc576f653211c27f",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3701,
+  "sha256": "5a8e246a7cd33e84771946d8f0d066e745ecd8b58359de38122391a9b64278ba",
   "start": "2011-11-17"
  },
  "ARE": {
-  "end": "2026-07-17",
-  "rows": 7330,
-  "sha256": "b77af40f2e10f643aa403188a614f8d1f6acad415417216ec3492c1a152a4c40",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7346,
+  "sha256": "05af99a343a9ab1b09d5accaeaa29ceb32431544faa8f89ee38742d3b1fbd64d",
   "start": "1997-05-28"
  },
  "ARES": {
-  "end": "2026-07-17",
-  "rows": 3070,
-  "sha256": "88babf4246d4bd2c7e2bb28ac65b2fad2ead5af4e81ff98a7f0d4b03a89b4b14",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3086,
+  "sha256": "df69fd09b53ca277547a2cb174d8b9abdae0a303de59cc320662ef581d895dae",
   "start": "2014-05-02"
  },
  "ATO": {
-  "end": "2026-07-17",
-  "rows": 10721,
-  "sha256": "e02b3370f1d4c373f6213ab17d2755298c307d342b4662372e06fb389dd28978",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 10737,
+  "sha256": "ed54c7cc8dba9c3f8b68ee5b35b3cb7202c793c7999c1ae0dd5d677372811a3e",
   "start": "1983-12-28"
  },
  "AVB": {
-  "end": "2026-07-17",
-  "rows": 8141,
-  "sha256": "31478c15d4a8f1150385d49db16e62e019b18c1ecf4a68b1eb4959bee4aae002",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 8157,
+  "sha256": "0f65b87e2b8a55b834b8433220da54d6103215e5d02f92fe6c1b3f647c8401c7",
   "start": "1994-03-11"
  },
  "AVGO": {
-  "end": "2026-07-17",
-  "rows": 4262,
-  "sha256": "2d3cbbc45945fff6b89507e55f98d4c2907442b81654c577e105f2dd3a3cb55a",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4278,
+  "sha256": "6ebe31da49ef2f7bee77c28b2f97b8741721ab805e1f5b945392fe4105856ab7",
   "start": "2009-08-06"
  },
  "AVY": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "4fe4c526825e9ffa91317f1ef361c63346b545cbbde950dd658a9c9756903785",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13480,
+  "sha256": "89d0cd0b80b3e663b6f228b6f1bcef5be241dc341d57beadefdd5d8932a1d740",
   "start": "1973-02-21"
  },
  "AWK": {
-  "end": "2026-07-17",
-  "rows": 4587,
-  "sha256": "036abba53a594785c4afdd5983dc8e1d68d4ad124c9383e4bdd1cf6ac081093e",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4603,
+  "sha256": "0433aab7b8b65604027c20460a0b579bb97c1793b111a605ec774995ed80d6f7",
   "start": "2008-04-23"
  },
  "AXON": {
-  "end": "2026-07-17",
-  "rows": 6306,
-  "sha256": "dd2948ffb6578db32023b0b933427118814b6c927782f3c1e0966386b9e3f0a6",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6322,
+  "sha256": "22868aec8aa21a2fc87342614737b0ff4c8ec74b4f49708c9d92107060977a88",
   "start": "2001-06-19"
  },
  "AXP": {
-  "end": "2026-07-17",
-  "rows": 13644,
-  "sha256": "13b92e2542b46613596b22d7d65bf82723bcae5a84d14e9d71827c1c2c9c113c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13660,
+  "sha256": "f2fe417ea5fd6707b5a7b91a591213e20a13e3857a31908b73bad452dfdfb934",
   "start": "1972-06-01"
  },
  "AZO": {
-  "end": "2026-07-17",
-  "rows": 8887,
-  "sha256": "a7fce4b89f1534cc96cc290b23daac77eb04e8365c6463ef485082f3acace8da",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 8903,
+  "sha256": "ed6c2b60eb23ee03e8f6f2de076d656c5ae79b5bd8e0fa835e594d309f72b335",
   "start": "1991-04-02"
  },
  "BA": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "e5f90eaa7b31b875af461a5534fd4855afd03a8d6e72c72910901155b0266eef",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 14272,
+  "sha256": "ea932dd54c012646f087a483ce01de2efeab85ad29e0ca4444af7250763594a0",
   "start": "1970-01-02"
  },
  "BAC": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "5bc6d9d2ede9f6c3cd18449266b6d948148b946a698cd15160d218ab29cc2a26",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13480,
+  "sha256": "553650b08811d488c40a5c182c0d3e928431244d21ea8a542107f8388595535f",
   "start": "1973-02-21"
  },
  "BALL": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "067b9ac215bb8ac65ae1050181055928673bf399e124e069d6ba14238aa390e6",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13480,
+  "sha256": "a735725e2e1eceb6d7a591cc85f1602cd2a832916135626d2d816663e5debc26",
   "start": "1973-02-21"
  },
  "BAX": {
-  "end": "2026-07-17",
-  "rows": 11270,
-  "sha256": "a9146406d7a9dff3eeb2aae260b526bafca63f19b60b783fa08567c3d905c7a0",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11286,
+  "sha256": "c5ba358deab6b46eb4dbb0c70e9c631ef4e848cc4e59fbcd9d5820e4f7dc5adc",
   "start": "1981-10-27"
  },
  "BBY": {
-  "end": "2026-07-17",
-  "rows": 10391,
-  "sha256": "04dbe0519e589f8b0bec9e50519fe87a4b5db9fdffdf460b94809aca9b6d2c0d",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10407,
+  "sha256": "664b17aacf2bd9a51a44a65432ff43001a3ac88babdd024d55cc1ee77ec0b347",
   "start": "1985-04-18"
  },
  "BDX": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "9a7fcd5ff3972ae96c6198d6a69435738b1d7498a611afa2dbbf553887c9e938",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13480,
+  "sha256": "440916dec6853c758aa548468cf5f065c4732920aa964edadb857f03cc0a82a1",
   "start": "1973-02-21"
  },
  "BEN": {
-  "end": "2026-07-17",
-  "rows": 10787,
-  "sha256": "a78308afdc07b73dd36ba1ed494eeffc783792962d099e57da75aac24667df61",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10803,
+  "sha256": "0fc38df4f3d6a0e75fbad0310a4ba4346a1f264a72f5c1fec447c6f5bb583bb6",
   "start": "1983-09-23"
  },
  "BF-B": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "0f0fbe362a83cf317f8b69a41631e7fbe0ea3b38e92648d0f23078b7ad0d18d7",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "8ea23ae44d675f87825a061480d49fd17282bc968ea623bcf281133c9735ccd2",
   "start": "1980-03-17"
  },
  "BG": {
-  "end": "2026-07-17",
-  "rows": 6275,
-  "sha256": "d2148a777928a48f0eb9710ad0c90507a2e9da8abc53dba2e4bd28f201415be5",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6291,
+  "sha256": "511c34e8b37cdb95d760185d66041817fc545aee84d0ae32f94ef8cc197f88b6",
   "start": "2001-08-02"
  },
  "BIIB": {
-  "end": "2026-07-17",
-  "rows": 8770,
-  "sha256": "1204fad953045898fe7e69614342ed24c56837f0a404da97315a6de8616b92c2",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8786,
+  "sha256": "ef8a87494e6d7bc440c90fb501e29d6e6366e0e90384e2ea0f0831dcb43f2994",
   "start": "1991-09-17"
  },
  "BKNG": {
-  "end": "2026-07-17",
-  "rows": 6866,
-  "sha256": "f87736a9f8ec5be0ec4d9ff959f46e0d49b10341b4f63f70aa9ba7ba9d40972c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6882,
+  "sha256": "cc6abfe9a133f08c8c354ede6e34e9fd350da1e1347525e9ba61300a46aeeb84",
   "start": "1999-03-31"
  },
  "BKR": {
-  "end": "2026-07-17",
-  "rows": 9895,
-  "sha256": "fa06327c83b3bfe0edbd40885ccf5df382d9121946043572f7921f2ad4453d68",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 9911,
+  "sha256": "9872069a6db1580e14abac35dd8da511365a60ca65bcece90d711d1c2b539e00",
   "start": "1987-04-06"
  },
  "BLDR": {
-  "end": "2026-07-17",
-  "rows": 5296,
-  "sha256": "5ea24644cb0ced4d65947a32ab00df508aaf4ab0f9dc5aed171530377da4bec8",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5312,
+  "sha256": "9ce8361c0f83e2574f6b7be52c1343ee23bd7d6c66bea333e701280c65837956",
   "start": "2005-06-28"
  },
  "BLK": {
-  "end": "2026-07-17",
-  "rows": 6738,
-  "sha256": "f0db227dd9dc344153d6f377dd755d425454d0cdcc81df9f1ba211515fb87fa6",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6754,
+  "sha256": "7f42789a1bb158543e20324c08fd44ec7b257aa8e4433de1d696efbf571a5cde",
   "start": "1999-10-01"
  },
  "BMY": {
-  "end": "2026-07-17",
-  "rows": 13644,
-  "sha256": "c2ce6a2e5176b66455fe992a3b970c3c47de246b1d01fef639e00f9c3bd62d2a",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13660,
+  "sha256": "43817846d14bb8a9d734545549c893b77328b3097b4c105064c8b3b545a78eff",
   "start": "1972-06-01"
  },
  "BNY": {
-  "end": "2026-07-17",
-  "rows": 13414,
-  "sha256": "e888bb371898d94343bd3f71970d3770cc3922095174518843eceff550ac2c49",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13430,
+  "sha256": "f4554fc4aa63f3cea480783cb182df2eeb2328d55edc966b779e316ec7817697",
   "start": "1973-05-03"
  },
  "BR": {
-  "end": "2026-07-17",
-  "rows": 4861,
-  "sha256": "d9d8d190f1336d70b5a1c3d9d52bd7ef1e7d9603cb64113c07fbee279b5879b4",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4877,
+  "sha256": "972b760926349a25511e7263121a5dfcda5bece35ad2efcab4fa4457a7b12693",
   "start": "2007-03-22"
  },
  "BRK-B": {
-  "end": "2026-07-17",
-  "rows": 7595,
-  "sha256": "dc5feed74af002dd87c10a8198cfaedee80990334239f54670be1262b8a93c71",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7611,
+  "sha256": "798776b40fc7a8d9b094076465735571da8a7fd85d0866f4193bc8ad72166e61",
   "start": "1996-05-09"
  },
  "BRO": {
-  "end": "2026-07-17",
-  "rows": 11449,
-  "sha256": "a2f8c9437bd85255de3189c2bec1389dc2c8b90a764e5cc4bafe731292e67e20",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11465,
+  "sha256": "9ade31c3e48a2a0b118fed9bb5284eadd28e2d1c54d94f254bc6ca933c2297bd",
   "start": "1981-02-11"
  },
  "BSX": {
-  "end": "2026-07-17",
-  "rows": 8600,
-  "sha256": "6138804e49e27b3f1bdb68d879d07e0d6f1e290357a9ea1f853c9e4d0c1bc222",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8616,
+  "sha256": "9d2f66daddb1494ad232a9ee5fe61ae0dfe5559908caee46a73f033dfa06a1f1",
   "start": "1992-05-19"
  },
  "BX": {
-  "end": "2026-07-17",
-  "rows": 4797,
-  "sha256": "f5dcf609ffb9ce835ccbdbc2d1028e9bc7660eff54a8bea83828fc00616b4905",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4813,
+  "sha256": "0981c3ed97d8155a29270bd6b02a4b1b60d29bf96b74bdb71f0decd41f22509e",
   "start": "2007-06-22"
  },
  "BXP": {
-  "end": "2026-07-17",
-  "rows": 7315,
-  "sha256": "11a8fc310085bf42f6fd8499397a1f045110b5b36490422a1d0136d3945602f6",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7331,
+  "sha256": "e82c0370120bed2b7836c442d62f8e61f773ae7affffc519b4c4a2c2534156b5",
   "start": "1997-06-18"
  },
  "C": {
-  "end": "2026-07-17",
-  "rows": 12487,
-  "sha256": "afa9850545c7af4678c55763b3ece34985a117231c21013837ad7c212110dab0",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 12503,
+  "sha256": "accba191b9056340676cfa0e5ca091a44f21b2dde1eba4f65e180749f0ff00ed",
   "start": "1977-01-03"
  },
  "CAH": {
-  "end": "2026-07-17",
-  "rows": 10822,
-  "sha256": "648539cad667163df76f93b631b7fedbd837decb1a37cc57b382e98937029955",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10838,
+  "sha256": "9ce38cea7395569a1b484323ab038e5e9f8b9aa33337901f0f69200d2c1ef2ec",
   "start": "1983-08-04"
  },
  "CARR": {
-  "end": "2026-07-17",
-  "rows": 1590,
-  "sha256": "fc083458bffd6fb6c6ef3989bf94df8c8cecb88986263c462bef53e035adddb7",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 1606,
+  "sha256": "dd8a2bea975780fcb3194eabc7314a25b70fca95d0a00d6e5d02f02dc0001c50",
   "start": "2020-03-19"
  },
  "CASY": {
-  "end": "2026-07-17",
-  "rows": 10768,
-  "sha256": "d2e69ba51260a7eda66bd6c2e738d6b9a0e9a9a284062d63a1bce32d3db5896a",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10784,
+  "sha256": "3dc42f9715a59b03318d54bdbdeaa81fe7ceb087a96438e6bc65b692b2558d19",
   "start": "1983-10-20"
  },
  "CAT": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "1f761c454b5e0f9a842053140efe7278193fd275479394c86aa70b7d7649d4cb",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 14272,
+  "sha256": "6f5a778f194d76950abacc4b5ebec85ce7b9df652c95d8dbfce9df538159a667",
   "start": "1970-01-02"
  },
  "CB": {
-  "end": "2026-07-17",
-  "rows": 8385,
-  "sha256": "aa06417d994e5a5c3e00014025f5d139d69765ab6343c350c9e2d50e2674ae4f",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8401,
+  "sha256": "4f71334491f54c8c87b4d9ee3b381fd51cd123a2d4ec5f81d785eb879c116e44",
   "start": "1993-03-25"
  },
  "CBOE": {
-  "end": "2026-07-17",
-  "rows": 4047,
-  "sha256": "16ee51641bb12078ecdec2425cb1d9a3673a09796cf389b6197a360dca00e9d8",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4063,
+  "sha256": "9e0954b30a560297556c89c2841baa757e047a221c50e199642e5e71a16c0a53",
   "start": "2010-06-15"
  },
  "CBRE": {
-  "end": "2026-07-17",
-  "rows": 5560,
-  "sha256": "4de75375f82401383ea05732f077c7a2e4d84d909236dfb12c232cb108818084",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5576,
+  "sha256": "71798dff3003b5251b5e8470bd7722877cac832ce5ad944edcfa71c208e4001b",
   "start": "2004-06-10"
  },
  "CCI": {
-  "end": "2026-07-17",
-  "rows": 7021,
-  "sha256": "aacce5b49c6512859dbacb365cc868e94e794409a770f143b331ef6f37214d91",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7037,
+  "sha256": "4568c3788e13d132fab468ceae37de7b6cf0cb51fd0fb069507a05881bdb2e18",
   "start": "1998-08-18"
  },
  "CCL": {
-  "end": "2026-07-17",
-  "rows": 9819,
-  "sha256": "6aadc4c8269be9e329f3112fd191b95d541579c4874c4d1f8f5d3ec81134c6e5",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 9835,
+  "sha256": "528ef10fc6f79237dee9c23433a9f6d40cf84cdf035f3dfb49a429310be5b673",
   "start": "1987-07-24"
  },
  "CDNS": {
-  "end": "2026-07-17",
-  "rows": 9850,
-  "sha256": "9e84f5386ca4f90162370574b16b3207081497220af35bacb173c6685bf347f1",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 9866,
+  "sha256": "3e90cbba1d71a9d45021ab7bb8317ae05c659ca98f96298e48c8593a2ad6ad26",
   "start": "1987-06-10"
  },
  "CDW": {
-  "end": "2026-07-17",
-  "rows": 3283,
-  "sha256": "220cbb2498d3269d84eb695f1e86f4fbdb8f1ed96e01165234e6e402c48e4922",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3299,
+  "sha256": "b32035297d23d0ccfe921aaf189fea9132c2256cf89450cd614273ba20a28d73",
   "start": "2013-06-27"
  },
  "CEG": {
-  "end": "2026-07-17",
-  "rows": 1127,
-  "sha256": "0ebcdf6e21402243eba75abbd1d807fa6e50ce9dea007048fc174047a673e699",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 1143,
+  "sha256": "da78f6689d1fb48213e1f73985bc3039dccebd3f8d2be6d117036e7d36a3c448",
   "start": "2022-01-19"
  },
  "CF": {
-  "end": "2026-07-17",
-  "rows": 5265,
-  "sha256": "5e35a1597ef916b5b0a89c470d981ad0e00958783cb28989c15db708ed531cf4",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 5281,
+  "sha256": "4d9c0619e11ad357c3b0b811136e2902f6269f4a73e8d46fb027c6ebf670c52b",
   "start": "2005-08-11"
  },
  "CFG": {
-  "end": "2026-07-17",
-  "rows": 2970,
-  "sha256": "29aa610a7eb053671d71f874d61e1202c205cd7f86fa7c30d4bfe87503d7e1cc",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 2986,
+  "sha256": "49038a23cdbbeb2cefae4069ec6624e8644dab56a34ca8b3206c5f157342b8cb",
   "start": "2014-09-24"
  },
  "CHD": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "d78c4244d7c8133f4d88ad4e99882457dc4179cda04da6c873712e9d205259e8",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "ee369716601cbecede3af75dc30c6b830299ea8591a089fd5234429a8c21063f",
   "start": "1980-03-17"
  },
  "CHRW": {
-  "end": "2026-07-17",
-  "rows": 7231,
-  "sha256": "99a999e410a39fa4f74b5a3113fd201587d4f8a499e67b0d10adb4765d57ddf8",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7247,
+  "sha256": "4187b6e13738957e4adf694b2b5bd9ac153d5a0804aeeac005a6383fa8ba722e",
   "start": "1997-10-16"
  },
  "CHTR": {
-  "end": "2026-07-17",
-  "rows": 4158,
-  "sha256": "af87390eadd152467a2f13dd437a962e6f75016be5bb3981478e06769f078171",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4174,
+  "sha256": "af82a4e0adf94ceb8e97ce611c56b4e37d3ec7d4f7758ec091ae57dbd2007cec",
   "start": "2010-01-05"
  },
  "CI": {
-  "end": "2026-07-17",
-  "rows": 11163,
-  "sha256": "5ff15ae56c6e6987c78e341e4565ec8c237230ae5b72d4ca74fc1c992d240c28",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11179,
+  "sha256": "1ae884b0e11d05cc07ca6f44846b4a298e5ed34d39d8786f099e020b06a11049",
   "start": "1982-03-31"
  },
  "CIEN": {
-  "end": "2026-07-17",
-  "rows": 7405,
-  "sha256": "be4001ee7252958c237ed04e54fa7720e7f49d4859b3376d2aca082b70cd4b5e",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 7421,
+  "sha256": "ebe2f12a7d1147f5050ed4087cbb9aa11e1023857b3df91ed281cd991b21c767",
   "start": "1997-02-07"
  },
  "CINF": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "a193c84086d3d979e9860b46445b4b334918cf21790925ad33bb5ebb366d11a4",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "03ab4e4f47ecc6984212c5dca4ab565540db85469ece360692a5d3999d015763",
   "start": "1980-03-17"
  },
  "CL": {
-  "end": "2026-07-17",
-  "rows": 13415,
-  "sha256": "1bc06b1d0ef4f3d9d7308dce91f5ad6c125e53ce3228a985e97f2ad5db2d7394",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13431,
+  "sha256": "1b40dbce20ec553e5d594973f2e4de07df0f561c3e485bf964157120aeeaf48f",
   "start": "1973-05-02"
  },
  "CLX": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "536b57e3019559da924106aa1330f414f808e43600c9910d2e1518c35adc59f1",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13480,
+  "sha256": "36c78f2e158ce0ffa1a4e75b7a55cb63447cad6a3f75000ab24ddbdd1d57c33e",
   "start": "1973-02-21"
  },
  "CMCSA": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "d8d78927fc9d595b16f0254624369345d61d62e016d3cc6d473647cd3708ee43",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "27127f9e84ac9c4555522dd1d5ef9f4068ec6505164ffeca1bcc467a54a2c07f",
   "start": "1980-03-17"
  },
  "CME": {
-  "end": "2026-07-17",
-  "rows": 5939,
-  "sha256": "cdcbed36a785655973091e174fc45cc2837c6dc9eaaf9927657682018044ed2d",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5955,
+  "sha256": "3d443e1faa37b59e4e98f853b4de2c369b4d90c7b7341e6cb26c57a251b7551d",
   "start": "2002-12-06"
  },
  "CMG": {
-  "end": "2026-07-17",
-  "rows": 5150,
-  "sha256": "cb44ae646d67e5c7d252f92c42b65b98bbdafa14d18bb05a9d680820f52b1849",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5166,
+  "sha256": "bf52e7bae90cc2a1aa3b5d6ee93162da7c1510337e7bc5b940e01a1c9be70845",
   "start": "2006-01-26"
  },
  "CMI": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "7daee82db542d5cad7e68edae71672e2564c6d6614e7ec4132591c920827afcd",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13480,
+  "sha256": "07b9addb0ecd7111527473916dab6817d86197c5b1c1198d1aee048684b7ee9a",
   "start": "1973-02-21"
  },
  "CMS": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "f9eabea7738f5218524526523f6800517898dc18e0a3fb51da0318d78410a2e7",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13480,
+  "sha256": "6b6857b4ea3bf4181c180aa63b4efa3513e1ea72899e3b70417bf426f95a751f",
   "start": "1973-02-21"
  },
  "CNC": {
-  "end": "2026-07-17",
-  "rows": 6186,
-  "sha256": "82f376e29453b0e62b5c2afb2ee24cfabccd5d7fa34743384cad397f574f80c5",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6202,
+  "sha256": "5cfef1c0f8f26b5cd69894b23967269d3266f23fbd041812c2908e41686d7126",
   "start": "2001-12-13"
  },
  "CNP": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "0c87ba8028ce9f937594c7fbe0f9ad278d0a1663934679e12f59d8c1898c0c49",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 14272,
+  "sha256": "51d583f0f392e0d150d4464f715c274c1e9abb4af44c1d368cc13abc60ad5315",
   "start": "1970-01-02"
  },
  "COF": {
-  "end": "2026-07-17",
-  "rows": 7968,
-  "sha256": "7a1d4f609100686a6b4027fc526437a1f10ec3f82ddb31d433d1bf822ef769d9",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7984,
+  "sha256": "8d92413220635a5ab51b9581f4fc3c9dd725363e28989da71f4ee1cc602f1c19",
   "start": "1994-11-16"
  },
  "COHR": {
-  "end": "2026-07-17",
-  "rows": 9770,
-  "sha256": "7151ecba69977c00ff1a8db0b74fba66918b3e069dffb62aaf28e59313fdc453",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 9786,
+  "sha256": "c275ae4eca22e7f5878d5ef15257780251ff5ab74b12edd44c86b54bcde443ce",
   "start": "1987-10-02"
  },
  "COIN": {
-  "end": "2026-07-17",
-  "rows": 1321,
-  "sha256": "5899e236e1081cd1abd88c8e1725836a98e38be7d528d714bcfc5244d2f02cbb",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 1337,
+  "sha256": "6851d8bd51bb157298fab4ae22131fa3615e5dfbe0135d9b30d0d994e48991f5",
   "start": "2021-04-14"
  },
  "COO": {
-  "end": "2026-07-17",
-  "rows": 10957,
-  "sha256": "48c2e91e32174b7e25dbcf60c16473cdecbdf1416e1bd3608a913748f4a8a779",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10973,
+  "sha256": "1d4572e2005ba5bcaa6b7eacb9a3b1d908f22963387a665c70b545076467314e",
   "start": "1983-01-21"
  },
  "COP": {
-  "end": "2026-07-17",
-  "rows": 11225,
-  "sha256": "bc60813250a432f02cd2639efceea171c5de7cf6b0c825f580181133e43e6b6d",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 11241,
+  "sha256": "db84759eb448e17ceb385db4fc054af7302c29acc3135f36add9368acac6110d",
   "start": "1981-12-31"
  },
  "COR": {
-  "end": "2026-07-17",
-  "rows": 7873,
-  "sha256": "41ae2d46d0e9c58b3b11cc2af8a4a3058049cda83ff5083e2a0dd14246d07bbe",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7889,
+  "sha256": "987258788e37dc51d43aa078ab680a15e3d6d983c832af49bff6c068df96a83c",
   "start": "1995-04-04"
  },
  "COST": {
-  "end": "2026-07-17",
-  "rows": 10083,
-  "sha256": "8ac98ba3e7a8ea5e83514381680f1bb55b3d39663fab6f73668bf2997207abf2",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10099,
+  "sha256": "a7b804bd93e1ac1661ba1c033a0f8a421845f9c5bea08d0da103621255b0ec60",
   "start": "1986-07-09"
  },
  "CPAY": {
-  "end": "2026-07-17",
-  "rows": 3919,
-  "sha256": "c94633b5c2086041e0a36dcfbad2b71539fecd56c6221caff4054afeb2a3ff87",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3935,
+  "sha256": "136d8179e415bfd794c584043723b18bb68e090fca0ad33cd38e1019bc1661ea",
   "start": "2010-12-15"
  },
  "CPRT": {
-  "end": "2026-07-17",
-  "rows": 8137,
-  "sha256": "c457ea188c4c5c8a34ce6f7b2376e243647b2e77edf6ee9c1772ff29c0701cd6",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8153,
+  "sha256": "d87575c31113da55c25af5e6e2d342578af7bf9c1b5f24f91df69f965bad4ebd",
   "start": "1994-03-17"
  },
  "CPT": {
-  "end": "2026-07-17",
-  "rows": 8303,
-  "sha256": "a53c22e9b6d466b012bd093ea0663adf744d0941149f408398a09ae3c0b5f78b",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8319,
+  "sha256": "632ee743a0635dcb96c3f350aa28c266747254e9c2d3f2e8cc47f89eabd9f578",
   "start": "1993-07-22"
  },
  "CRH": {
-  "end": "2026-07-17",
-  "rows": 9321,
-  "sha256": "e0099d43b016fbc9a4d4a8801cd12d355fcff8356e12fb3ddd9165636fa5455b",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 9337,
+  "sha256": "55fe419f6e8078defdf4bea3f271ab8f409b2bf7a184b9569f6b25f0fbd5d18d",
   "start": "1989-07-13"
  },
  "CRL": {
-  "end": "2026-07-17",
-  "rows": 6554,
-  "sha256": "5177d4e24c903c3186321869cebb3c96983aa86d389843bd2d0db180029c4b84",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 6570,
+  "sha256": "ad4f8c01a129f6c1ef85d5b3041741b174ce9e5f765cab55c368d91cd5fb76b4",
   "start": "2000-06-23"
  },
  "CRM": {
-  "end": "2026-07-17",
-  "rows": 5552,
-  "sha256": "29e0808150b467f6d6a3986ed18946d066a60448d11f228d13b5bd668503924a",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5568,
+  "sha256": "a2d02040452835aac7fba0907e42b7cdfe6529ea95bcaa53598c12430f427ea9",
   "start": "2004-06-23"
  },
  "CRWD": {
-  "end": "2026-07-17",
-  "rows": 1784,
-  "sha256": "1edd8c7a576f0ef2d16e2fd050c317a1525239448b756527a7a44149b5ec0eb5",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 1800,
+  "sha256": "8c46fb60e6c43a3a7884896ebb6b7cc6afcf3e1ec7994cc203679e2c16aca4db",
   "start": "2019-06-12"
  },
  "CSCO": {
-  "end": "2026-07-17",
-  "rows": 9169,
-  "sha256": "e6fd66fa62060ccd526c3a2baa3af0691eae478c515427ad00bbc5acf2cf09c2",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 9185,
+  "sha256": "44de8b7215e856a5dfe990390af8659a61ba0c730466aeaf28f72223738c1c07",
   "start": "1990-02-16"
  },
  "CSGP": {
-  "end": "2026-07-17",
-  "rows": 7054,
-  "sha256": "a1d6f47988f6239f7e9f6ce8cbedd53299b46e2b3fea296ec202ccc73c59f4ee",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7070,
+  "sha256": "96f0b6ea684008bee3c3f19a042c7df2deda0a1e8d3d3fb410a5d0e04aaa8bf3",
   "start": "1998-07-01"
  },
  "CSX": {
-  "end": "2026-07-17",
-  "rows": 11517,
-  "sha256": "7fdbdb83219ac631a9ae163ac054e3c99ea2ddc2882829a0da8bcb19eed56947",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11533,
+  "sha256": "1ac66bdf8f7633920bebbb606fd67616c975f078943311756bd9ab14e68e66c4",
   "start": "1980-11-03"
  },
  "CTAS": {
-  "end": "2026-07-17",
-  "rows": 10811,
-  "sha256": "25cef32b6e5e4a55ac6c562451a9c6142dc31550e6cf563d6004bff4b6b572be",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10827,
+  "sha256": "7dd25353ad1dcb26a3d8f8144f1380f336a67b1005cef5835e1036202cc26841",
   "start": "1983-08-19"
  },
  "CTSH": {
-  "end": "2026-07-17",
-  "rows": 7062,
-  "sha256": "7dcae62fe1da4287ed6ea90462844372278038b0a91a6fa209867e39d8fbb99c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7078,
+  "sha256": "a3c1d8ff64cc2e15538740136d491299646bf7af559896b76fe01364f00bd575",
   "start": "1998-06-19"
  },
  "CTVA": {
-  "end": "2026-07-17",
-  "rows": 1796,
-  "sha256": "65f9cf7454d4a80bfe9769ab19fb7262fef9ff52f9e0159974ea497ccc68d42c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 1812,
+  "sha256": "84978ef96aacd203360d800208aa4902fcf0459ac7ff91b969dc0c4910baeed5",
   "start": "2019-05-24"
  },
  "CVNA": {
-  "end": "2026-07-17",
-  "rows": 2317,
-  "sha256": "feb3db59510fb6dc5768d92dee0db2025598cbe67f883a8e9c06982f0301acbc",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 2333,
+  "sha256": "4b090cef4c56ddaa99ae7c683087889aa6bf3a48dada36330e22d7c2cdccfa07",
   "start": "2017-04-28"
  },
  "CVS": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "ed728e261a13056b84389b4a906a1db2debc62e175e0aa8ad9a4a7d818b3a4fd",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13480,
+  "sha256": "06a293aaba70d9b90002c9cbeac3a42bf25431585f34628ad1c49748980f279f",
   "start": "1973-02-21"
  },
  "CVX": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "09bb2143d90642bc6fd9087d96bb7d8ee8d034bc56c30bd4660a04371fb1380c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 14272,
+  "sha256": "aba17975cb2064d0326616fed137ce5c1733cee9f5e6c7b8f14dd7edd42d1275",
   "start": "1970-01-02"
  },
  "D": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "9481148a46adf3daf207af48579c0e7dfb29fb810d8fb834f373c4122dc1db76",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "46b7fd43951102096e1445b6f66c171b3bf999ae57b98346ae47a5480b4c86e1",
   "start": "1980-03-17"
  },
  "DAL": {
-  "end": "2026-07-17",
-  "rows": 4832,
-  "sha256": "bddcfa52e9b0c7f233583e72ff135c6e3057428099b6fef568bed71cd9b01c96",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4848,
+  "sha256": "9ddb4ec4edcd79839c453ed03251e3e9a06296c91bab5f87babd4558ce360f92",
   "start": "2007-05-03"
  },
  "DASH": {
-  "end": "2026-07-17",
-  "rows": 1406,
-  "sha256": "c3d780a056138be463018bc2158b4be7b89ea16985b4da029df22ecdbdac1e12",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 1422,
+  "sha256": "d111fe905fd975baf965d1721eaed03c421a79811777dc244a1d052293765c12",
   "start": "2020-12-09"
  },
  "DBC": {
-  "end": "2026-07-17",
-  "rows": 5143,
-  "sha256": "414216c4d94d278c9fa6e4e894cbd682725107e8016e7c8d47e4351a1b1c84a4",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5159,
+  "sha256": "ae1d179896536270ee553a473fe494c8d82df8e2f91c2a52750d9192702331f3",
   "start": "2006-02-06"
  },
  "DD": {
-  "end": "2026-07-17",
-  "rows": 13644,
-  "sha256": "61ec1ef53c93632243402e332a4e7339db145efb98428d645ef3f1057a00fd1f",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13660,
+  "sha256": "a5ceb8cad99565d67c86910ae061d570946a9ff11af833ad1d81a8096b336bc9",
   "start": "1972-06-01"
  },
  "DDOG": {
-  "end": "2026-07-17",
-  "rows": 1715,
-  "sha256": "8a311588276d10c8b70b1a8f95ed0fee16f453290edde92370dfc0093c9ad32b",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 1731,
+  "sha256": "0f577909da78276d0f17a1bf6ae2fa8e7b99ac13d0a139972fbd5e2f63a49366",
   "start": "2019-09-19"
  },
  "DE": {
-  "end": "2026-07-17",
-  "rows": 13644,
-  "sha256": "f63f9ddf3f8c747999db2ff72837f522e2da3f4bbf442578575d30f2d17a8e86",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13660,
+  "sha256": "b07b6a8cc787c2e9cd7f83e1b4cd54a33d4f293cdf28b5c08a03f42d43dba83d",
   "start": "1972-06-01"
  },
  "DECK": {
-  "end": "2026-07-17",
-  "rows": 8243,
-  "sha256": "d50128a8ba4b1c80ff39c64ab95302b02732dd245242b988747fa092cb9e2d0b",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8259,
+  "sha256": "1d5651ed4b33865e8b5feecb36ddb8913ad00405b097555510251c76af7fbb2f",
   "start": "1993-10-15"
  },
  "DELL": {
-  "end": "2026-07-17",
-  "rows": 2492,
-  "sha256": "67d7b42f1ee4055ca198bfe0922e74053b98a4da5b484a7d3f021e2bca98eba4",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 2508,
+  "sha256": "6e917598b2e4188958b392c1e792cb208a8e9842aad179977d802c99996eee0d",
   "start": "2016-08-17"
  },
  "DG": {
-  "end": "2026-07-17",
-  "rows": 4192,
-  "sha256": "473de6a00d3792c3ca3bbd77e8ac3aa8e019aba826bcca2db18b802e212f99b8",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4208,
+  "sha256": "b604eab27a4212622ddfab853af9153ffb30c3b51dfbac984f11856a6385a596",
   "start": "2009-11-13"
  },
  "DGX": {
-  "end": "2026-07-17",
-  "rows": 7441,
-  "sha256": "920dfe4c77f116f6ab0b960d4fd9ebc1a6c4a3dd039717a5c81361fb35c2a955",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7457,
+  "sha256": "6bb7b968219ddc1892ad75926a3801eb54ad5e1f3e1fcd68e202880b63e8a6be",
   "start": "1996-12-17"
  },
  "DHI": {
-  "end": "2026-07-17",
-  "rows": 8588,
-  "sha256": "0236fea0487d61a1dc8b3848bb90323f45613efe62ba556e2571cc3a22a06263",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 8604,
+  "sha256": "bd69c34b804bb76516fa58a1d659755c7d4deffd29dbc35951b4a17ddc699a73",
   "start": "1992-06-05"
  },
  "DHR": {
-  "end": "2026-07-17",
-  "rows": 11984,
-  "sha256": "7d83e7c0873d059c6a6df8aaaccd716f2e225faca0d6d273ed82b61fda993d04",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 12000,
+  "sha256": "0fd3ba1f35af7357c9c0f093ebf1b6aa757ad3ce04892db0bc3df45385fb1906",
   "start": "1978-12-29"
  },
  "DIA": {
-  "end": "2026-07-17",
-  "rows": 7167,
-  "sha256": "1999922844528a797f30186e2a88f40f0af54daca42f02ae9b23f634cd0f631c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7183,
+  "sha256": "c4254c36ba0ca7ca81925208df36e826d09af4a7d186dfd2fe66a016b396d825",
   "start": "1998-01-20"
  },
  "DIS": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "a92c6fbf41975ca70b4010da28611d79634e1ceabcd659e02a1ad3d8eadb7940",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 14272,
+  "sha256": "427f8096a2356af869745437b6e02b9c7094a4826241099219b3c63dfed1d5f4",
   "start": "1970-01-02"
  },
  "DLR": {
-  "end": "2026-07-17",
-  "rows": 5462,
-  "sha256": "636ad34ab398328396fdca0ab74dc76f1bd593b7b26a8a43d3dadf8eca8caa58",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 5478,
+  "sha256": "248b6210e1dc410d3d68016f497c459628daefd656c66bcbded3a6dbe1f8db40",
   "start": "2004-10-29"
  },
  "DLTR": {
-  "end": "2026-07-17",
-  "rows": 7893,
-  "sha256": "07068cbe6f2e18f41c94851b03a5fca6dc001a37e3ad07a3ca55908f3dd141ed",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7909,
+  "sha256": "7e2b8e52335e5c11e835a3f97d0a9b89d9f581d1dc338f942eea83665f4652bd",
   "start": "1995-03-07"
  },
  "DOC": {
-  "end": "2026-07-17",
-  "rows": 10366,
-  "sha256": "aedc97be0be1f30d82199291949139c452d15e23347dbe0ce9c3c0e3ea458f78",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10382,
+  "sha256": "d2c1b028a805cbdd7d3d71152e5b36ff0df9c60cfafcec850e07a64787659290",
   "start": "1985-05-23"
  },
  "DOV": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "6afc7e8203b5b9a1e4b6302180b9b8cfef198069e24678c4eb4889a17831d70f",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "d9f645923a997bb445ac696c00e559bfd3d0a1437f909d1583621ab43bc21369",
   "start": "1980-03-17"
  },
  "DOW": {
-  "end": "2026-07-17",
-  "rows": 1842,
-  "sha256": "119053af7c1d01cad5012f4e1dcb67185a45a34a9c326f6f9c6f70f5eb244774",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 1858,
+  "sha256": "580d0a1c08b8220425c166fcfc0ac6268262e9e7a34333812dc4003bcd5771c8",
   "start": "2019-03-20"
  },
  "DPZ": {
-  "end": "2026-07-17",
-  "rows": 5539,
-  "sha256": "9cde5827ff1fc315f5814d722053b36a51c02cc51160c072ce77eca68c869cc7",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5555,
+  "sha256": "9f0204f81d3183af365e314d50ea1299f8027219f45d6b8d39a95e764a894d16",
   "start": "2004-07-13"
  },
  "DRI": {
-  "end": "2026-07-17",
-  "rows": 7849,
-  "sha256": "0efecece113bf52b3abf810cb558bb345489fc0213bd7a2530f89edd6a8f601c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7865,
+  "sha256": "37969482f9e6b1a6156b0f19affacce9f2ebc26d3f3babca3c6ce853d13b83a6",
   "start": "1995-05-09"
  },
  "DTE": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "bb8175f8db9518432da79f384868c5ca6504450fae483900174bf6fd16e9d48b",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 14272,
+  "sha256": "9733b3dd4984bfb9b0fb8ad893591e7e085b4cb7b4877f69f72163717f8cb767",
   "start": "1970-01-02"
  },
  "DUK": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "ea51e9eb0e6ee4393cc0209cecfc96fc03e67bd222ae2d17893139a024585995",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 11694,
+  "sha256": "742c699898d409a1ce348ab22fa9d80dfb40c62e5ff3e5a54eb4534c55a27bfb",
   "start": "1980-03-17"
  },
  "DVA": {
-  "end": "2026-07-17",
-  "rows": 7727,
-  "sha256": "f2c70d69d612780cc53f49ace1a30f91b6304749bdf47d30b6476c080047ae78",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7743,
+  "sha256": "75d65251bb0042aede3e9f806daaa48454f0eca7992a92e83d2cda5aeb44d362",
   "start": "1995-10-31"
  },
  "DVN": {
-  "end": "2026-07-17",
-  "rows": 10326,
-  "sha256": "05bbefa406788524d5638b948ccdbf8404d179bdfde3e57fb2a997b74c897f9d",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10342,
+  "sha256": "caec7271a065b15d2c9b929147ba2c770cb381fab1e8c635df8dd2fa9e0882c3",
   "start": "1985-07-22"
  },
  "DXCM": {
-  "end": "2026-07-17",
-  "rows": 5348,
-  "sha256": "4f117660e36887135dd98b4afeb348a139dc58c537502bdbab4c0b28e4e229fa",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5364,
+  "sha256": "e4ad634af62c1424336b6432f5d4b33589531733d47d60f81d34e6c675ea9c54",
   "start": "2005-04-14"
  },
  "EA": {
-  "end": "2026-07-17",
-  "rows": 9273,
-  "sha256": "19128c3e817f746f010b9f3a9f2cb96597bfb285676e30dc052dd40e3658cd0f",
-  "start": "1989-09-20"
+  "end": "2026-08-07",
+  "quarantined_ohlc_rows": 0,
+ "rows": 9274,
+ "sha256": "e9e4729c0b9dc5559935f4fbd3922c76a4f887e87b5c1481e8aac95bac465524",
+ "start": "1989-09-25",
+ "upstream_history_revision": {
+  "accepted_on": "2026-08-11",
+  "prior_end": "2026-07-17",
+  "prior_rows": 9273,
+  "prior_sha256": "19128c3e817f746f010b9f3a9f2cb96597bfb285676e30dc052dd40e3658cd0f",
+  "prior_start": "1989-09-20",
+  "reason": "Two independent Yahoo full-history retrievals returned the same revised index; the removed coverage predates the registered 2005 evaluation start."
+ }
  },
  "EBAY": {
-  "end": "2026-07-17",
-  "rows": 6995,
-  "sha256": "4aeb17c1acbe74ee11cd95e712e612ffd2cdc76888ccd5b2fd257e8a92c6a4d9",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7011,
+  "sha256": "61a56f5da5226884b3ebd8834d435ba5b86f9ac72f2240a5a9002f897e5d440d",
   "start": "1998-09-24"
  },
  "ECHO": {
-  "end": "2026-07-17",
-  "rows": 4664,
-  "sha256": "1f0113b8eba009cd271618ae0df7c9ca5a718e2ce08c5b15ae56ac24629677c6",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4680,
+  "sha256": "4d4b11279c3e22d0cfe96976564b423863dda51853daf1ceb71174f8bbd1f4e0",
   "start": "2008-01-02"
  },
  "ECL": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "107f30fe57a100ba2d3b1526864370b7dc4c06decf0526eaa3bdb52d82b25509",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13480,
+  "sha256": "e5bc3b7fcb1aa5edca4dfe7d495c768d3f650986358c685bd8839ce29913da98",
   "start": "1973-02-21"
  },
  "ED": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "1d63394a55768f0eb1d1d278fa96d45a2cc064d4e29a5058b4f124c2bbcde3a0",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 14272,
+  "sha256": "e89057545d2b0df8345da5db902e0af0d6b04803e5bac1d5b638ec0d154ba9b4",
   "start": "1970-01-02"
  },
  "EEM": {
-  "end": "2026-07-17",
-  "rows": 5852,
-  "sha256": "3434a494f837863c4f7e722114d1cf12d75be6b1f5c9ac48fa39a1ddc9af9414",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5868,
+  "sha256": "d4e891fafafebe1c628e4ffd756a3dcf98f8fcb0fd5d5fda9f71650676053d98",
   "start": "2003-04-14"
  },
  "EFA": {
-  "end": "2026-07-17",
-  "rows": 6258,
-  "sha256": "841f9f90ce47cf41e595f4a8c4dadb09c8d8106473b9dcb31f2a861c29f2e10c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6274,
+  "sha256": "6a70b125af57123992441a149566d6a3cbbd17952da17b3ccd28b12825f66e8f",
   "start": "2001-08-27"
  },
  "EFX": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "a329f8405c386922bd43df3391c781e435d321cd803fb832ac47d21a8f7133ca",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "28c4a96aa96392281bcb20b109891bd1d1c1c4a83e154a1168914e01c64e6c03",
   "start": "1980-03-17"
  },
  "EG": {
-  "end": "2026-07-17",
-  "rows": 7747,
-  "sha256": "6cef37be69af5f7817862cea1380c41121df63c14464b48d6fb74ee3317e5a02",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7763,
+  "sha256": "b08200fc7c11d35a61292e3170a6d3e3e7ceb74982a923a12b83993a5b0abb50",
   "start": "1995-10-03"
  },
  "EIX": {
-  "end": "2026-07-17",
-  "rows": 13414,
-  "sha256": "0570254a9b5f7af3ce0df661e6a5508e8f542a4221d7fad08f35291b5477279b",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13430,
+  "sha256": "e87bbbae16e13150470cff74d8922930f7e61f3de0cc8a5a92a40cf8f0530a3b",
   "start": "1973-05-03"
  },
  "EL": {
-  "end": "2026-07-17",
-  "rows": 7714,
-  "sha256": "86442a9c540e23f69af1cbe92b5f291ff421925afd4e30d9225002527fad2121",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7730,
+  "sha256": "61964eb1cb3c137925b4f33d363d398640599a3bb7964c5262d1c669b7b2961f",
   "start": "1995-11-17"
  },
  "ELV": {
-  "end": "2026-07-17",
-  "rows": 6217,
-  "sha256": "4961f4a6129eee68c6645f0ef1098b9003f6da4db57cbab371d30906b39e5fec",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6233,
+  "sha256": "8f511a07401aa4f369e9f1a19fb08f8af74648403bed560fc80a0c5694300b0e",
   "start": "2001-10-30"
  },
  "EMB": {
-  "end": "2026-07-17",
-  "rows": 4672,
-  "sha256": "db9da156cce1aaee6b0a421ce33c01c7218fd0395dad8c9da317b7142873075d",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4688,
+  "sha256": "eff610043c72d4d404c70b3cd2645359d46ef2a1452e1801730625e40fb42fe1",
   "start": "2007-12-19"
  },
  "EME": {
-  "end": "2026-07-17",
-  "rows": 7932,
-  "sha256": "fd3ad892adfe452f0a80fbb88695624fa40bd1346e2a309f5f0bf420a4d1f715",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7948,
+  "sha256": "a351cddd6866f970285667ced9aa4c920be07b7285f12d4a1e44bd67d2a35d9d",
   "start": "1995-01-10"
  },
  "EMR": {
-  "end": "2026-07-17",
-  "rows": 13644,
-  "sha256": "ad3e79b5475e319d5bd425cd10e361cf425315923af09380c324d0a9a6d882a0",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13660,
+  "sha256": "2c3cea53016a85b847b097d54e83218f9f647e435a2fc15202002e23ca3a7714",
   "start": "1972-06-01"
  },
  "EOG": {
-  "end": "2026-07-17",
-  "rows": 9263,
-  "sha256": "aa6bbf45221414653ab621ca7ee4be76582419bd344b547fd954bc22352bb9f0",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 9279,
+  "sha256": "4157990fcd6e3f2b3f644f126f32c29942cfe76b52f777943d47e10dc91efe60",
   "start": "1989-10-04"
  },
  "EQIX": {
-  "end": "2026-07-17",
-  "rows": 6520,
-  "sha256": "460a65d855b37cfc15b7ce768d96c0c73ac4cda42a9362ec5e0007a173b35614",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6536,
+  "sha256": "9b2aa8d5b9e44b6bf51fcd9de59fa474d871bbaa5fd0d53cb922a36ef54c4582",
   "start": "2000-08-11"
  },
  "EQR": {
-  "end": "2026-07-17",
-  "rows": 8288,
-  "sha256": "14aa2576375f9a9c10987e88db216c8fdb6f8ab420238a42ca108e49434cd7d3",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8304,
+  "sha256": "b9333cb8e5d1f4c42462de22b90a8645a93f51f1a08bc856de441d4da005fb4c",
   "start": "1993-08-12"
  },
  "EQT": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "5c38b93d6b58b4eb45a17436a7babcc44890ac4cab92818c2668be6aae15f15c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "266d0762cd2827bd39328221bde94953702c2ade392886bf77174b84ce3419f3",
   "start": "1980-03-17"
  },
  "ERIE": {
-  "end": "2026-07-17",
-  "rows": 7748,
-  "sha256": "9abd16a8495aa1928a61049a12516c1add69cb1d535e9da61f3a33b0554858cd",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7764,
+  "sha256": "982c8d67d5a2753b102497dfc5709cc5d41d2dd0a5b93e18140d375343c01342",
   "start": "1995-10-02"
  },
  "ES": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "e2b2bc94e8e70e8d2e69e282279d144c8e0f325aaf0e39f0c31d73d452dc7daa",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13480,
+  "sha256": "8d2a04709697d8aac7bcc0cd9cf8ac5ec93340978088a0daa413da8cda40c404",
   "start": "1973-02-21"
  },
  "ESS": {
-  "end": "2026-07-17",
-  "rows": 8082,
-  "sha256": "24b67ab24fee650c7923c41d6e8216dce77a2aafbdcd0bddce5498b8edd5ec85",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 8098,
+  "sha256": "13d6f5e329e77414e118693ca95eb9c3ebf376c9d6bf6ef15c8d39c717b53f1f",
   "start": "1994-06-07"
  },
  "ETN": {
-  "end": "2026-07-17",
-  "rows": 13644,
-  "sha256": "3f23bbd926b9cab3a8495117ae6ba3f09c41f143476b1478e0522843eed93f27",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13660,
+  "sha256": "49202bc99e17889daef732ba4c35b8bd70c281a541bbec96ef59d51a7365fc46",
   "start": "1972-06-01"
  },
  "ETR": {
-  "end": "2026-07-17",
-  "rows": 13644,
-  "sha256": "be5bc4ddae46c8f7efaed5958e87c28b81b0933efa7ef6f60cc1f3e486ad528c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13660,
+  "sha256": "29fe9946aee217226982a0200b44c6b3ad8e92316195099f40d895f3025593c8",
   "start": "1972-06-01"
  },
  "EVRG": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "af1e544f6801adaf3e570682e68b078a36040b8cb6391f56946f6d700a1975c1",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13480,
+  "sha256": "6f79bff444ac3f4991c9b059d87f44e29d0c12e969dd25b8a0b075bb20528579",
   "start": "1973-02-21"
  },
  "EW": {
-  "end": "2026-07-17",
-  "rows": 6616,
-  "sha256": "01b1d74e9304fb9a54c038d50e229f9af4fdf2893f4bba18e24b318d199c7a60",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6632,
+  "sha256": "e30edb1e10879fb00cd696a7a8487ea1b2eb767e8e93faeb180132388d0341b9",
   "start": "2000-03-27"
  },
  "EWA": {
-  "end": "2026-07-17",
-  "rows": 7632,
-  "sha256": "5579bd1b6686de988925ea21c36a82ef8b054013e1b00f4dc1dc6ee00b31c093",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7648,
+  "sha256": "7b8b5e8eff0f2427e7bc63fb0bb5cb83b315e5f69a64ccf66eb652dd3050b7f0",
   "start": "1996-03-18"
  },
  "EWC": {
-  "end": "2026-07-17",
-  "rows": 7632,
-  "sha256": "e01180e699f26b6672c512259c8e4f62553107e51c96e6c0bbd4bc7f41dfb84e",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7648,
+  "sha256": "7e0149e0547e91362866d0a0a03813001d9d9ca7e39e007d59b0ec2e65367052",
   "start": "1996-03-18"
  },
  "EWG": {
-  "end": "2026-07-17",
-  "rows": 7632,
-  "sha256": "e9340329e225478b3b1314d7438e344c5e4524f3c8d4452112db0db593101440",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7648,
+  "sha256": "2e0e00b28fe47e1e2d115d172883d36d35d0a2458e6a79ff1fa0b5021d3aeecb",
   "start": "1996-03-18"
  },
  "EWH": {
-  "end": "2026-07-17",
-  "rows": 7632,
-  "sha256": "c9d9eadc7a37aae1bfd7839548497d846a02969d77135376931d125504400285",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7648,
+  "sha256": "b2c57c0d21a3beb20b65d8ebe2b85246008e57c8107368d50bcc122c6c9712d8",
   "start": "1996-03-18"
  },
  "EWI": {
-  "end": "2026-07-17",
-  "rows": 7632,
-  "sha256": "d8be56fa776677978f9d3e725dccbcfe73b8a8d3a869c5789b875fd14ce3b08c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7648,
+  "sha256": "bf766a45c8b06802bb6bce4816eba93e4e21001459747618f4b0ddc8c958164b",
   "start": "1996-03-18"
  },
  "EWJ": {
-  "end": "2026-07-17",
-  "rows": 7632,
-  "sha256": "412ca1c6ae4dc5a17e57d924c9cbd6366cddb998b2059acfc80307723389ccbf",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7648,
+  "sha256": "e8bce2a33d7181b06c70327040c298484183b706af12bda9613a5f7ebb5eb31b",
   "start": "1996-03-18"
  },
  "EWL": {
-  "end": "2026-07-17",
-  "rows": 7632,
-  "sha256": "fc6bcc6681361fe7455d065543f34235c6465cd9862e7315ce052d95804699cb",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7648,
+  "sha256": "1a6ceaa07f1a27f2504c558b6fa74d57ebbbbeb838a769f4c8b38a4b5f9836b6",
   "start": "1996-03-18"
  },
  "EWM": {
-  "end": "2026-07-17",
-  "rows": 7632,
-  "sha256": "f3303809c2e2ccb8c62d6f1db29db34b38f514636c9596c8ce323f4b18102fae",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7648,
+  "sha256": "2cd9a2ba944a3b376380a3fde8d899be3797fe0440889e9e2d202a41add34c49",
   "start": "1996-03-18"
  },
  "EWN": {
-  "end": "2026-07-17",
-  "rows": 7632,
-  "sha256": "f130acec54bd764650322a8802ecfb0094f14aaafb636c7f3f5de189a5362227",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 7648,
+  "sha256": "23f13731fc50c75a284d95f2657ad98b4b5ce5382128006a15f8560b9d1a6234",
   "start": "1996-03-18"
  },
  "EWO": {
-  "end": "2026-07-17",
-  "rows": 7632,
-  "sha256": "f519f3afeead04c9d29835777a981f8020b6c495b68b80ee090cf209260f0310",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 7648,
+  "sha256": "bc68ae26c2993a75fbf4fe21e23ad805b45fd282bbbdc42de9900644831e27aa",
   "start": "1996-03-18"
  },
  "EWP": {
-  "end": "2026-07-17",
-  "rows": 7632,
-  "sha256": "e43d9c8b963a0614a08cc0d5323a196895bee30c91526a1fdb3a2e08e5031407",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7648,
+  "sha256": "2fe7a94d3630cfea6e2f59e927affa9ebbe4f3365787e2f8f47810933c3903be",
   "start": "1996-03-18"
  },
  "EWQ": {
-  "end": "2026-07-17",
-  "rows": 7632,
-  "sha256": "94063df57628b0aeaaccf64f187ef3f7c1419f73b6f7cf4b7c2b5972cc791849",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7648,
+  "sha256": "f9e8a159bee4109201e2d9e7e3e75305c2f5fcb73bda67a79e43c6617044fcf1",
   "start": "1996-03-18"
  },
  "EWS": {
-  "end": "2026-07-17",
-  "rows": 7632,
-  "sha256": "3df742a4a39f08088b929d1246e0db5da032b3793150a1894ac546301ab6c418",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7648,
+  "sha256": "d803368a2d3fb0e986f7bfab6d95ea15d3445c2914e4b5dde3b246fafa68f127",
   "start": "1996-03-18"
  },
  "EWT": {
-  "end": "2026-07-17",
-  "rows": 6554,
-  "sha256": "d51432b2203ba6a1030da10284da1f51b194be8191e599e42cab25ceddb7d231",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6570,
+  "sha256": "0bf96d6f838ae7d8ba1a3caaef4a2773ce1019e503fb2513dd9ff1502b971549",
   "start": "2000-06-23"
  },
  "EWU": {
-  "end": "2026-07-17",
-  "rows": 7632,
-  "sha256": "31ad0ba417a79b49beb930abe16f1f8a1a95329142ba7f87697604f35138335a",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7648,
+  "sha256": "093bb95b76cda0e3756c4834e2b94244f5477e11434947559cf37c7e0d103dc2",
   "start": "1996-03-18"
  },
  "EWW": {
-  "end": "2026-07-17",
-  "rows": 7632,
-  "sha256": "02ce8a61673a3f7e483992a272f0b853adb2da4b3c43c314315cae69fd6e7802",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7648,
+  "sha256": "3872cc6fcba85fb7212b795bf88d215de64c631807330bb9c75992109c1835ca",
   "start": "1996-03-18"
  },
  "EWY": {
-  "end": "2026-07-17",
-  "rows": 6583,
-  "sha256": "f2b92dc328cc50c3aac96614414b33653f41f87d30b223140c80edda7367b950",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6599,
+  "sha256": "17f91044b1747a35a0156759afc8dd51248878fc751b6f0855e20267b985afd2",
   "start": "2000-05-12"
  },
  "EWZ": {
-  "end": "2026-07-17",
-  "rows": 6540,
-  "sha256": "1d8e9615e6635282d82a87ac39eb30f8623c9d2d3fc06335186fe6dd59c1153f",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6556,
+  "sha256": "bd2756a56142887a48cff876c6640237aaf85e7e0e3571323ef9fce78d053edb",
   "start": "2000-07-14"
  },
  "EXC": {
-  "end": "2026-07-17",
-  "rows": 13415,
-  "sha256": "4f17221b20078f28ac2a2f55a10b394d1142f8bee1fe4be47b8e745da666b1c0",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13431,
+  "sha256": "74af7158eb3755ec86133737cffe49ae1cb50eace4b9840b7315536dc5ede126",
   "start": "1973-05-02"
  },
  "EXE": {
-  "end": "2026-07-17",
-  "rows": 1364,
-  "sha256": "7cc91166d1d9ddd59c11c630d2b743b2f4f0e26722e39497b819d30b20886621",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 1380,
+  "sha256": "0f5ef4025e6bedd329b4f38e7fcadab05459b397c2c8de68aa68f081876f6eb8",
   "start": "2021-02-10"
  },
  "EXPD": {
-  "end": "2026-07-17",
-  "rows": 10532,
-  "sha256": "ff56e3d584d705337549b0f7ea3ae0efb96915d123cbdaaa86e89d3b2cca6be3",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 10548,
+  "sha256": "bfd5d6031e2fd09b4a50d88af97e4f500fa8d5481c643e70cb95a1f040bc296d",
   "start": "1984-09-26"
  },
  "EXPE": {
-  "end": "2026-07-17",
-  "rows": 5280,
-  "sha256": "b78fee088db47fa2e6d4f2e34ab3ae82ac29ee7d4667cf058d8b9b5c61bf2dc6",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5296,
+  "sha256": "def723c931fdffbbc4096686be8512910273b8aa0cef9e859ed0811a0a1b45e3",
   "start": "2005-07-21"
  },
  "EXR": {
-  "end": "2026-07-17",
-  "rows": 5515,
-  "sha256": "9b59d0095d2b556e991c69720be708e194faecc15d69b6dc16d6390998c11df8",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 5531,
+  "sha256": "c0fd670a3cbe8c306e934432e297ab8acfa493ab8108f4e3cd6f61984ab5ca32",
   "start": "2004-08-16"
  },
  "EZA": {
-  "end": "2026-07-17",
-  "rows": 5897,
-  "sha256": "d8c9649f8da5737aa634478bcee3266b28ce0fa469d21ecfe13218697c9e9afc",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5913,
+  "sha256": "c5fced238ef92a1af9f886b9c29d554360789f777a185c9fbd640a44e85ef9c3",
   "start": "2003-02-07"
  },
  "F": {
-  "end": "2026-07-17",
-  "rows": 13644,
-  "sha256": "3c2fae567bd2ca68e83638e6f7b9f303084aae62a701aea7e9ab4d99d53eca86",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13660,
+  "sha256": "90181137a90f12b377aec7741fd6d25745b7f40e0a36e6b3800679b0c70ca13e",
   "start": "1972-06-01"
  },
  "FANG": {
-  "end": "2026-07-17",
-  "rows": 3458,
-  "sha256": "498b89dd39a967d5e32be7d75ee706e2b521a122109d41448c5e486b5477cbca",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3474,
+  "sha256": "b3a49c37e9af8b178aa24d8d2e3f31f972986539dae81e239cb1050a3d0cedc9",
   "start": "2012-10-12"
  },
  "FAST": {
-  "end": "2026-07-17",
-  "rows": 9800,
-  "sha256": "706f4b73a66b382dc57914b1e56ff1dbd57ff0c504ac01f53105de1dc83ba078",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 9816,
+  "sha256": "77df5478bddcc8c01a68ca013bda1f47094c70f61eba48c0a4efca50bf774e6c",
   "start": "1987-08-20"
  },
  "FCX": {
-  "end": "2026-07-17",
-  "rows": 7807,
-  "sha256": "9814d8331e015dec247573e6797aa303e217ffbb922b1e904086c9fa6bf79830",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7823,
+  "sha256": "f51747a2ffc46ef3670738bdd93b2e5c6e4bf286bd3aab7b82cf66010b6ae063",
   "start": "1995-07-10"
  },
  "FDS": {
-  "end": "2026-07-17",
-  "rows": 7560,
-  "sha256": "80566913b00a2fea12cede13ce6a0fed89d4fc6a82446e185be0bbda177a4e17",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7576,
+  "sha256": "2664de1cf6945c2132192be1d359671ef27ebb1764ad42ea88de98f64cf10225",
   "start": "1996-06-28"
  },
  "FDX": {
-  "end": "2026-07-17",
-  "rows": 12166,
-  "sha256": "bf7e5a678b84586ec1c80e3211fb26a9912534c979c8a8295dfa7f1213fadd69",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 12182,
+  "sha256": "0d1aafd1b6793c7b272c4c93f49b69057413f139583865d051377507900c8eca",
   "start": "1978-04-12"
  },
  "FDXF": {
-  "end": "2026-07-17",
-  "rows": 36,
-  "sha256": "effbc37e398c0f654dcbdc4acf56071de8260d04b761d0c3dae30b0de165b9b7",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 52,
+  "sha256": "ab7b47e117e9dca04e4c4fd0194b69d221ede6821ca2b4ded1da790bf8dd5a4c",
   "start": "2026-05-27"
  },
  "FE": {
-  "end": "2026-07-17",
-  "rows": 7214,
-  "sha256": "fb57aed82ba7e98422aea332f1b6deac6ae7c5a55f4979088709ce41cbdee3d8",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7230,
+  "sha256": "3cb383930fc6c5d302043976bace6d394796fee17582924d61bad188cad19852",
   "start": "1997-11-10"
  },
  "FFIV": {
-  "end": "2026-07-17",
-  "rows": 6821,
-  "sha256": "d90da1073cc6f48fcb5e7df1f82e46deb803a0c73f7ff61be6a14605068442e0",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6837,
+  "sha256": "81315afbf9e916a967d0d2cde2c4a3d87ba113776bfd4b0cfc56f8e58303d517",
   "start": "1999-06-04"
  },
  "FICO": {
-  "end": "2026-07-17",
-  "rows": 9821,
-  "sha256": "fb2363a2b225422fe54e5e9bda21477605e5bb81a184ef0a5ea56e4b35d67477",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 9837,
+  "sha256": "8f0364d255b100efa4ecd762945791dac69b7154e7056ea237a1dfe34f9974d7",
   "start": "1987-07-22"
  },
  "FIS": {
-  "end": "2026-07-17",
-  "rows": 6305,
-  "sha256": "23a250839439e10d5f975b885bf65b33eab4743475685f771b1993957274e084",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6321,
+  "sha256": "e87d543607a8d886ef5f1c19b59fadef693d20abd2843f9b8194d56f9f94311b",
   "start": "2001-06-20"
  },
  "FISV": {
-  "end": "2026-07-17",
-  "rows": 10027,
-  "sha256": "7f458353f25f8c10a69338a730703d0d35e5e0b02cc3d812522ebf2af3869e4f",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10043,
+  "sha256": "c6554acd7d62680ee158b6d058c920a48dae9a477153ee58a24ca6f7643369a5",
   "start": "1986-09-25"
  },
  "FITB": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "3b03713b27abc95093db68b05a5e98a440333db28ef4c8c4e09ac6638fecab7a",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "f704e9d2a788a2a33accf125f9b4141de0bf40b9787af3504cbc27addf8552d6",
   "start": "1980-03-17"
  },
  "FIX": {
-  "end": "2026-07-17",
-  "rows": 7308,
-  "sha256": "db4e845a59e88f00a4d4abf43b9423c47268bc2c348e1c0477b2cc3bd35bc412",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7324,
+  "sha256": "c17e67c8cee2e3d84135074ec84a02d2091856839c953ac09201794930ec47af",
   "start": "1997-06-27"
  },
  "FLEX": {
-  "end": "2026-07-17",
-  "rows": 8136,
-  "sha256": "2fbf9873328751b4d22525c469d17827da906399cf8a29a6f5f0e790f6875862",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8152,
+  "sha256": "b041c8779d13634aef1b01954732963609f79df0368d3cf6df1a15e9c5248ede",
   "start": "1994-03-18"
  },
  "FOX": {
-  "end": "2026-07-17",
-  "rows": 1847,
-  "sha256": "343eba98931445273ab66f7a82f150aec4a46bd66fd16431cc5aa5ba3cfc9d84",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 1863,
+  "sha256": "399ec4fd91fbcdca5c0e8e3ac31a1cbaa5928dd64f423fd2bbc50df161a81f7e",
   "start": "2019-03-13"
  },
  "FOXA": {
-  "end": "2026-07-17",
-  "rows": 1848,
-  "sha256": "4e8c46c6de2e194b8f4c7ff139be949a41745917499818a9a6c42fadfee69425",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 1864,
+  "sha256": "1a6b84678910b25c4607c49e5eb0d0e2a746435bf93c2e32964c223c2ab302d7",
   "start": "2019-03-12"
  },
  "FRT": {
-  "end": "2026-07-17",
-  "rows": 13414,
-  "sha256": "6e7bae53460785aed215ddcf87e73c3e8c1f74ef5feaf0b35b33578a374f1ca6",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13430,
+  "sha256": "ea77554244af36e5ce579e0e5f6e0af9df5941c81cefd5e07890921967ef6324",
   "start": "1973-05-03"
  },
  "FSLR": {
-  "end": "2026-07-17",
-  "rows": 4944,
-  "sha256": "4cce549f3a9a2cbbf316e7e43bb4e721a3c696936b4b02971ca7609576fb1fd3",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4960,
+  "sha256": "a0eb97fe1a3698d3e18aadb70d7f7b2e53eb326241916a283c0d8c5105df161e",
   "start": "2006-11-17"
  },
  "FTNT": {
-  "end": "2026-07-17",
-  "rows": 4189,
-  "sha256": "c21420508cca5a1c4a5003e5fd73896fd9df458edbeac184d2c8c762bda03cf5",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4205,
+  "sha256": "33a245b9128ba5b3adc7bed8a55fe8262acc604142c0f1ae14236fd1ecda315b",
   "start": "2009-11-18"
  },
  "FTV": {
-  "end": "2026-07-17",
-  "rows": 2523,
-  "sha256": "4322dc7dba3c694c51dfe56fd23f0cd2c159f1d884f3f3c88f983d08a5634c21",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 2539,
+  "sha256": "499ecf511e1d90d28128c69d28999a06c5e173e99f4d2e685e696dd44117dda4",
   "start": "2016-07-05"
  },
  "FXE": {
-  "end": "2026-07-17",
-  "rows": 5180,
-  "sha256": "cb6b82613e5f75258188e92b284b9a087ede65eb1d996b797d8e6f3669ba50ea",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5196,
+  "sha256": "baff046d95c01f44dc532b15b96f405ac060fe5aeffb6f4ad327a3c9ac2f3228",
   "start": "2005-12-12"
  },
  "FXI": {
-  "end": "2026-07-17",
-  "rows": 5477,
-  "sha256": "cbd41d2f3919b2e8c374bb1aee4bed81e4b0f9e3619d8520202908c00f4c66cd",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5493,
+  "sha256": "2dcd1951338e899f2f38c6b4328273b46dbb797bfa959ef74edc06d34e9db7d8",
   "start": "2004-10-08"
  },
  "FXY": {
-  "end": "2026-07-17",
-  "rows": 4887,
-  "sha256": "9a5ec3576e7ed07951912608609653a2b91cf4bb62dab81ee66220cd67185945",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4903,
+  "sha256": "e3e5670a3955cb46a13d10ec0012dc59bef903340a33a22d006fd96de6d09122",
   "start": "2007-02-13"
  },
  "GD": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "0ac4722d577ad97ac5c61edc55a3049a7e41d37fd634b063bbee952a778157a2",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 14272,
+  "sha256": "7c5ead38b3391178395dcf30e521ac55956dd34de929007fb0ec6d4212289014",
   "start": "1970-01-02"
  },
  "GDDY": {
-  "end": "2026-07-17",
-  "rows": 2841,
-  "sha256": "59355158b00d7c9a790b5f936d1eefa3f5d5b676df218e5de5112369aeafc516",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 2857,
+  "sha256": "f5552b647392b445e9c80302bacebfbf66c4881d04734e28748425c5987e38d4",
   "start": "2015-03-31"
  },
  "GDX": {
-  "end": "2026-07-17",
-  "rows": 5070,
-  "sha256": "74a9787cab107dd44de4c961a748cdb3dae4c76768d50e133124bdbad32f3e61",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5086,
+  "sha256": "c2740c9558704a2bb042230667eaa45221e5ec8b46921b9ea95acb174e1d2827",
   "start": "2006-05-22"
  },
  "GE": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "5fa0d020928204bf120f58507ce9b17255a74fc99ecce3cad5a4884ff371361b",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 14272,
+  "sha256": "380ec1241a32eafe4eaa83d9a65c602354739b6666f1eb4658c801afdfeb5b0e",
   "start": "1970-01-02"
  },
  "GEHC": {
-  "end": "2026-07-17",
-  "rows": 898,
-  "sha256": "92efabe6a1c8a75b0bfd9d7a9918acca7ef3ebf41ea81bf25e42360d7b6d1cd2",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 914,
+  "sha256": "dcb6763a263f3ade89bfbd544617653e51eb66ba396638b0b89474acb4c2a076",
   "start": "2022-12-15"
  },
  "GEN": {
-  "end": "2026-07-17",
-  "rows": 9334,
-  "sha256": "018c14501f621f5f18268151a58f47bfd019684d5c52c957c192bcc6c743753d",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 9350,
+  "sha256": "e9e0e05c0b641e05a72b2abd8bb51d4fa3886634ed7032817a7a623c51019d6d",
   "start": "1989-06-23"
  },
  "GEV": {
-  "end": "2026-07-17",
-  "rows": 578,
-  "sha256": "00dfaee6423cf60759f6f336d4e7a7b8e0c5a0d69dc7d75fac9daed33679a20a",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 594,
+  "sha256": "e0b9e4320921d2c4c056dd2128d24d85c069159c0d3acb6d9810ab23188d71f2",
   "start": "2024-03-27"
  },
  "GILD": {
-  "end": "2026-07-17",
-  "rows": 8682,
-  "sha256": "f318c2c3e6ae3f2287da7a8f3abaf5d9f55f22b248fa7f9d1ebb136e5373cc3a",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8698,
+  "sha256": "559ac25808fb5cf0bb81a721c7ea76c90cd835863480ac57876c4996c3b143f3",
   "start": "1992-01-22"
  },
  "GIS": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "5ef31183920b021b8e483e0f46d6bd3075fa74ac62e8ff44d99204fd496d8771",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "509f6eba38cc7591422c1c2a5ad17bc223e5460da91656fe7cc79126c0bf2ef0",
   "start": "1980-03-17"
  },
  "GL": {
-  "end": "2026-07-17",
-  "rows": 11540,
-  "sha256": "704a1250f673811b76502ee489ff4a7bc4740e1b518e60f15d55e51b8413359b",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11556,
+  "sha256": "86ee599510b808ce1642a42980fb4e06f6442e24a3e9acc35328df19fb4f260e",
   "start": "1980-10-01"
  },
  "GLD": {
-  "end": "2026-07-17",
-  "rows": 5448,
-  "sha256": "23582cb82a8245e78a2e636842f88c68d8ddf281831ce9eccef62e8699549553",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5464,
+  "sha256": "1cde10abdc69d1c6bb6dca36916f36d0bb4ae6e38168f7d0216be8097b5391ec",
   "start": "2004-11-18"
  },
  "GLW": {
-  "end": "2026-07-17",
-  "rows": 11225,
-  "sha256": "307ba844de2c0811632ca754335489ef7b76c78053a21b4214ce178ef78bc1a2",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 11241,
+  "sha256": "83bcce15bb3a45622c878f32645a73180e60143f8877ca2514a3e9068fa4cc07",
   "start": "1981-12-31"
  },
  "GM": {
-  "end": "2026-07-17",
-  "rows": 3937,
-  "sha256": "ce808aa8736b1850cf12c75514eae44bc31d59dcdf8b0b806282196723ea417b",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3953,
+  "sha256": "e5c59ad55347e02031441393177c24ce6e2d913821aca2d10d9a85db3af3a6d8",
   "start": "2010-11-18"
  },
  "GNRC": {
-  "end": "2026-07-17",
-  "rows": 4132,
-  "sha256": "30b34c47bf1445d35567ca16191760d0e2602f82d18dbd0f310c12245f000a72",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4148,
+  "sha256": "0d64c4c85cebf331956ea118f9442ac78f1d7f213727fc386f049b89c3cc17aa",
   "start": "2010-02-11"
  },
  "GOOG": {
-  "end": "2026-07-17",
-  "rows": 5512,
-  "sha256": "103aa1759611a0f7ecb5c8e7e40f87d179c52012f02d371b0be52becbd3fbe1e",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5528,
+  "sha256": "211cf4f5d61c49b7b31d20369eb74f5ee3eeea795647539842001d6ed927cc9b",
   "start": "2004-08-19"
  },
  "GOOGL": {
-  "end": "2026-07-17",
-  "rows": 5512,
-  "sha256": "a19b7536c0520d61e5d4f98e07da381fb1922035ac5e75b7814f4407d7bcde73",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5528,
+  "sha256": "6863b4864ed4c3ec95dfa9be2a3c773b921623c78da2c1effba74bb4763cff6e",
   "start": "2004-08-19"
  },
  "GPC": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "2dc2140b3eb2e332043271c346e7d8bddf92619e663e420d539d69d02eeb5552",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "0ea7fe0b6cb1aa80434cb0a1bfb50c00ed4c9c385f7c58e3dfd88eada586ca62",
   "start": "1980-03-17"
  },
  "GPN": {
-  "end": "2026-07-17",
-  "rows": 6413,
-  "sha256": "370c653a888d71af4275d686fe736c67baaa1061bb7eb2af1c9cc4a2029d824e",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6429,
+  "sha256": "2d9eaf65c7c8bd9c639be7eca7bf85ab853e488949340f96cec694879bd55484",
   "start": "2001-01-16"
  },
  "GRMN": {
-  "end": "2026-07-17",
-  "rows": 6437,
-  "sha256": "e16539a1ae2c71b1c6a74c9fc569db9b8532b4547b736f38b3aa7707b16e6ad4",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6453,
+  "sha256": "974f5b7f4a9e11f9dad3249a92fe32b7f6bffff428cd84c168efd75b432d442d",
   "start": "2000-12-08"
  },
  "GS": {
-  "end": "2026-07-17",
-  "rows": 6843,
-  "sha256": "ca3dcf7e789c1802972ba6b990667a335db9342c5525caa28dd337200a3b824b",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6859,
+  "sha256": "0a16ba3aae4db61b6fe07e6b7f92cd48df62c637b988db5bec5c23168016bb46",
   "start": "1999-05-04"
  },
  "GWW": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "a831ccbbf99c2de8880785d623108b9ddfaa785ad232294dc3bdc1f192ecf35e",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 13480,
+  "sha256": "82da6c0bdad1d4e24c9ef3ef151e76023c1bade416d425dea52ca25ef697b02f",
   "start": "1973-02-21"
  },
  "HAL": {
-  "end": "2026-07-17",
-  "rows": 13644,
-  "sha256": "2551fac797b19cc7044c895227f46f1657964505823c3a9b5627fcbe52c5b70a",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13660,
+  "sha256": "519efbecef34c4589e48f1f22ffab0149d288e4f69abea5c225b8e281224c272",
   "start": "1972-06-01"
  },
  "HAS": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "26e5d6d74c3d595a5e06117267daa4558f332cb4d0dfab0ef163bf8a6b715d7a",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "e63d12d489eb0c7f6c710c77e071a6e84ee51dc16416ac2550e9aac06a2a7b15",
   "start": "1980-03-17"
  },
  "HBAN": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "af96dcd63a75522d0e5362f857b1bba481c9b7a568b8cc7cab5db419c8e1e6f0",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "f687b39ed96f1bdedd1164ed6938625cc5e1585cdcc7200dcadc84ceed1f86ba",
   "start": "1980-03-17"
  },
  "HCA": {
-  "end": "2026-07-17",
-  "rows": 3861,
-  "sha256": "c376edd2bdf8a3660bc337ea3cbd9508f044a840536fe285fcf9c4f936db2aeb",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3877,
+  "sha256": "4755b322c3dfa8bd7bbdc9e44a933db7ee19627f48bda62259ea843a111676a4",
   "start": "2011-03-10"
  },
  "HD": {
-  "end": "2026-07-17",
-  "rows": 11295,
-  "sha256": "597866ab5503b8be810af30cba35fbcd5575c46e83b898385d15a7d822e6ebc4",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11311,
+  "sha256": "8ed19f1ef3091057d3c7b708312a373be9546dcd90436255140fbc813af43842",
   "start": "1981-09-22"
  },
  "HIG": {
-  "end": "2026-07-17",
-  "rows": 7695,
-  "sha256": "a8b037c8e178df649dc3177aad863cf1aadd339a113229f9c680f51c7b873df6",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7711,
+  "sha256": "0b983e05a7350ddc246700faec96281cc59b5619d67a2d87b9e2cbb9d3d805b8",
   "start": "1995-12-15"
  },
  "HII": {
-  "end": "2026-07-17",
-  "rows": 3853,
-  "sha256": "9822a3d202dc9469d7f34bbf5d888f1d07451be02b7f70039bf71303c27b14df",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3869,
+  "sha256": "819d58a5b0799fce2f9c6ff51d4a948db4db2a0a833f98c457481f050bed6989",
   "start": "2011-03-22"
  },
  "HLT": {
-  "end": "2026-07-17",
-  "rows": 3166,
-  "sha256": "c2504542b5da7109d56666631a13b034b13fdf8a3a343fb3725b7ff94651c31c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3182,
+  "sha256": "019ac78770c770ada48d83ed19af2490670c10c1727402ac4f0412850f05d9e3",
   "start": "2013-12-12"
  },
  "HON": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "1c8ecab65f8ef592b737c28b538b97206d6d18781be7ead5dc851cfb2a5c8f19",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 14272,
+  "sha256": "79a901e7b2d8a727cb091d7d365c03182788ebad2aac3d3352c11a13ce374ab0",
   "start": "1970-01-02"
  },
  "HONA": {
-  "end": "2026-07-17",
-  "rows": 23,
-  "sha256": "07992a27dfd1eab0467e2885f833a7d117d8f2b740c1f729d0f0b3dcb6e370f2",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 39,
+  "sha256": "6cd32613fcd226ebd3abdea4df9da16d09383e11c7bcc7c295948dcb1946ad8c",
   "start": "2026-06-15"
  },
  "HOOD": {
-  "end": "2026-07-17",
-  "rows": 1247,
-  "sha256": "2c848c7471db92f9aacd9452907e2987cec6d9f66b4c788dc17efed9f3689315",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 1263,
+  "sha256": "f86fd9bdc302c46341507c0070f4c3311f86c102456ab818ae26baae987bb622",
   "start": "2021-07-29"
  },
  "HPE": {
-  "end": "2026-07-17",
-  "rows": 2701,
-  "sha256": "b7a54e3e42abee8b7e51351ddd17f09e7391970f6728bb6db5f61bf8f580f456",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 2717,
+  "sha256": "4e4a53db71cac921c6417b4833ba2c7082120ec741aa127dac6bc5534a6da766",
   "start": "2015-10-19"
  },
  "HPQ": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "57fa0ce72793026b710cce7adf80ee536e3af70cbe00cc85bb49af8fff807c48",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 14272,
+  "sha256": "3fa73f53f423b6af701aa27d15532a8bc0adc0abb9f0474f984020f38e3e0027",
   "start": "1970-01-02"
  },
  "HRL": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "84d0ac2fe5da13f6441ba95e4086de15ee444363cae1787df12d067dfd055703",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "241814475718b8e9f39fe0d147f366aa6c0c04a0c2b1d544b9fa0017d27a96e8",
   "start": "1980-03-17"
  },
  "HSIC": {
-  "end": "2026-07-17",
-  "rows": 7724,
-  "sha256": "8e36933842b58f3bdf7b8579ec8f5b9f0bc85310b9772f42567cb5754a6c1b63",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7740,
+  "sha256": "c60633464ec3c837bd17c8f56aac4543c6cb69e96d4b6376ff1d3c26a679f50c",
   "start": "1995-11-03"
  },
  "HST": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "972402e2efeb50fdfbb4e11491d443418019838c6b8d08eb1b521fa9c32582c8",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "6ab8b6ffabe9acf095d96d04f6a50803e534182dc7311e172cc51406eeb1f214",
   "start": "1980-03-17"
  },
  "HSY": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "77cf202214c452f9432ffd97aff9b32688a07d4ccdcdbd69a9acc16ea7025b26",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "971e35cd1303e9392ac4bf2a781b29a14bee5f1a9dcbb4f8a2e08673cbac685b",
   "start": "1980-03-17"
  },
  "HUBB": {
-  "end": "2026-07-17",
-  "rows": 13521,
-  "sha256": "b48d6422fb82cf53296af2a2624c93c5391c0c3df5520f9fb9693f93de7020ef",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 2,
+  "rows": 13537,
+  "sha256": "7856c55ca69c55d97fd785a07b24e85ac35f0c7675d687c1a268c4c7bf8774e4",
   "start": "1972-06-05"
  },
  "HUM": {
-  "end": "2026-07-17",
-  "rows": 11225,
-  "sha256": "83fd8cf3257dd9ece19d7d4fd8e890f5b457ff7d4ac8a0be254794e6f76f3fc9",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11241,
+  "sha256": "c937096b3023f1e623f7d7d89baa7e59c3c1a20b80587cbfbd24957845385a55",
   "start": "1981-12-31"
  },
  "HWM": {
-  "end": "2026-07-17",
-  "rows": 2439,
-  "sha256": "c272caf691a9f5296918584aff31c823d97fb83ed007688b782ffe3b08edb5c2",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 2455,
+  "sha256": "f3caafd99f9246f981e998ba4f3d6afee474c593c82a0ed50dc4d5f5bc3f02f8",
   "start": "2016-11-01"
  },
  "HYG": {
-  "end": "2026-07-17",
-  "rows": 4848,
-  "sha256": "1d91adadbd5b7f1ff74df2e74a8a6200c39272f6f056b97a591a8e09f517e74f",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4864,
+  "sha256": "bd16f8a5eb7030334914dfb1a634661d34f539027674e8cb68b2fc1688d5335c",
   "start": "2007-04-11"
  },
  "IBB": {
-  "end": "2026-07-17",
-  "rows": 6394,
-  "sha256": "e26adf50942401b0e3da513ae00f66b9cc6b4a93337b5329eb1c1f818292e2bb",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6410,
+  "sha256": "17672d2ea73b6e1e6aaf2fd4478db5dcadff8b7b3cfc3327065c1ddb45930fca",
   "start": "2001-02-12"
  },
  "IBKR": {
-  "end": "2026-07-17",
-  "rows": 4831,
-  "sha256": "c1e2d53fdbb0553873766c72b507c0ddb0112c3113b3643bdbd93170d73ff47d",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4847,
+  "sha256": "b248e1b5e7cfeba82e28f89c9319ba03ca14c2eff2c0aad2ea881de39e200db9",
   "start": "2007-05-04"
  },
  "IBM": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "5476920bf99870603e55ab2c8f4efab04742ff2686323aaa23d39a1b4ca0ac57",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 14272,
+  "sha256": "a317f0066559aa7dd5d72d3f77df0c45f4ab739a96f9d45dbcfbf832a1e1d2e5",
   "start": "1970-01-02"
  },
  "ICE": {
-  "end": "2026-07-17",
-  "rows": 5197,
-  "sha256": "7e22c067397fd92cd5e2b8cb82ef0c656c1591de65b46fabf0a999f1d5509234",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5213,
+  "sha256": "80ef22daeb05b518d1d327e405ced2f6ead34fbe6d5c032362979b01fd662735",
   "start": "2005-11-16"
  },
  "IDXX": {
-  "end": "2026-07-17",
-  "rows": 8830,
-  "sha256": "c8730385b7da17e2252b83883b1228f0324a09b567727a9d93305e6c042d6186",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8846,
+  "sha256": "d7d77b02079b4e4fff48b1e86b28b76a0c6b18838b69a9b5bed4b109dab1257f",
   "start": "1991-06-21"
  },
  "IEF": {
-  "end": "2026-07-17",
-  "rows": 6030,
-  "sha256": "2cf66eb96f2d90fac599ad1e70b5cef7b79d7bd5123ddf123c7972187b3ec948",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6046,
+  "sha256": "164ca9b68779e4531485f6728e0fef10f25d127a7255614243eaa6ce2949d896",
   "start": "2002-07-30"
  },
  "IEX": {
-  "end": "2026-07-17",
-  "rows": 9349,
-  "sha256": "ae2b3299f86bf119cb48cc70e6fa8d9894127694e8ac957b7e4da0659cf0cb86",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 9365,
+  "sha256": "2063175d8ed110f31abcdeee4614cc6583bde1dcddf3d4df32fc0a316ee7fa9d",
   "start": "1989-06-02"
  },
  "IFF": {
-  "end": "2026-07-17",
-  "rows": 13003,
-  "sha256": "bd4c9718f241eb33f8534080344bd0fd8e21f6a41d1a1eb881768d515853cf54",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13019,
+  "sha256": "00bcba489ad7342946b3e478d82e38f86b2b12828802a44b1217d7e9699225c0",
   "start": "1974-12-17"
  },
  "ILF": {
-  "end": "2026-07-17",
-  "rows": 6219,
-  "sha256": "659a947b26048cbbd07b20ab2ba8ae33e3848c34a54e8e1ae53c75694bad3183",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6235,
+  "sha256": "fa9aa99e414469238e08a06bf58292712e223127f1ff36a0c85eea8760b976ac",
   "start": "2001-10-26"
  },
  "INCY": {
-  "end": "2026-07-17",
-  "rows": 8229,
-  "sha256": "0b9eb79369d80020023c24a57601d9bf529b4196143427dc8538e6397a08f038",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8245,
+  "sha256": "dc99b74e787c23efe98be26533afda2ccf212587305cb47609fc148861761210",
   "start": "1993-11-04"
  },
  "INDA": {
-  "end": "2026-07-17",
-  "rows": 3633,
-  "sha256": "654bf44f45b362474d24d34247131f7dc6ec6712d0aef035becdfb4a295503a9",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3649,
+  "sha256": "b9ba9df07b541130de8d7f4ba4febef1ae9eadcea3e1190a95390956c924848e",
   "start": "2012-02-03"
  },
  "INTC": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "a2bfc3940ae7e6851b0464da094cb5555bfc11774af13ca0b28456a160dcbc2c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "563476bd5091d75633f87b15811d4ba703b63066c725831ebf412313d8f223cc",
   "start": "1980-03-17"
  },
  "INTU": {
-  "end": "2026-07-17",
-  "rows": 8394,
-  "sha256": "23a07d3194acdd122213d5533d9a2ceceed9866195735cfdfcc5647bf614bee8",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8410,
+  "sha256": "7cdc0b21a7fde8d996861038fc302fd8b8b5e88d1d970fa7e5268dddf1a68071",
   "start": "1993-03-12"
  },
  "INVH": {
-  "end": "2026-07-17",
-  "rows": 2377,
-  "sha256": "d7c93baaea4319d3a13aaaa6444f62b4b011615b1fbc7aac63e8f0328436751c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 2393,
+  "sha256": "012b21067ab344939a0b5162b8d8316ad1056502f759486799ec3f16652a4b12",
   "start": "2017-02-01"
  },
  "IP": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "f437b0eb3abed20a74fa00e381889b9b7989afc44f68080964ce7ab2170da121",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 14272,
+  "sha256": "8321320f60a6821f74a00d65fbe332ecf30e1be1a7eaa4ced4b61e9b7ddffaf5",
   "start": "1970-01-02"
  },
  "IQV": {
-  "end": "2026-07-17",
-  "rows": 3317,
-  "sha256": "0d9ac71a621d0d6b0b8aa4fb6189cf980f0a2a9af144d4286f863559d553aa9b",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3333,
+  "sha256": "7627b722a7e244472140811487db8472f96f1543088b0fe542715debf392f746",
   "start": "2013-05-09"
  },
  "IR": {
-  "end": "2026-07-17",
-  "rows": 2307,
-  "sha256": "8d4872d97463ad8aa38db5af09af97db93c8db94c37dcfec7661ce2f242cd9e0",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 2323,
+  "sha256": "1890994b11a683ee613482ea254f081478b15c9cd08e5b5003052fc041d58ce0",
   "start": "2017-05-12"
  },
  "IRM": {
-  "end": "2026-07-17",
-  "rows": 7663,
-  "sha256": "20b6cec0bfe7537400b6af4442bebb55fd681acf23b94a501fb0804d80d848ae",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7679,
+  "sha256": "92b17b6a9721f17eb54de313270776e08fb30918c9ba18f31f69aaeda8e71cfa",
   "start": "1996-02-01"
  },
  "ISRG": {
-  "end": "2026-07-17",
-  "rows": 6559,
-  "sha256": "0b27f2bf4f5026e57592885f6e28c551ad6cf2b9bbe307d0eb22841bba0d6fc8",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6575,
+  "sha256": "682f2d30c41036f9f1979f58157b788bed60483894d34ec52ab0833596c0482e",
   "start": "2000-06-16"
  },
  "IT": {
-  "end": "2026-07-17",
-  "rows": 8251,
-  "sha256": "69366685beee1c70d7405347b963daa0e5cd66d56f274236295c85f3b37f22ad",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8267,
+  "sha256": "3a0fd6dca9f9a5771db8c0e80e36cdbe6b77085a3854e2ba66e30993442e8016",
   "start": "1993-10-05"
  },
  "ITA": {
-  "end": "2026-07-17",
-  "rows": 5081,
-  "sha256": "86c3808bcf81994ee14e42d0e6d16db54f71ae1f38da163eae2938945f340580",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5097,
+  "sha256": "3caf079a0b21019f08d6cf6dac4a1df868f8fbe8b784a1eb09ab2ce1ab759346",
   "start": "2006-05-05"
  },
  "ITW": {
-  "end": "2026-07-17",
-  "rows": 13450,
-  "sha256": "0eb95e28fe8e8f4b0247d65165cd3194b58450e730dd5e777ad008d5633019b8",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13466,
+  "sha256": "fab35c81fe82e19b246a1cd473b0b8242e13c19eb9b7da78792a5bc8d8c27fc7",
   "start": "1973-03-13"
  },
  "IVZ": {
-  "end": "2026-07-17",
-  "rows": 7773,
-  "sha256": "6aaa287f4575862edb518a11e1b5842f0cdc7529273dabf5601ddc2b1e294cc1",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7789,
+  "sha256": "faaca3db0cddab23c8881d71f910939a572b87ac5424135593f682242ab4dd6f",
   "start": "1995-08-25"
  },
  "IWD": {
-  "end": "2026-07-17",
-  "rows": 6573,
-  "sha256": "dce721247dd8a9f61dc06224c01a46faf379485481dab007635567d99d3c130e",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6589,
+  "sha256": "d17e61f1c09e665dd0b44aafb98e4a9ebef701bcd8f898aaa070a448f0f92dbd",
   "start": "2000-05-26"
  },
  "IWF": {
-  "end": "2026-07-17",
-  "rows": 6573,
-  "sha256": "251da90cc1d27382c001152831431d37b215407685c813db7a20d95045a6587b",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6589,
+  "sha256": "673d34cac4415662156f20e82ef979b9367931c2d8017204c3e0458d053a2e56",
   "start": "2000-05-26"
  },
  "IWM": {
-  "end": "2026-07-17",
-  "rows": 6573,
-  "sha256": "5e9f29588f07dfc9e557ff5e81f4b39496333fbcf8fd5639904af420de494314",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6589,
+  "sha256": "4e7b9a373eb6e949a5a2e763242a30f93d4974e77f0a743aa5a9fa5be5bb351a",
   "start": "2000-05-26"
  },
  "J": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "a2b3bdf08569db697e714d5124d625b234526d6ea09a680fc48ab9bb86927861",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 11694,
+  "sha256": "faa42806dca1453a6e5a0d4edf2c176ce10f0a342c97613dffea512778231302",
   "start": "1980-03-17"
  },
  "JBHT": {
-  "end": "2026-07-17",
-  "rows": 10745,
-  "sha256": "bca27a6450482a2005c2eb8b1788f936839c1bdd0207f9993c6a732c2f571f2b",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10761,
+  "sha256": "857768c7681a143de723a52e5a662e1b5c963f0435c7ae24c46b29247e7fbbf4",
   "start": "1983-11-22"
  },
  "JBL": {
-  "end": "2026-07-17",
-  "rows": 8359,
-  "sha256": "02e6a7b26f98d3ae1c2c24fc634f152e17af59b06447a151b2eb106af42224dc",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8375,
+  "sha256": "d1990399970dc75f7a4b49337c8e6ff4de9086b73eefcff2d603f9f48fcdef2a",
   "start": "1993-05-03"
  },
  "JCI": {
-  "end": "2026-07-17",
-  "rows": 9774,
-  "sha256": "a5f62dc8131b9807f7ff23b10fa6f4df4d8ccdae98be939f1f73eef72979b25a",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 9790,
+  "sha256": "f38a10ac08c9890e9f7d8a4bbb6629f11c88f1f63065dcb600ab6bbb9b789fef",
   "start": "1987-09-28"
  },
  "JKHY": {
-  "end": "2026-07-17",
-  "rows": 10241,
-  "sha256": "ee997a520a404983bf0146348fe7ff82de1efdbdb78a610180b99652ebf6028e",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10257,
+  "sha256": "bf3ea512535002a98caba76d6f336235df8a422343b45a4107d7de8ec2c72281",
   "start": "1985-11-20"
  },
  "JNJ": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "21b853ee866d68ef8676dc4a9c7b47d727e53e3d8d1f56fb04d482aff22f1132",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 14272,
+  "sha256": "3a1260a208af1decea8043ae2a1c1f91cc3279bccea4440579fabca40fe448dd",
   "start": "1970-01-02"
  },
  "JPM": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "96a5ef31cb96e5fcc74b7062d3517bd430dd76b72f8e091ba3c64a32c9d3fe19",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "33dd1d908ef5230433df6a250cca6b73faed70284be8c344192ab5c6e77f2f57",
   "start": "1980-03-17"
  },
  "KBE": {
-  "end": "2026-07-17",
-  "rows": 5198,
-  "sha256": "99fc849b24c832e0d6fb022f330a8edec606c7b49d016f95c7dd52fb37f902a8",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5214,
+  "sha256": "32eff0a75b5a829112d9ba90a05bf6d30612f192dcbdb8ba0b424ec73ababa6b",
   "start": "2005-11-15"
  },
  "KDP": {
-  "end": "2026-07-17",
-  "rows": 4577,
-  "sha256": "86c429e4f3ce952808fc16fb2caad0c4d629797caf000909c3aacda86e7685e1",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4593,
+  "sha256": "b6bbc72fd4d0783a22536ea9755750d1e59715927e8c2035f62dd4266ed043ad",
   "start": "2008-05-07"
  },
  "KEY": {
-  "end": "2026-07-17",
-  "rows": 9746,
-  "sha256": "b1e0ffac8fb1b506aaf684eb5f02b0d4339949ba9d1a33b843a49007614a1678",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 9762,
+  "sha256": "63db1c443c326829543d0c02653907eb0f4c45ca62afd5570b4fa4b27276026c",
   "start": "1987-11-05"
  },
  "KEYS": {
-  "end": "2026-07-17",
-  "rows": 2952,
-  "sha256": "1c5c5e29b9b3ce04e73eeb1d9434b8a8c1059d7bb275f2e3e56a9201b25e91a8",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 2968,
+  "sha256": "dfbad949994e8f936c86459f71e13320591daf8d06d05267bc1fc4516b9bb888",
   "start": "2014-10-20"
  },
  "KHC": {
-  "end": "2026-07-17",
-  "rows": 2775,
-  "sha256": "9fedacf6d55b8bf6e6ea15bd1937478b3bbd1719755d5fc683527007bfe547fd",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 2791,
+  "sha256": "2d7736c9bfa77fa6a9d9d3f1a43a3220f5f003aa94d6ba624bfd231aab4f879a",
   "start": "2015-07-06"
  },
  "KIM": {
-  "end": "2026-07-17",
-  "rows": 8722,
-  "sha256": "45806743cc65cda40b4291a015f7cdcca03377d5ab54c8789762adf31e084fbe",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8738,
+  "sha256": "65dad8840ad708fe71fed564b91eaba2ca7cf30c9cdb9ad081517bded95ced9e",
   "start": "1991-11-22"
  },
  "KKR": {
-  "end": "2026-07-17",
-  "rows": 4026,
-  "sha256": "930c0a339e0719d79c1b93c81c502827506693b2c477d300cc4d84f04830fc80",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4042,
+  "sha256": "8ec2f3366430a1e728b0833275d899241a0252118eac722144c3a97f63b39e36",
   "start": "2010-07-15"
  },
  "KLAC": {
-  "end": "2026-07-17",
-  "rows": 11535,
-  "sha256": "28702ab28ac9ea738c826f741b02c809746ee01de2839ad1eff4d788fa04b62e",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11551,
+  "sha256": "e7f3ce22b099d8db0bd50097ebdd2518a97f0c2e74d8fe059dc23ae65b92b724",
   "start": "1980-10-08"
  },
  "KMB": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "1bf7b569c1df0c148e093192f98af62edee4598c4b0a97d6c401be634f849c98",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "718a9793ddcd344f85682fa1ea82075585605a1dc6f6abebe4009f9f3e54dc46",
   "start": "1980-03-17"
  },
  "KMI": {
-  "end": "2026-07-17",
-  "rows": 3879,
-  "sha256": "85224efae50fa91dc3d88c4849c5b8bb6b1b540e6def6d14f888a3c092135d8a",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3895,
+  "sha256": "66ce902399d2ddd8743ab931232b29f2355614e43278ae2a653131c6bd6498f5",
   "start": "2011-02-11"
  },
  "KO": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "4c1e431e9b5dfa36358913428aa46d235b1556bf3c033f8437fed98f1e56b6b2",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 14272,
+  "sha256": "2b4d471c47c2dd308730b78b0806b1721e31ad2252c97e9c0e5dc812d01ecd13",
   "start": "1970-01-02"
  },
  "KR": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "f7a809f5bd2fba8a3cda898c046c024f61efc100eb8f42780fc04e9c7fcc7933",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 14272,
+  "sha256": "fccc517ecaa62851428195b55ef93d391153fec16393712ff5b48052e0556fef",
   "start": "1970-01-02"
  },
  "KRE": {
-  "end": "2026-07-17",
-  "rows": 5048,
-  "sha256": "eb0b687f1be1e2a1d42c133502ab1a844b9ae8c6688a0754d62e52b26108207d",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5064,
+  "sha256": "4fd25f67d380ecb30a0888b91867ea68402768b3b37bc778eeddd081111f881d",
   "start": "2006-06-22"
  },
  "KVUE": {
-  "end": "2026-07-17",
-  "rows": 803,
-  "sha256": "adb8866e4cb698280e65d7c969003bff7ef894eb53a128a8c32e2747dc153894",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 819,
+  "sha256": "1550eee8af6d0eacb09394576d38b0b7804ea95502e99a4b8e3e084ba238663a",
   "start": "2023-05-04"
  },
  "L": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "28d9debd7c61ae92f60597def78129c35fc1663dcc6852c14739a7cb6435bd7c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 11694,
+  "sha256": "f523eac3b9e94d53c123f4495250869cbe8d0fc1892fea38785554bdd5fd019f",
   "start": "1980-03-17"
  },
  "LDOS": {
-  "end": "2026-07-17",
-  "rows": 4967,
-  "sha256": "9e5100300f2ad833b362f215d8947d330677fb98e8feb216ad9c765ccdb1dedf",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4983,
+  "sha256": "02da37185d23c3d4213ece6b374ae7bf332d0de4fb9e7a999c33f02952a39a14",
   "start": "2006-10-17"
  },
  "LEN": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "55c17c661c3103da99cc6910fd3ea649d72a03b8cb00d3944d431b0fb4c5ba94",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 11694,
+  "sha256": "98c55cb6e1148666bfe073ba305a2cf1146b45e0522ef5258b99c4bf695d94b2",
   "start": "1980-03-17"
  },
  "LH": {
-  "end": "2026-07-17",
-  "rows": 9141,
-  "sha256": "f5852cfb4e4f8a96dd569601c1914c873b4c74353ce41c884b386be8f575fd23",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 9157,
+  "sha256": "76d73e62bc2905b6722dc2f664788dff9f1ef7a0a16558c29c7a51134f0ae4dd",
   "start": "1990-03-29"
  },
  "LHX": {
-  "end": "2026-07-17",
-  "rows": 11225,
-  "sha256": "a689b97facfd0d9aa19dbb82520c0c3f84700f26370e8537e009bf7a83f20b73",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11241,
+  "sha256": "496f9d9526d8a1636d20406f437d5d978eaf862d52067b6597e328961f5dfe32",
   "start": "1981-12-31"
  },
  "LII": {
-  "end": "2026-07-17",
-  "rows": 6783,
-  "sha256": "dcea9d7f58409b9912ffc1c7cb80cfc9607652a9722f6bb6f2d52f7afe76f9ba",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6799,
+  "sha256": "81730fc1818b4460ef682e705ec32b930e257ef69f1a2dd5ae0e46a288929d81",
   "start": "1999-07-29"
  },
  "LIN": {
-  "end": "2026-07-17",
-  "rows": 8580,
-  "sha256": "9cd3d00a67274dce6fbcba214ff66dcd7dc7a9abbe7e6f6be146f1ee1bbd360d",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8596,
+  "sha256": "4f19a32050745e74134abf5e58f64d12fe9bfd1734fa2d51a965e5e4ca71b7b8",
   "start": "1992-06-17"
  },
  "LITE": {
-  "end": "2026-07-17",
-  "rows": 2762,
-  "sha256": "7f7fb340de82b258b2f4e036fa7ae06bbec1abffd0e549b4f178729494bc7fe7",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 2778,
+  "sha256": "76b6951e595045e3e1d3e0c514d9e457902e66de8c2bf602bfae3193f668d78a",
   "start": "2015-07-23"
  },
  "LLY": {
-  "end": "2026-07-17",
-  "rows": 13644,
-  "sha256": "858cad4d8386e7b6e32da4fe5a466c093fbca058cdd03ecb3bb76638d6aeaef9",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13660,
+  "sha256": "33de84fbf5429161322d29e219c5e26b7490d708d103e9a8fe287fea3e66bdca",
   "start": "1972-06-01"
  },
  "LMT": {
-  "end": "2026-07-17",
-  "rows": 14255,
-  "sha256": "ff4b7ba3b6d37d10d793de4b6bcde6a86b5ce6e1c83e9527b2f5ff0aeaeec4b0",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 14271,
+  "sha256": "d8945b6943ee4a4237b26eec8934bd428636f2c6a82f947f73698ec446540712",
   "start": "1970-01-02"
  },
  "LNT": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "068c069f92234ce5cef2a540c83f74a3a60cd1d0a610bc9bda1015cb3bc4b5e1",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13480,
+  "sha256": "fd685a279ebd2351c4ac35694e5e6dfa423eb2b9728fa8e9302d424035c15269",
   "start": "1973-02-21"
  },
  "LOW": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "0ee4a3e95d4ec6e6d798d0fdc82e101d36349e158965b4b7e6aa81cc37495df1",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "2e21c15ae7625852212d92a69cc9936805e0a3c6ed56eac8d8fd977853f1e9cf",
   "start": "1980-03-17"
  },
  "LQD": {
-  "end": "2026-07-17",
-  "rows": 6030,
-  "sha256": "87db00a4b33aef262f0160b21d03c2c7f91d49229ab4ee2dba92273810e2bbfa",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6046,
+  "sha256": "5c4ebb867b3d1d5572b56ae6adaa694682ed7800f73daec723095dac38ab9ecf",
   "start": "2002-07-30"
  },
  "LRCX": {
-  "end": "2026-07-17",
-  "rows": 10632,
-  "sha256": "e5ad55a43e311abbaa44759c548035cfd4e5f05abf2194864b67e93ec44c73ff",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10648,
+  "sha256": "974926ad52010ab0b668386a87e545f21fbef62dbab7f270b7c621b14bc3c1dc",
   "start": "1984-05-04"
  },
  "LULU": {
-  "end": "2026-07-17",
-  "rows": 4773,
-  "sha256": "4955ccdd1f23afc79ae1c01107221e3b16af187db96b222aa1f4aed0d2417b56",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4789,
+  "sha256": "39ce211fd06bf5c589edbd7900f1928167ca53c9108f987a7a4361d9dbd24a36",
   "start": "2007-07-27"
  },
  "LUV": {
-  "end": "2026-07-17",
-  "rows": 11730,
-  "sha256": "9ed55926ff0f802efa59e07cd97dc147708a281dc5b2609dce46494218b67ef8",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11746,
+  "sha256": "32bc432e0deadc212f55b038f7c5522e904809acc313f4743d1967433f8a8cb1",
   "start": "1980-01-02"
  },
  "LVS": {
-  "end": "2026-07-17",
-  "rows": 5430,
-  "sha256": "85db5167fab7227b5b341010a7805ac85c86f96667d6163194a71ed301100c21",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5446,
+  "sha256": "357a9e900bdf95e9fc712ef77c35fbceec1beb8a3cc69b7fe317b2bd98eeaaa1",
   "start": "2004-12-15"
  },
  "LYB": {
-  "end": "2026-07-17",
-  "rows": 4080,
-  "sha256": "3b2f2db18153bd84c95834063b431655779a6581f5b6eec7bc381eb9554fe844",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4096,
+  "sha256": "be80d2d97db9185c7fd84db384b4dd052adfcb8bcd6f0b4d3dd9846994317083",
   "start": "2010-04-28"
  },
  "LYV": {
-  "end": "2026-07-17",
-  "rows": 5173,
-  "sha256": "33edebc7bb631e83c713c6dc8fe6cf985c7ae3f5ae5577ebbb33d8db6aa81475",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5189,
+  "sha256": "db474d0d261e8337c68cb48e78163448464c7616e3cec4706d214c46257d2171",
   "start": "2005-12-21"
  },
  "MA": {
-  "end": "2026-07-17",
-  "rows": 5067,
-  "sha256": "fa867204d8d587f87f7fe3d5bbabb820ceea8ee5dc2072ebbfe756c50fa26e34",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5083,
+  "sha256": "ea0ed00461dabb5b6269924ebd01f87274cbecd480826079867d113e918315a8",
   "start": "2006-05-25"
  },
  "MAA": {
-  "end": "2026-07-17",
-  "rows": 8170,
-  "sha256": "0b00310d616dc8897d0dfa572a2002976937ed0bbe70a4f549fc1c1f30895d60",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8186,
+  "sha256": "2718ee98596c8883b8d0b94acab93bc1bd3f3003b6d35c08ee64f06b6e004fa5",
   "start": "1994-01-28"
  },
  "MAR": {
-  "end": "2026-07-17",
-  "rows": 7124,
-  "sha256": "97c9bb0fd0543aa1ad6afae9cea6a8251c9bd4f0c953d902fa02645edfc546a5",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7140,
+  "sha256": "df123bd61d0a8f3995996949a8a91c9f8712e9b1c90e4cde90d6ea01ca141073",
   "start": "1998-03-23"
  },
  "MAS": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "03d707c8bfcdd98483c233c87fa3e0e0c7a9e553479e012867374b48fe3dc397",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "35571bcf58a90373c1c1c01aa4ad5167231e0f7fef6f6919849b50ec0f66a36c",
   "start": "1980-03-17"
  },
  "MCD": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "e204b4b553c32b4ac9a57aec3c0d0ebd7e13683be36f39372609d6e55fc554c3",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 14272,
+  "sha256": "8630be8e151b40a651337d0a59df5a1c9c7edc9164fde1865b756d59a6c2cd10",
   "start": "1970-01-02"
  },
  "MCHP": {
-  "end": "2026-07-17",
-  "rows": 8389,
-  "sha256": "0c82d3accce7f69316e2c1aabfdb16d1bd563b111b99d777b83273e4cd3ac046",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8405,
+  "sha256": "e774185911dc173cd5d2f4dfc88e8f15ca59fa7350a06817b6e3d44da987b2f7",
   "start": "1993-03-19"
  },
  "MCK": {
-  "end": "2026-07-17",
-  "rows": 7972,
-  "sha256": "44cd3c2fe37169e6e04f288cb238f1bc4e3ca3e1836072842f79ea546b0792a4",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7988,
+  "sha256": "38d2cb01f43cee3c15124c5f1ba6dd5801557d43f0165a531f2d0b5fe7c4a1a8",
   "start": "1994-11-10"
  },
  "MCO": {
-  "end": "2026-07-17",
-  "rows": 7980,
-  "sha256": "8275f9d78f18f3c1fdb21c3dfbbf61f718e5d7a3b5ff83a615b2387a0801faaa",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 7996,
+  "sha256": "54e804e4dba53054f9b7e61c1c7d29f68cf23efd64dd80345619039ac2e545a7",
   "start": "1994-10-31"
  },
  "MDLZ": {
-  "end": "2026-07-17",
-  "rows": 6310,
-  "sha256": "5fc13d162a1097137b0de5ef32a7f902da5de2d5f9738d1d665001da43642f5c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6326,
+  "sha256": "ed31cabe601bc5aa16a70a729c537e8b0f5e3b9549206933b3601556869ebaa4",
   "start": "2001-06-13"
  },
  "MDT": {
-  "end": "2026-07-17",
-  "rows": 13415,
-  "sha256": "319650cf0b9b9077431e31cffb9c9f1320588ec312e4c507e689edaefc29ba9b",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13431,
+  "sha256": "25c8ddd65186ed6c4c1206f5ac97329a8d71ba248bb92c1e4b993ea111d17d01",
   "start": "1973-05-02"
  },
  "MDY": {
-  "end": "2026-07-17",
-  "rows": 7852,
-  "sha256": "a9d1a803914924083315e5e6935f3d2fdf42ddf72acedc631aa2a49af45dfae1",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7868,
+  "sha256": "6a7137ea89ede5095e9453fcd8918a180f75bb0578f503e2c0e7c0a8bb18de7e",
   "start": "1995-05-04"
  },
  "MET": {
-  "end": "2026-07-17",
-  "rows": 6609,
-  "sha256": "89a85b2192edd95e44fc7ed45b3c51aa4cbc4c5e5940c0c8e0e1e2d40011ce39",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6625,
+  "sha256": "04347cc084d4d23dc75fa30c654fe0c2142bf9a02a7f52ade9d1d1d4f6df743f",
   "start": "2000-04-05"
  },
  "META": {
-  "end": "2026-07-17",
-  "rows": 3560,
-  "sha256": "1b6b6318e1f6f6b5bbac6a645e3cc84423c9d99c50f73a220c26ca6c8a502993",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3576,
+  "sha256": "e95b32a1473f2b2057798b5eaafb12de86f11acd111f2ce34a235c0bf696ff92",
   "start": "2012-05-18"
  },
  "MGM": {
-  "end": "2026-07-17",
-  "rows": 9624,
-  "sha256": "3e57ff2a4ed6fc6f642e108995e5ea01a9ef3c4ad43bba5aecfb6ff0eb055e39",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 9640,
+  "sha256": "313a04b490e9d3dffce7aab6ed572848b44c0266e7ed695cfde57e4a1c3bc67f",
   "start": "1988-05-02"
  },
  "MKC": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "7974b653b7493bc40dbcdb4c4e44a52de12e5bc1f847f8bb49d5fbab06da05cd",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13480,
+  "sha256": "6bed3d6eaab582f1a28e8c3bd8570bbda4cc3d72ac4cae331b8f4e36be6a1eda",
   "start": "1973-02-21"
  },
  "MLM": {
-  "end": "2026-07-17",
-  "rows": 8156,
-  "sha256": "1c3c3e7ef8e9d337141513a990d7440c2e0555b679a6b153655d52d0b1dfd6d2",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8172,
+  "sha256": "263c62d38f127d43a67f5261d0870da8a74e2972c335f423c99102a10296ca4a",
   "start": "1994-02-17"
  },
  "MMM": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "7c48aa877eef6540c06b6b35e38d53d03e5263ead606176abbe475c27a988d4d",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 14272,
+  "sha256": "99da4ee6a662fb3661fd8e153f6ec14812f632311634a548f1ccb0a2f940a532",
   "start": "1970-01-02"
  },
  "MNST": {
-  "end": "2026-07-17",
-  "rows": 10229,
-  "sha256": "673aade5a6bb24786f0601e0fcb8be53411d8b88f906611fb114acc0996abf1e",
-  "start": "1985-12-09"
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 10246,
+  "sha256": "67e53244120bb52a0c82e2010d1673e691cb120d0ec451693b0967494fbbb351",
+  "start": "1985-12-06"
  },
  "MO": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "e686a20510101f3ba6a15bd629e712666bc8fff9b07ebc586e23bfab60fc78b4",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 14272,
+  "sha256": "ed8d04f4e5538eb93ed328c7a85636ec634fa34944e9f5fc6ea6e54743da18df",
   "start": "1970-01-02"
  },
  "MOS": {
-  "end": "2026-07-17",
-  "rows": 9691,
-  "sha256": "8cfac7d794afd1c951e34c2240b633d3d8a997874f124fdfa550aaa57e98613c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 9707,
+  "sha256": "36b71eecdf014e3fa6b8b16e9840d4adc061462c55c4a4b5406546a20e7f1fd9",
   "start": "1988-01-26"
  },
  "MPC": {
-  "end": "2026-07-17",
-  "rows": 3787,
-  "sha256": "7952044504c8dbb439d56a66e18d5d800656b7d558f3c909f77bd86f9c6a7e0f",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 3803,
+  "sha256": "a84a21142fe79bf7dbc1c2b690d5672606b4b2975c4a54eb3640476100646e53",
   "start": "2011-06-24"
  },
  "MPWR": {
-  "end": "2026-07-17",
-  "rows": 5447,
-  "sha256": "b92efec2be293bccebac4bf972cc8f5d0953954068dfa2b9cde1e465ca3708e2",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5463,
+  "sha256": "be9b21a2fdc963692ddd46062490b2ea3b6591802aedbbb38c665d8fad06e61d",
   "start": "2004-11-19"
  },
  "MRK": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "731d1dc1a9888f28966340549914e97eb82a14d89c3949a653ff34945a500c74",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 14272,
+  "sha256": "d2062d9332ccb74187b201a2996a9249e55bc5f23b7512b938dbedfbb24114e0",
   "start": "1970-01-02"
  },
  "MRNA": {
-  "end": "2026-07-17",
-  "rows": 1911,
-  "sha256": "0418ced92582ddd6b364468b78aeb0148c3a3df1020da79f53ba373c12f72522",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 1927,
+  "sha256": "79689e750bcfe4b255ee58c0a05c80dd7282e311975df867748528b8d5d75ab7",
   "start": "2018-12-07"
  },
  "MRSH": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "29460fa60e9c5e5b52ce57f49765e8b7190a49eae60e584a4699340decca1ab0",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13480,
+  "sha256": "0e25b61469ec4e0a4661222066d2e54b64854657136ab7eff303b00fbd612f6b",
   "start": "1973-02-21"
  },
  "MRVL": {
-  "end": "2026-07-17",
-  "rows": 6549,
-  "sha256": "d45bcfc8a762628716366361ef2580f7933bd8571e2ba62d9105db331872c1bf",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6565,
+  "sha256": "a2ccd2ea467870c72fb57de81a79e219fa1f2e4d71ed6ee7c8f2c9e500758b5b",
   "start": "2000-06-30"
  },
  "MS": {
-  "end": "2026-07-17",
-  "rows": 8407,
-  "sha256": "3436a9990d3f66423d8b28038e612bccbbe46b9d0eb26e967c0702b3d6919ea6",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8423,
+  "sha256": "16e3a9e25fec656ffb0e41312cd3d4c2a258dc8fab1e4589bbe071ef4790bf10",
   "start": "1993-02-23"
  },
  "MSCI": {
-  "end": "2026-07-17",
-  "rows": 4695,
-  "sha256": "72ca803d563a5791aab3614157a581c223c39857b05849d1f97a3247a3e4ca1d",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 4711,
+  "sha256": "a7a9fdf51f043567123d6d39e7b61861b8f592d2d5ea92d56be9e74576b8854a",
   "start": "2007-11-15"
  },
  "MSFT": {
-  "end": "2026-07-17",
-  "rows": 10164,
-  "sha256": "77359e7eb752e93e19a9584496e2518aad6090928224b1a2aca2a003b7cef1a9",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10180,
+  "sha256": "75915265bf70cc1c6f079aa8a79ed326682268e63bf78ca274367877852075cd",
   "start": "1986-03-13"
  },
  "MSI": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "d039ccffbfcef2cbdb2f57cd62062bf9ccceeef5945eb52fdecbfd02a0dc7c1d",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 14272,
+  "sha256": "ccffce06752fc84da12d23bd3c867a740de7cb1611d4f92222ca0664698b6e65",
   "start": "1970-01-02"
  },
  "MTB": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "8d751442f312e8839121177cf7adba6a32b4193e9c374d799bd235605a78de0d",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "0c02e8552a5878457ceab9ac091b67aba60bcfb0f62fad02d3a53318f4c33d1c",
   "start": "1980-03-17"
  },
  "MTD": {
-  "end": "2026-07-17",
-  "rows": 7210,
-  "sha256": "bff55f1600da3c0b8fa16efdfacfbdedcf9f09aa1d1e083f3574265fbcea4ad9",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7226,
+  "sha256": "d9eeecd096ff495169294432b7c0c48b138cf9cb54f16b19265262394c5a06a8",
   "start": "1997-11-14"
  },
  "MU": {
-  "end": "2026-07-17",
-  "rows": 10613,
-  "sha256": "656dea7336568a41e2f8e4027ce71304e3bf03a76703a7f530f10fc1265ade4e",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10629,
+  "sha256": "ff0e66c533c31b55c3eb9857dea4b1be284d74e4af3a43187407badedcbf2bc7",
   "start": "1984-06-01"
  },
  "NCLH": {
-  "end": "2026-07-17",
-  "rows": 3393,
-  "sha256": "9c8457111fd961ebc6ad466bbb949d39967cd9feef494b627f51b422d174a8c3",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3409,
+  "sha256": "e3facd5b8f0a54a496c9065f4a098ac4fe7ff6ef36747d349dbd6da367f8c8c3",
   "start": "2013-01-18"
  },
  "NDAQ": {
-  "end": "2026-07-17",
-  "rows": 6050,
-  "sha256": "74ec475a658ec5de7983c81b6a68c2cf5c6b9130abff3b80bc036fa75eea9bb8",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6066,
+  "sha256": "d51806838b81698ee5e558ee76d68e703dd114780cda3531cae959566bc3c2b2",
   "start": "2002-07-01"
  },
  "NDSN": {
-  "end": "2026-07-17",
-  "rows": 11677,
-  "sha256": "14cd32e62145de81f7ade24db53baa2cf9ca98d23e81ac6e5f9cb1c9446960ae",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11693,
+  "sha256": "fc3d704d42bf72a3db8a03f56b46a73b3a673a1cf7ac3a78653b0e1dcc092136",
   "start": "1980-03-18"
  },
  "NEE": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "f9ed7ed31937ffc16932df950f00088e308e7286c1fd0eeee1d4da2c44b043b5",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13480,
+  "sha256": "b3ac54306035796cb490461772e014227bade28c6971cf722c99266ffe4c59d9",
   "start": "1973-02-21"
  },
  "NEM": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "4b11cecd4a3e7620d79f06a024b02595ddd11cfd3992488da0a072ca93efe7fa",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "bab10f56daa0ff975a05968ac9a72931efe13a2da1af91e28636506a93f4bea2",
   "start": "1980-03-17"
  },
  "NFLX": {
-  "end": "2026-07-17",
-  "rows": 6076,
-  "sha256": "3ac48f3daf8b6f42eecf4279fb1056bc92f26fa02b0df98fa7339b78b4e0b44e",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6092,
+  "sha256": "099aba065a157816e088783125fa7c8935c2bd4940287aa4dc545db954a4b924",
   "start": "2002-05-23"
  },
  "NI": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "a940f3fea720b59c65e43598a428fbde24fddc154e956c136b567f0b97aca364",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 13480,
+  "sha256": "13677b23ec692a603a52765974b22a6dcf6a5a5a303549da85c9530dfe0ca62c",
   "start": "1973-02-21"
  },
  "NKE": {
-  "end": "2026-07-17",
-  "rows": 11498,
-  "sha256": "442e7784dbd770e181e854aa8dd16b504a1b29ca69f64fdd35c65eb79f09aa1b",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11514,
+  "sha256": "a2700d368bb8b237d30d713cb87739ec1cf532b91a5473b1b863947e34ff11eb",
   "start": "1980-12-02"
  },
  "NOC": {
-  "end": "2026-07-17",
-  "rows": 11225,
-  "sha256": "643613d6812b92669a8d18c58236c77a678ed5914b9d139bd71050529057a71e",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11241,
+  "sha256": "e17fa18f3b5c434a72b0fdf3264fa583f9746d27ff153b34cd2cb6fcb4c3715b",
   "start": "1981-12-31"
  },
  "NOW": {
-  "end": "2026-07-17",
-  "rows": 3531,
-  "sha256": "a048bfbea1df798c6596f00604cde9b757260f02da96af89bd3f43a35a10f183",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3547,
+  "sha256": "128e919f3b17ef61de051a1ce70687937022f761fd8cbd189615d0aeb1978a75",
   "start": "2012-06-29"
  },
  "NRG": {
-  "end": "2026-07-17",
-  "rows": 5691,
-  "sha256": "cc46741e3f0463e1135f647934d5137a4b8db760491586474bf46821482d28e0",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5707,
+  "sha256": "1105b9b5c6ba1bd91aa52a397928924a833b2c01cc256dee33a02bb09d850425",
   "start": "2003-12-02"
  },
  "NSC": {
-  "end": "2026-07-17",
-  "rows": 11120,
-  "sha256": "1069f1dc11548d7d8d0866ab1ea17328f2a70b86fb44e665d69c8a0af950064b",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11136,
+  "sha256": "73b24bc6eceab5a0941108006cfc6d1bf1608aed052096802c21d334ed273242",
   "start": "1982-06-02"
  },
  "NTAP": {
-  "end": "2026-07-17",
-  "rows": 7712,
-  "sha256": "bf76ea21e6434d23e871645935328ae71eb6ddfc1fdb68c22d21d35772236e3f",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7728,
+  "sha256": "d7662d045fc4349a9d176b899031be405d2b13e763bfc2f6a0dde9695ce76322",
   "start": "1995-11-21"
  },
  "NTRS": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "2f6a4664f6b7b5d2a23eb7d96d22b772b1cf52ffa3ff9f0e4752d9920a0a0f5d",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "6c1e5040acb75a35614f7b95802a9852206a89293f9f2393866653c88a83ccb2",
   "start": "1980-03-17"
  },
  "NUE": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "7d8140f2ac8bca6b2f77f028afe2087e58bf79d6155a62e759eee99ce945ff6c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "94a01e5db2f0164dfcbd66d86f6d9c348c6e7ca599a9d4b726c79518cd86bb96",
   "start": "1980-03-17"
  },
  "NVDA": {
-  "end": "2026-07-17",
-  "rows": 6913,
-  "sha256": "6ab6e9c183cb91e9bd29fa9d7569b991e6a581ce359c1e18ca80a902ac51485b",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6929,
+  "sha256": "7a83d637e42468ec83a2c54e9ca0813b3aba2d30e768b16c358ec8d2c2329ee5",
   "start": "1999-01-22"
  },
  "NVR": {
-  "end": "2026-07-17",
-  "rows": 10326,
-  "sha256": "abf2ebb6ed1203de784adfb46cbc6eb04428deef5ac0c3dae629a9483a663c87",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 10342,
+  "sha256": "84feba43f7ec1548c53b304876b371f9f298fbad6cfb232657b594d7860e6337",
   "start": "1985-07-22"
  },
  "NWS": {
-  "end": "2026-07-17",
-  "rows": 3289,
-  "sha256": "aab268fc4024fe54b95feab97f722eb9d8f971a90a2f5f4c83580ad6a9837064",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3305,
+  "sha256": "79ef89384cb1896653241777eeeb9893f11ddb48ad16ab084a0f25a5b1ddd6c4",
   "start": "2013-06-19"
  },
  "NWSA": {
-  "end": "2026-07-17",
-  "rows": 3289,
-  "sha256": "ba4055a43fc91d4ad1f7beb870e781301c16055d6b3f9acb106d31f014b75bec",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3305,
+  "sha256": "ccb7fa1b47204a475aa581b98a59be99aaa4741712f3c5798753b327757209d8",
   "start": "2013-06-19"
  },
  "NXPI": {
-  "end": "2026-07-17",
-  "rows": 4010,
-  "sha256": "fb661b1c8c2d79d18c0442d79af5696f793fd3ee03dca42d2aadc340f633cabe",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4026,
+  "sha256": "5ff24cffab8d86560f0dc636ae72ddfe4fcac1a0ab703d4a0ebe1a56c2913bf4",
   "start": "2010-08-06"
  },
  "O": {
-  "end": "2026-07-17",
-  "rows": 7989,
-  "sha256": "359e0b109abb9b18eb288f2d53a69914a48515b2a4ab7e951693238fe7f1aa42",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8005,
+  "sha256": "912e3525e31564417a5db1e21c6940f5f092660ff902bde474ada77f7e551fe2",
   "start": "1994-10-18"
  },
  "ODFL": {
-  "end": "2026-07-17",
-  "rows": 8743,
-  "sha256": "3adb613b8d98a8fd7c9fcbc349cf15b56065061577820a58346ee468c29f5b24",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8759,
+  "sha256": "5ea8aef012dc8a6b7ef13518dff08614e9a7c491edd2b030800cf0d00ffbbfd0",
   "start": "1991-10-24"
  },
  "OIH": {
-  "end": "2026-07-17",
-  "rows": 6385,
-  "sha256": "a63bee19e519074fcd13b8476f6fb9745581251138bfb4701b5a400f12e7238e",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 6401,
+  "sha256": "28297254287d93d3574d18525a96c1e7a2599f7dc371f9a03d231a3da3a1fef3",
   "start": "2001-02-26"
  },
  "OKE": {
-  "end": "2026-07-17",
-  "rows": 11540,
-  "sha256": "f4abc1d954b035e95edb65a66c9acfca0345fa1824f29d84007bfb4c1f35790f",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 11556,
+  "sha256": "918cf8e57f1039b879324d3719d6bce6bf54ce9ae50b27073e544f8ce70131b5",
   "start": "1980-10-01"
  },
  "OMC": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "02b1e79cdc267772d46863b9a30bbc5eeefb4edef5decfe04ad8633536ed8c91",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "c08fffbf02516c464469101c12f8782c5fd5cd5542a51ae9bc5449c950b03b38",
   "start": "1980-03-17"
  },
  "ON": {
-  "end": "2026-07-17",
-  "rows": 6591,
-  "sha256": "7eed36b0c1af8523494e7172937fc6a6dbc7ff650f49edbddf31faf47241b3e2",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6607,
+  "sha256": "474c808d83737acd118d3aa64be6a35d92039ee0db4a5e6b1ab26080212d5e24",
   "start": "2000-05-02"
  },
  "ORCL": {
-  "end": "2026-07-17",
-  "rows": 10165,
-  "sha256": "82ae33e2489d2721d4c1f45df1e6de07fe14a42ee66615a4a65201b58363beee",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10181,
+  "sha256": "2195a5e44ebe615bb79d8ab7fc6849f06b341611adbc37e33aeb03f45588b4a0",
   "start": "1986-03-12"
  },
  "ORLY": {
-  "end": "2026-07-17",
-  "rows": 8365,
-  "sha256": "10d6beed9c68653084bfd7eb38b8a2ebb58cf6fa3b129bef9645cf5011d40f06",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8381,
+  "sha256": "1223860f92a339a8ba138380cd1ab064f6c5549357249415354d6ec56d70670e",
   "start": "1993-04-23"
  },
  "OTIS": {
-  "end": "2026-07-17",
-  "rows": 1590,
-  "sha256": "dd138142d3220cf42768e6353f7f24d2e5436dcb6d764d3634bd938a51009a76",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 1606,
+  "sha256": "ea08768fc3eeefd3d384b3f78d3218480778582fdf37498c48ae7cc04bd70c84",
   "start": "2020-03-19"
  },
  "OXY": {
-  "end": "2026-07-17",
-  "rows": 11225,
-  "sha256": "b56a35a8be222f623e54f5306a426e3048ae5164e6118fe32a419b955b724673",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11241,
+  "sha256": "f956ca68e4fb3974f6e8f3bfdc81bb15d839433741038612c93719caf88ffea9",
   "start": "1981-12-31"
  },
  "PANW": {
-  "end": "2026-07-17",
-  "rows": 3517,
-  "sha256": "0d21f2e4663a21b06a6105ce3fdbe831c1e482f10485ba578401241f0a240f27",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3533,
+  "sha256": "49a84e7f4c2c659a788a56cebfe02ebd2e349504d5762934bbd46f6e64550176",
   "start": "2012-07-20"
  },
  "PAYX": {
-  "end": "2026-07-17",
-  "rows": 10806,
-  "sha256": "bcdb7b96e7380a785e2fec57f5c04f2d9fc6411dae2d23a5df0cb035dbb78f94",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10822,
+  "sha256": "7464b90a8e2c479fb90b407b90dac07da1d9ba8e0113a002ff375b3662e4c490",
   "start": "1983-08-26"
  },
  "PCAR": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "19e3e14a09a6901956f9994a9a3771ce5daae6d831ecf7e4f4890c9335193854",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "5262a1dac08c0a5061b861875fa269eaa5e96b2775db4381c5a56ba91b00fae4",
   "start": "1980-03-17"
  },
  "PCG": {
-  "end": "2026-07-17",
-  "rows": 13644,
-  "sha256": "0087e9d60c0d38d8ebd0b99b74808371870d9531c1fb20d8d3d695c3ae593665",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13660,
+  "sha256": "521b8ebdb83b87ee42d75b158e4b41ebcc56b5b1fa916046f6464a8a3693cbc5",
   "start": "1972-06-01"
  },
  "PEG": {
-  "end": "2026-07-17",
-  "rows": 11730,
-  "sha256": "1e03571be11388704ba5f24c0f67a22fb3a00cb31c1597ba4695b27dc36f96e7",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11746,
+  "sha256": "9dda07d0c43ef655232cf3ef54eb8220e10cc648907492f609e2b091acaf00a5",
   "start": "1980-01-02"
  },
  "PEP": {
-  "end": "2026-07-17",
-  "rows": 13644,
-  "sha256": "c80e7d19d94107e23daa5f59f429fb1d3dca921b7df1f2831668fbf1d9b074be",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13660,
+  "sha256": "37acdac8cabb211ffed3f90506685afdeb90e0dc79e0f6186b0b8d81132f6886",
   "start": "1972-06-01"
  },
  "PFE": {
-  "end": "2026-07-17",
-  "rows": 13644,
-  "sha256": "a23bd6124c13540e626707b20dbe369cf99f6ca88240e79208b9f6bfd8138fa0",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13660,
+  "sha256": "682e162867f1cd5e8f6cf56adaf018e6e69b290d0b7dc611e676a8885da38cee",
   "start": "1972-06-01"
  },
  "PFG": {
-  "end": "2026-07-17",
-  "rows": 6222,
-  "sha256": "e6d80a4b033ca8346a16517851632ea8cc18595028fae31dd5924377ed7c93bf",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6238,
+  "sha256": "a5cbadb5991e79d6c434c8e59720659f7392fdbc8b55f2acacd69c832e7b3742",
   "start": "2001-10-23"
  },
  "PG": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "8900189fc7bf7449fedc9a5508c9667b053e2bf65fc5f4b23afb28f34a0ca704",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 14272,
+  "sha256": "9134cc93e328923627b406697bc9b62ed6988f498209563c1e7d3de2c6ba5c0a",
   "start": "1970-01-02"
  },
  "PGR": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "01f46c611f492fc25554cd74322c7b8286a2c794178e763b06d3cde21a2b6d38",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "3951adf1e5102f785fc4670ea4788860edee863a334fa4a9eb68bcebe59072c6",
   "start": "1980-03-17"
  },
  "PH": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "362bf0202ffdde6d1dfe5544ac53e36d003a6f5159e13f320fe5422557ea8f3d",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "9b2637cc3f32a8ad0bd02366aa246761a53090f2cb2edd5e3b92b1d7a53a90d1",
   "start": "1980-03-17"
  },
  "PHM": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "db9ac0a34cee65d29d1c943391e923dae2ac05a34546f6d5d8e31284f7c34b22",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 11694,
+  "sha256": "eef66d95a1bf076b5134f6ad007729178994ed44e4c026b315a14aa78fe2e309",
   "start": "1980-03-17"
  },
  "PKG": {
-  "end": "2026-07-17",
-  "rows": 6656,
-  "sha256": "2a00ff54014a6eda78503811a50093c7e0e7ddcab6d03c10e5cc1766c2f9ae9a",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6672,
+  "sha256": "84a35a1d49f81beebb6fdecf55db053f08bca7425f9c753276786ffeb60f77cc",
   "start": "2000-01-28"
  },
  "PLD": {
-  "end": "2026-07-17",
-  "rows": 7205,
-  "sha256": "fa7af8d87e0969fc99570eca3c6171fe2681b3ad38c26127440b93bc7e51988b",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7221,
+  "sha256": "111054c32db2ca95e22707a080bd19b54f09c505ed367646ba5c47b9a7b26f2d",
   "start": "1997-11-21"
  },
  "PLTR": {
-  "end": "2026-07-17",
-  "rows": 1455,
-  "sha256": "779aa3be888356933009379261711fee7a579c95293a65f8c08df3aeaa77ec08",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 1471,
+  "sha256": "155c7a3ac2a642368d2d5e1625741b21c685f9ff76b1f4678f7e4fcdc2994f59",
   "start": "2020-09-30"
  },
  "PM": {
-  "end": "2026-07-17",
-  "rows": 4613,
-  "sha256": "46d214215a1811f67c101b5139d98b28defbeac8c36cd98e07e4f820f68e9a57",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4629,
+  "sha256": "283054ca7b62b6264851c0b1edc7c505f6ecb9723735f57e23c689b8125f2651",
   "start": "2008-03-17"
  },
  "PNC": {
-  "end": "2026-07-17",
-  "rows": 12771,
-  "sha256": "c14058882fd7c1dfc5f7921b387656664100de3960b2c54fe59dab970383657e",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 12787,
+  "sha256": "43f79cec1075f902ba44777257b2fc40333176448ea462f21e0d4adf9129817d",
   "start": "1975-11-17"
  },
  "PNR": {
-  "end": "2026-07-17",
-  "rows": 13414,
-  "sha256": "8c7d4d900c2a164c63a0adf89e5d95be3f4e6f4efe04b85740823fcb05b24eef",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13430,
+  "sha256": "80a1726130e2310852a33f54702aefacdc01faac0a196c76095636560e118c8a",
   "start": "1973-05-03"
  },
  "PNW": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "16fb5381a9692a2043b2e6f2ce866652a8d987f48059b6196ea89f50bc650906",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 13480,
+  "sha256": "c72938fbca1a6e6a1e48374032acaf0640113e822f256b204cd6f9bf7511573f",
   "start": "1973-02-21"
  },
  "PODD": {
-  "end": "2026-07-17",
-  "rows": 4824,
-  "sha256": "bd4294ba7c7b4e3144baf0d51b967e1198c93eb6d1a15c4e9540554e68ddd47b",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4840,
+  "sha256": "3dcf75136ee164bfd31c3a85333175ebd2518181cc367e80930f6b2bae3c33e5",
   "start": "2007-05-15"
  },
  "PPG": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "86ab5976c6352b70df22d031c3cda32833de874167451fb8362108db85979a3f",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "440d5049b6358ed62f6c21c8ab4127c8cb2810799d3c973b1314f34e9a009f7e",
   "start": "1980-03-17"
  },
  "PPL": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "bbcf65a8ee6d1ce1ece6985ff0d9baed464b909c6cc53ef00ee61d276c70975f",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "3e2a4e2ec6a9d19a6104e38a7cc123e24001bd5135d505e57d99e28df4dde3c7",
   "start": "1980-03-17"
  },
  "PRU": {
-  "end": "2026-07-17",
-  "rows": 6186,
-  "sha256": "58d90f7852f20a5b56e0e27c4237515aa37744559d622821fb766c0990709ce8",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6202,
+  "sha256": "4ba59c173fee465c75a39572cbfcdd195ba5031c5162f2940ff89ca55dd2d0ae",
   "start": "2001-12-13"
  },
  "PSA": {
-  "end": "2026-07-17",
-  "rows": 11507,
-  "sha256": "b7efd428a8f5dbd480f2e9dcacb96ac5362cc56109d3c5ffdee9ddb8eaff1723",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11523,
+  "sha256": "6f4829419c9d0de726c0ba16517c7f5608c65eedabd59e96549efbbb6c3162e0",
   "start": "1980-11-18"
  },
  "PSKY": {
-  "end": "2026-07-17",
-  "rows": 5185,
-  "sha256": "06bf42a051fb3105f69a245032c4fd3a6e3b1961708af010340bc609cc90f8e6",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5201,
+  "sha256": "a5331db5e5cce4f0c13e696021c4affb3757b9a054443029bed3e43596a146cf",
   "start": "2005-12-05"
  },
  "PSX": {
-  "end": "2026-07-17",
-  "rows": 3586,
-  "sha256": "2881128023fe742d6464b81788a514fd8c5c784ea79409ef4d75f902d84a585e",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3602,
+  "sha256": "74d3f96874e33e8c69dc929c1ea07cf6d481cb5646519f9680dbcaea67a2aa38",
   "start": "2012-04-12"
  },
  "PTC": {
-  "end": "2026-07-17",
-  "rows": 9217,
-  "sha256": "eb4de8af1b235a5058adf6304a338efbd7e9533d02ee4e149498e6dfd57ec324",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 9233,
+  "sha256": "aeb627542eb0579e770a1ef61e7041ae672b9ffdfac20eab42c7d5f92c9a9bf4",
   "start": "1989-12-08"
  },
  "PWR": {
-  "end": "2026-07-17",
-  "rows": 7150,
-  "sha256": "0fe3fa945bb790b03abbe954a20c012712da9e8b17ed4f7a16697bfe2a55c2d0",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7166,
+  "sha256": "dc1eddb091ac62f337b5bf0fb98a57c37ba6a7de7c8b0dd5b59f422bf0175cca",
   "start": "1998-02-12"
  },
  "PYPL": {
-  "end": "2026-07-17",
-  "rows": 2775,
-  "sha256": "4732695c1bdf82b3ca4a00ff50b435e1d16467c59a38002c810c7a4351157f81",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 2791,
+  "sha256": "c4c12442588e8e2d7bea2c0e29dd8a04d64401a5be205496bf8de1c589ec40ff",
   "start": "2015-07-06"
  },
  "Q": {
-  "end": "2026-07-17",
-  "rows": 181,
-  "sha256": "ea3d9ccd1cc675b4e60765d1f1b30db06f059593083906b3357e7674e02e3c02",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 197,
+  "sha256": "f7b514a252c8800ce7fcf9f470aa424945a24b0ac5ddf69ffd39d10c145d266a",
   "start": "2025-10-27"
  },
  "QCOM": {
-  "end": "2026-07-17",
-  "rows": 8708,
-  "sha256": "9ce4fc9ce3d2fcc6b6d579aa5e1b94ced7b9ae85b7ef206804e2282db6ac3c0c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8724,
+  "sha256": "5c841d7e9b30e7207cd84c61998871a90a73088292c38c44f44ad3bbab8c7d7b",
   "start": "1991-12-13"
  },
  "QQQ": {
-  "end": "2026-07-17",
-  "rows": 6881,
-  "sha256": "c409aea8cc8c172a2a4d02e91884f7a1128955d17a0ce4f76641bf4489cb0c85",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6897,
+  "sha256": "1c88151e57b34dc384be2b8ca66de5544ccd1f750c76dcc744f1132205efdde1",
   "start": "1999-03-10"
  },
  "RCL": {
-  "end": "2026-07-17",
-  "rows": 8362,
-  "sha256": "30de0bce5660ff2463ccb22d0465ba9a3af15df10e99f46082f8330e443221b0",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8378,
+  "sha256": "698aaf18e8cfe1f82ef6897f6b7250c07f6da2e0b8f71c209c8263315a9db24c",
   "start": "1993-04-28"
  },
  "REG": {
-  "end": "2026-07-17",
-  "rows": 8233,
-  "sha256": "7b3715f4a08fa18fbcea4d5b7a66062a489f47c7712505f570d52708771a3852",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8249,
+  "sha256": "67b97de8aa5adde013ef8592f7775f290d61fd1786a1792bec71aaebfd8fc7e8",
   "start": "1993-10-29"
  },
  "REGN": {
-  "end": "2026-07-17",
-  "rows": 8887,
-  "sha256": "0caa7a01f1405fffd62476eea689225e6c651add66ddac993532127b19224999",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8903,
+  "sha256": "394d3ece0bb7dbc302acec23693a18beed0631c5f17b21a625e56186ce6fd26a",
   "start": "1991-04-02"
  },
  "RF": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "60c37d698a7222282c3f61de15e411ab5f35ac5653bdc6aa23849da6fc522057",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "9d06fb4148954ddedf4f0de430c0627cfe16010cd278e752d378a315e2950722",
   "start": "1980-03-17"
  },
  "RJF": {
-  "end": "2026-07-17",
-  "rows": 10845,
-  "sha256": "baf1887fc652d330fd0655e28ada1236d84398cc4590b0fdc7a06dc6e93d93f7",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10861,
+  "sha256": "4d40e5933a83c8bfbbf0b8b2e8a02b360e25319095469d434c4749d9b83c9415",
   "start": "1983-07-01"
  },
  "RL": {
-  "end": "2026-07-17",
-  "rows": 7319,
-  "sha256": "8c7e5d967a4d18f15268163f872858812845ceaebd23bc3675f03e5ac23ff518",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7335,
+  "sha256": "e6fc92ba18dc6f9a1146981dc2d87e86bfc0da5358094758c15a32637182fadf",
   "start": "1997-06-12"
  },
  "RMD": {
-  "end": "2026-07-17",
-  "rows": 7832,
-  "sha256": "f4a46617e68f5cf45c92bbc506e1a634708fbf679c98860cc17cbfe44a30f725",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7848,
+  "sha256": "4b6a1c218f5498a2a6054a3ed1b781903de587132f3ba6bc17ce015d24be5230",
   "start": "1995-06-02"
  },
  "ROK": {
-  "end": "2026-07-17",
-  "rows": 11225,
-  "sha256": "1732336ad588db1b0731bcc52bdb21ef7907d332f80a3ad6caed0a60daa6abdb",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11241,
+  "sha256": "53d2c5c45159f92c601aee689673d47143eda255e22a7431887922b7b0eb7182",
   "start": "1981-12-31"
  },
  "ROL": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "a68e06c99ae7887da70524010fddd16942185edcf91ca65d146d3ad3542f7b5f",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "07adbd5a95e407bbf5c57b9768a3190410f2d6ad13315bdb939a9aec57750097",
   "start": "1980-03-17"
  },
  "ROP": {
-  "end": "2026-07-17",
-  "rows": 8666,
-  "sha256": "7c1e7586450c4d4bc8c64021221032e8d1778815df2ae324310f59025c49c48a",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8682,
+  "sha256": "4934af1985d507edce2613f4361ed5e64a0153640f1d5ee719df959640ac0a49",
   "start": "1992-02-13"
  },
  "ROST": {
-  "end": "2026-07-17",
-  "rows": 10313,
-  "sha256": "f5209e17e07c8448c165e90da65bbfb321c6829427c680bae3f1ca4c9ec25048",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10329,
+  "sha256": "43dd708a952a1dcd012d507bc2735fda1db3a2f8a6012cb7d0debe302e52c4ac",
   "start": "1985-08-08"
  },
  "RSG": {
-  "end": "2026-07-17",
-  "rows": 7054,
-  "sha256": "f238658d7b37496ab660810969922af83d643c95247b8fbff84bea90f32f40e4",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7070,
+  "sha256": "7c461a366be5f3c956965f07b19deb595955450e4ad92685e9bdd7cdcdb318d2",
   "start": "1998-07-01"
  },
  "RTX": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "3f9511e9c3ec6bb1ae751a05c9b251675c00223d399a80943c5000cd2f9ee230",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 14272,
+  "sha256": "da154223b8fb4f25aea8e54c4b6d91181d0bab5cd5fcb927c2910a49b3745d9b",
   "start": "1970-01-02"
  },
  "RVTY": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "880715db25825528031c9ef51a3f724f5db6852386e02fe44ef99c1ea50e82f0",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13480,
+  "sha256": "d4a305499856721362119ed2ec4d69d7fd16714e62fe9bd67c26fc5b27ccc8a2",
   "start": "1973-02-21"
  },
  "SBAC": {
-  "end": "2026-07-17",
-  "rows": 6813,
-  "sha256": "ba18cdcc78b3a2f55e8c67c0e866a7f24ed6cb3a4e770e85456cb02b0690142d",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6829,
+  "sha256": "4ad7615656d297d5dc8938deed3225ca2055fb6411e3a7caaf5e265874a0803d",
   "start": "1999-06-16"
  },
  "SBUX": {
-  "end": "2026-07-17",
-  "rows": 8573,
-  "sha256": "a947a9b99b2d9d1ba63345aada8c70cfaf4f55f72a205f2bfac909cdeaf6a3a6",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8589,
+  "sha256": "fedcfd175de22a19194ffbb3abb151482c6db3dc4722ae68b3a8cebb2b9e3d5c",
   "start": "1992-06-26"
  },
  "SCHW": {
-  "end": "2026-07-17",
-  "rows": 9778,
-  "sha256": "596d6432f11bebefa834a9faf119a66a1388189f51420dc01f21ef26db848b67",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 9794,
+  "sha256": "1e60ef5dfcc506c9e9675e1cc126f0d313b9026ee1ab5260786fafcbfb6a7c3c",
   "start": "1987-09-22"
  },
  "SHW": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "9302204a5a732ec7f4a3741720430f69d779f71135a10a391cf647abefe5d696",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "a29e1524590c3529ce1dc68f1e536f348462a142cc7dd95535d15f0e75a3c921",
   "start": "1980-03-17"
  },
  "SHY": {
-  "end": "2026-07-17",
-  "rows": 6030,
-  "sha256": "3393e49ef25b85c4cb0bae1d7e83fa495a3abcdc89bd570144c6ba23d0fab44c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6046,
+  "sha256": "882f27484bac729b5f87353785cf6ba97db65aca800ffa892a1c83167759a70e",
   "start": "2002-07-30"
  },
  "SJM": {
-  "end": "2026-07-17",
-  "rows": 7980,
-  "sha256": "ed9974e4fb3e29ed87653b1152e732d917d07a872dbae2fcfe568063fcb03adf",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7996,
+  "sha256": "85d91ea150192845a1e8fca482d0733887daf990ecb00d95fda0e27fe41daf80",
   "start": "1994-10-31"
  },
  "SLB": {
-  "end": "2026-07-17",
-  "rows": 11225,
-  "sha256": "ceb11f961d1d5af8f5ee3e570b7f04d2d3804d23d6402d1e39cf8370402522f9",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11241,
+  "sha256": "e9fa9ccbd0914fc79de16f3d182fb579d64c0d75d1ea5e4cb34f659acd88371f",
   "start": "1981-12-31"
  },
  "SLV": {
-  "end": "2026-07-17",
-  "rows": 5086,
-  "sha256": "c3745c3837d7d7d09fed73d6f2001f32063eb5617cfd9d036f3ec0f5edbb2bd0",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5102,
+  "sha256": "070dc095463564ad765788fd0e9f286ecd71a23d5f83316e29fb37c080704c3d",
   "start": "2006-04-28"
  },
  "SMCI": {
-  "end": "2026-07-17",
-  "rows": 4856,
-  "sha256": "9b88c32a16b3939f01fdc94935777f740fded539b70071c773b62f8f19df8667",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4872,
+  "sha256": "b55f603de4bb52cda678a148c8f52f6e8c3043f1d0defce0999abdc63a62d299",
   "start": "2007-03-29"
  },
  "SMH": {
-  "end": "2026-07-17",
-  "rows": 6568,
-  "sha256": "4bb355522c5382f90b7da87a5170ab1af76bb9a5378d2cb0a7bf6ab1ab55fbc3",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6584,
+  "sha256": "b965916e25e86dc3312f173f8dcec626227049e08464ad90c45a335cd2886673",
   "start": "2000-06-05"
  },
  "SNA": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "0defebefa87125d749cdb4b9e5e337af59e88ee5e5596524d96b1b5760ebeaf8",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13480,
+  "sha256": "8917c62e09ee7b31318f28cda28ca6eb99014a83b936dbcc205a32fb74d61c3b",
   "start": "1973-02-21"
  },
  "SNDK": {
-  "end": "2026-07-17",
-  "rows": 357,
-  "sha256": "33e25d43b5d5577ebd29f27587ec7ea3478a4fb4284bec010fd40f4828322017",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 373,
+  "sha256": "1c8a03c7fe03add9d2f4249deb880a74fcb22372af22a439c2ee1b2bcfe5173e",
   "start": "2025-02-13"
  },
  "SNPS": {
-  "end": "2026-07-17",
-  "rows": 8658,
-  "sha256": "040bc9c9f96b759526ddba3f6d495838a20a0354cf90db5f9493c099d60c4449",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8674,
+  "sha256": "5a7b5e621d2ac7543d1d3065a97b30a3bd328288343775e3890890673131e865",
   "start": "1992-02-26"
  },
  "SO": {
-  "end": "2026-07-17",
-  "rows": 11225,
-  "sha256": "8b1250a5f4dab5989c9cf567844b1f7336a6557cf5f59162bdcfe4dd9ad5d940",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11241,
+  "sha256": "d3581cf6ea2e52164e2ba82feeb46b6c7cae7dbb21100759816aaf99713d2ed7",
   "start": "1981-12-31"
  },
  "SOLV": {
-  "end": "2026-07-17",
-  "rows": 579,
-  "sha256": "cc76050072b0c2059b7cdb2be584283fbf827eda2018b066abda716c0358d149",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 595,
+  "sha256": "65bf0096d8b7c1cf377a3f6be47d1c301892d33a135f6fbd9a83714c256e920e",
   "start": "2024-03-26"
  },
  "SPG": {
-  "end": "2026-07-17",
-  "rows": 8202,
-  "sha256": "454af7ada7596e68ca3d8fb2a1d60605c1da7cf3c2fd76b649e285ab7c8861ab",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8218,
+  "sha256": "e91529095b76a476250f7f48a585e6c6172d832c486248b888d90dc1f8ec3719",
   "start": "1993-12-14"
  },
  "SPGI": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "96a06d11ab7975571d73f07bae62c806df4d1fb0ec6a8547473ad120866f2bc5",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13480,
+  "sha256": "2d92fb18ab1ea3161f90c9f892bc9845d4423ca940780cfee655042bd7183bda",
   "start": "1973-02-21"
  },
  "SPY": {
-  "end": "2026-07-17",
-  "rows": 8423,
-  "sha256": "847b234a34cf1e4bb88e62ea2103ecf895cf8fbd9329dfea28e5e0ec63c1294d",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8439,
+  "sha256": "3f5bc39f9a23d56bfba5dc0bf355e4039559a8231e309621c79dac58d89ebae4",
   "start": "1993-01-29"
  },
  "SRE": {
-  "end": "2026-07-17",
-  "rows": 7056,
-  "sha256": "6216e9862584f39d216763103c4a9a58e77a84dea1158e8c7123749bef714feb",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 7072,
+  "sha256": "4c18c7a1e26995254d451575d97910df653c2d38653576a13550ad4fdb5567fe",
   "start": "1998-06-29"
  },
  "STE": {
-  "end": "2026-07-17",
-  "rows": 8592,
-  "sha256": "d5d09c15524319347f69c25a2f21666d73a84edd11c07ad0e3bc19fd418c2dea",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8608,
+  "sha256": "a64554baffb6e0ece7d6fea4ebc6b253676f447fb86b7f7c205e2b45e83b7bb0",
   "start": "1992-06-01"
  },
  "STLD": {
-  "end": "2026-07-17",
-  "rows": 7457,
-  "sha256": "c59ffe8ec5f8ad01ca76fa40d416acfd38227810207037190b520a45940853bd",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7473,
+  "sha256": "38ab48b501ff97758dbb4e0355c6d392332114c1bff7cfd1a3009aaf5e721f8c",
   "start": "1996-11-22"
  },
  "STT": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "a947e54b405d61bad8cca07587e5bfc3d181df7275a1c85eb10ff9e342a4e673",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "5e8a64728c09c47a996e0a164663a7f7e24b0ed1f9441261eae18724e5fdf44c",
   "start": "1980-03-17"
  },
  "STX": {
-  "end": "2026-07-17",
-  "rows": 5936,
-  "sha256": "07597e9eab2c5cad149437da74edf7bc8c719091eed4c6b82bb7079960c3e20b",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5952,
+  "sha256": "2207cae380d7f0a7de00f8e946a2752702aea4945308c7e33784244312a911fb",
   "start": "2002-12-11"
  },
  "STZ": {
-  "end": "2026-07-17",
-  "rows": 8644,
-  "sha256": "f07ab5e47959648b8ab2d4048a343bce209e96bba8657c1f101a8ddf6c53628e",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8660,
+  "sha256": "31219e105464c184ee761b7e6f260efa7f5dc0236628a68efb49e1af9491b20c",
   "start": "1992-03-17"
  },
  "SW": {
-  "end": "2026-07-17",
-  "rows": 4549,
-  "sha256": "8c4bbfc8aa885337e90681a72b3c679ee72e491ea04942586a4a619549d4e2cf",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4565,
+  "sha256": "9ac317335b77c07b9b5e63e33c2b3e350bd4d0855c8b7dd0fc5627234845c2bd",
   "start": "2008-06-17"
  },
  "SWK": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "43fb9e1dbca01680cb54ae33c412e89a5869a5d9d804f6a307ba3b1a35573fb5",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "24580216240f065e96f3f20e89a51a1b2a14ec6de576117d29f58cf25466ef64",
   "start": "1980-03-17"
  },
  "SWKS": {
-  "end": "2026-07-17",
-  "rows": 10545,
-  "sha256": "5dd37ed4163254417b563cad987960e95e87cf348d111f3d021c28be1a5dc2e9",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10561,
+  "sha256": "2dd497c8dcc99abf103f51aff8259d0a041b3138db992184faf1a941179bc6db",
   "start": "1984-09-07"
  },
  "SYF": {
-  "end": "2026-07-17",
-  "rows": 3008,
-  "sha256": "0ed2a4800cf6adce797eb5c2473b4f30726afaf152fb58662a6d3444bb8fbe51",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3024,
+  "sha256": "d8344f77fa6ec73577def194611218d24c2df000ea3ea473fd82f5b8549b69ba",
   "start": "2014-07-31"
  },
  "SYK": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "d006c4104e24ab339f1c4d68e19d90550978b27800c52b279c6537c81e1e5c31",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "c856eb99ec6cc1cf364eea51d60a25f98d20dc8a183739b7374fd1dc5b17f3d4",
   "start": "1980-03-17"
  },
  "SYY": {
-  "end": "2026-07-17",
-  "rows": 13411,
-  "sha256": "8090ae7942fbd974d6a9371ea095844ace7184030aebbb60780de0a3a376adab",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13427,
+  "sha256": "e4c9974fcfa783876c81a0988cf7e692535fd729313b05f4d721ecb345c59adf",
   "start": "1973-05-08"
  },
  "T": {
-  "end": "2026-07-17",
-  "rows": 10746,
-  "sha256": "935f84d40004a35b4147900efc1dac6a6b16a56594dadc4a38b66f42196b21b3",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10762,
+  "sha256": "4b9730f1b8bdfec4a6c09342deaf96d29110b7af4fe4117243448646f74597be",
   "start": "1983-11-21"
  },
  "TAP": {
-  "end": "2026-07-17",
-  "rows": 12881,
-  "sha256": "dbe885c039d7113bdb25d603dbcad97b10386a47410474ab6b1714e718fbe016",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 12897,
+  "sha256": "252630eac358b34990fe9c40d95327340c9995ca120778086653751147025da4",
   "start": "1975-06-12"
  },
  "TDG": {
-  "end": "2026-07-17",
-  "rows": 5117,
-  "sha256": "75b4cd43ceb9395abe45f303e5815336c14bb2795beb6e93640fb2ae6d78cd4a",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5133,
+  "sha256": "4da8ff98e9f276a56a08d05419a2c558a30f4c043344bb57b9faa2eb409c18ba",
   "start": "2006-03-15"
  },
  "TDY": {
-  "end": "2026-07-17",
-  "rows": 6701,
-  "sha256": "3d83e9b94cac8672dd09d483d17379654441880a39c5ec51d76b59f70a6a8b79",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6717,
+  "sha256": "e16386bafb4d9ad3b09472d7d8315972a8f9e89e2f8d143d43f3e14ac744d07a",
   "start": "1999-11-23"
  },
  "TECH": {
-  "end": "2026-07-17",
-  "rows": 9427,
-  "sha256": "4b8736a33afc1abd34bee059e00a83e383caf5d7647440a894bb0b8033eecfac",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 9443,
+  "sha256": "396804f12fc52b9fe1a09ed8ac30e7535e01d7ea0386c44961b697e4a94a98d5",
   "start": "1989-02-09"
  },
  "TEL": {
-  "end": "2026-07-17",
-  "rows": 4803,
-  "sha256": "03186dd495c3c70ba2ab7a423ea33720ff21b47e8011e5e7752f4cbfe175fe87",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4819,
+  "sha256": "088b8cb0c327f6d4bf9a04fce55ff49eaccef2a11017565add6ea8629d0c92bb",
   "start": "2007-06-14"
  },
  "TER": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "aa16a3fab4cb306d9f034e8834d91b168aff30bcc7e4b8590ac8a62b8696b633",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13480,
+  "sha256": "a04934ae7eb5b4fa9d8193637dc8c56205bb7ccc02e0030a5a6cbfad20f00b61",
   "start": "1973-02-21"
  },
  "TFC": {
-  "end": "2026-07-17",
-  "rows": 11677,
-  "sha256": "f421bd436d76723010c9c73b9f89d3edd6b7852271f5c2d9f5af5f4004ea6ced",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11693,
+  "sha256": "3b07f2a205c9c3fb0a7ff51e64e6b0f6e61a8966c0c22f6091136bbce6ba0749",
   "start": "1980-03-18"
  },
  "TGT": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "d85044f3f7eab2d348a310be4857876ccd87fa760007fa95bc8e8151bd34d637",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13480,
+  "sha256": "2b979cf5f70ad6ada21dcc19eb68fe6f8cd96374e7247453669eecf5e2c355c2",
   "start": "1973-02-21"
  },
  "TIP": {
-  "end": "2026-07-17",
-  "rows": 5688,
-  "sha256": "ecb6064a5f312f2ceedd9c32b28175f1da1425d54f4c542fdbf30b884e9aab5c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5704,
+  "sha256": "eece51d469a783db4e0a88d54c6cc33b94347d6682855ee0af85fe1bf2fce2f1",
   "start": "2003-12-05"
  },
  "TJX": {
-  "end": "2026-07-17",
-  "rows": 9838,
-  "sha256": "bbf92a389b33ae22eae1184e279bc1e727b6f914de91601dbf497c6b37c7d3b1",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 9854,
+  "sha256": "5c2280f7dbe8860a62a3eac3e80b05a26420cc8b569810ed11ee0b41f6dcea37",
   "start": "1987-06-26"
  },
  "TKO": {
-  "end": "2026-07-17",
-  "rows": 6726,
-  "sha256": "5f41b169eedb3c6191fd1391af1bc29d98074a7211edf2249b6fcdeba7276621",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6742,
+  "sha256": "b9c9c6b361818f5d1148a451ed67eb3d33c82de8cbf2caa8aa51df971390d8cc",
   "start": "1999-10-19"
  },
  "TLT": {
-  "end": "2026-07-17",
-  "rows": 6030,
-  "sha256": "87c007b1b61c57622e761da80a886b7dd9f2e05f09ee76151faa9beb74a119a1",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6046,
+  "sha256": "1c004ddae3e05ef35e003e91af187ed14a86f57087b67aa9a596fb404ad7b5d8",
   "start": "2002-07-30"
  },
  "TMO": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "7a07ca9e37a2c8c1315e1860c639f7c03620af1d8b69499c083002131280578a",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 11694,
+  "sha256": "5e094b49b31bb33baf02066826d996c4cf1ec5eb405c8ba0d46c9b106a42dd15",
   "start": "1980-03-17"
  },
  "TMUS": {
-  "end": "2026-07-17",
-  "rows": 4842,
-  "sha256": "acea70c85c5d62f184bb65d85c69f44852d88d2149b5b0c52a8fc2fea05aed0f",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4858,
+  "sha256": "5abe1305a6a9ccfa1ea8e4064100bd1fa9b7ee7e128ab6c720fa968d2b87b0db",
   "start": "2007-04-19"
  },
  "TPL": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "68b46a5410b1c3e898029c46d802f865da10fc1bac40ce5026dae6d758be08fd",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "df1f93ea23ec6a9b1dd2bc3e3f1d475da3832056e813e10364d26d5f3bc74e4e",
   "start": "1980-03-17"
  },
  "TPR": {
-  "end": "2026-07-17",
-  "rows": 6481,
-  "sha256": "d7f080bcba14fb114a203df03984ff494339a4bbcb8185e9d7ca223a9fb193b0",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6497,
+  "sha256": "bec057e97401d2cb42eb4438f72e56c7671bc2c3ec0685c370edb106752fe40c",
   "start": "2000-10-06"
  },
  "TRGP": {
-  "end": "2026-07-17",
-  "rows": 3925,
-  "sha256": "d0bf1e7e6a066fc71af472df4533e551bce40e10aa01234e2f2d79f20274d9b9",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3941,
+  "sha256": "90c31721a72dfe6972106c173187d194375d7e8b970d8f51abf0e8de06543ac4",
   "start": "2010-12-07"
  },
  "TRMB": {
-  "end": "2026-07-17",
-  "rows": 9063,
-  "sha256": "f7bcacd10018bfe1c39034891804942b147dda6618029d14701301c33cfca5e7",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 9079,
+  "sha256": "1c44ac29d4f4059bbf2cff6547b818dec13f19605df2f0b38f2350d4e7ffb455",
   "start": "1990-07-20"
  },
  "TROW": {
-  "end": "2026-07-17",
-  "rows": 10151,
-  "sha256": "21722bba0ecf730b9d95a6fa6db00236ab3cfe1498c6b9cbc8721248c8d6a58a",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10167,
+  "sha256": "0342aa82984fa0a6fc9554f2682f94008dd414055d8c509b624ba5731809b72a",
   "start": "1986-04-02"
  },
  "TRV": {
-  "end": "2026-07-17",
-  "rows": 12771,
-  "sha256": "901e639f49c153d41d5870a9f039b52482429f4f845643c2005d9972c063d35f",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 12787,
+  "sha256": "3056ca76c7263e7a50b74d7a5ca6c801ac07a603e8eef874cea9d54e2f0b8b9f",
   "start": "1975-11-17"
  },
  "TSCO": {
-  "end": "2026-07-17",
-  "rows": 8156,
-  "sha256": "79765640979af5d261f5a81bf66b73fd7c382d99118eb088c2b7584dbc944fe8",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8172,
+  "sha256": "e9743d9b1f65520b8ab68e02ac7a5e299eb18187badc3fdf6cd64abac15052d5",
   "start": "1994-02-17"
  },
  "TSLA": {
-  "end": "2026-07-17",
-  "rows": 4037,
-  "sha256": "b23ad1d76bba0539176532c422caffc5c5c9b7b03a5a000f20e7e684766e10c3",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4053,
+  "sha256": "2cef22d222391d15835d6314d1a923ed408269b7cb97a45426ad302516c156c9",
   "start": "2010-06-29"
  },
  "TSN": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "b416eea007c998a973cdec20aa9e66285e04e87dbfb6eca9593380355bd77341",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "83b1be6bc84de34ceebd6d7b5f7c7cc878610002920fc4ebc35f31029bed931f",
   "start": "1980-03-17"
  },
  "TT": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "84a6de56e7a4ba47acfbe455774647185cf325f980009313ebbc257da67011cd",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "43de28c79a348a54626b8daecf63a53eb52db73066d97cec8863eebb4c08fa5c",
   "start": "1980-03-17"
  },
  "TTD": {
-  "end": "2026-07-17",
-  "rows": 2468,
-  "sha256": "7f6606f084af6aff00e8b0606d96cc6cd3901f3e1f5d1cb5d9f7f241229cd0a0",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 2484,
+  "sha256": "d257d72386b73c5bae71350b262a6d34dc405f38c907e55dfd1761ddccbc591c",
   "start": "2016-09-21"
  },
  "TTWO": {
-  "end": "2026-07-17",
-  "rows": 7360,
-  "sha256": "817f569e149a9e7e75664e7991170ea35d31bde7df167119e88a94f719dca98c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7376,
+  "sha256": "b8140481418b6fb323c9cb3dfabafeb9ca1ecfaed4bd170d2bb21a335162aeab",
   "start": "1997-04-15"
  },
  "TXN": {
-  "end": "2026-07-17",
-  "rows": 13644,
-  "sha256": "cac12299cc0d56bb167359f54f2bfd7983adf6a915fb27f13bfd172870a981e9",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13660,
+  "sha256": "2b4213880326f265e4e7a0f83b7074a6649c8ba12fcc9a701096e7dc389e7c6a",
   "start": "1972-06-01"
  },
  "TXT": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "f1bae18bf66ea737c5a4ba995f0f878c107dd13cdc8b64b320dda3b923e86575",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13480,
+  "sha256": "1ffec2d57efec4985f7896bf2e4cda94218dd4b8b68de4059c10e29eff7afe17",
   "start": "1973-02-21"
  },
  "TYL": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "d9e7b17ad1717162550dd679b6aecfad8e5dfd503261c2f1a2d0340872a13a16",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "9147dc2f8e0f7c168baa6af5b9a129c449a7829b4b1d40870a84f8350713a3a0",
   "start": "1980-03-17"
  },
  "UAL": {
-  "end": "2026-07-17",
-  "rows": 5143,
-  "sha256": "0c57bdffb5fc634edbbd00d1cf7cc01a6964600c918beb8c120c8f80c7cf9a5d",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5159,
+  "sha256": "affec065d5928cebd624b173368233ceddc1756687c725067735e73d1cf854f1",
   "start": "2006-02-06"
  },
  "UBER": {
-  "end": "2026-07-17",
-  "rows": 1806,
-  "sha256": "fcab14b5470267c22b4e5c0f216db8efd24c77c7a34c4f13745ddf45ae326d6c",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 1822,
+  "sha256": "52de13c51e3d2292066998b34298d24139735bb7a833e51df0e8da44039b46aa",
   "start": "2019-05-10"
  },
  "UDR": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "433eb823a21c6d243f8a7d9ff4cb2df8c70cb37c812489dee8f3bb8f331aa465",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 11694,
+  "sha256": "848b1500c7529a1475e868052b7676996fcd735bb1ae671067d4e72235145a02",
   "start": "1980-03-17"
  },
  "UHS": {
-  "end": "2026-07-17",
-  "rows": 11347,
-  "sha256": "2c76e7dc33ddfefd15996fbc2bb158a29f5300d65fc7215c45e052b92a270258",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11363,
+  "sha256": "683542d3ca07b3184a3f8f288218a33ed1c9b9418e2c424f64755bd1a3ea688b",
   "start": "1981-07-09"
  },
  "ULTA": {
-  "end": "2026-07-17",
-  "rows": 4710,
-  "sha256": "22eaa4af60d58322ef9933c78005e51ba0a88320bac68ce523351ebdec72e119",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4726,
+  "sha256": "da5aea74a044e09b76d7b914d8c348256f89acb8c2f7c4c6c30d0b53c37a4683",
   "start": "2007-10-25"
  },
  "UNG": {
-  "end": "2026-07-17",
-  "rows": 4843,
-  "sha256": "d57e247e5faeed4dea9faa98c9d430f19711306b6071832b50c78b452149d77d",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4859,
+  "sha256": "d541e0572480396e881bea328ba50c03d825aef656b4db5b97d075a9ed2fb72c",
   "start": "2007-04-18"
  },
  "UNH": {
-  "end": "2026-07-17",
-  "rows": 10517,
-  "sha256": "5473926990d5d7a314950367240fac7ddfbe8af9269c37116f06c1469ab581d5",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10533,
+  "sha256": "fe718ea5ed027533f8c99eae9c84ca579e4f395afbb4c29f88f918cb4546cd3b",
   "start": "1984-10-17"
  },
  "UNP": {
-  "end": "2026-07-17",
-  "rows": 11730,
-  "sha256": "4e99f57fc0fb1297b5800c64613220283083443181f0f30a0e00aec266cb0e16",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11746,
+  "sha256": "fc2d7ce5156d50182f346e8ae18795e01632d6601d6161edb51eae4fddc9dd1e",
   "start": "1980-01-02"
  },
  "UPS": {
-  "end": "2026-07-17",
-  "rows": 6710,
-  "sha256": "aee03109bfea41ad8b3e8504d8be785b0a68d81c4cb0aa8541afd3f50098169e",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6726,
+  "sha256": "b14f9a3e4ac7e1e1b0885c4766444d6c9b4169250ba57abeb8cadf04c7ea8176",
   "start": "1999-11-10"
  },
  "URI": {
-  "end": "2026-07-17",
-  "rows": 7187,
-  "sha256": "65d363958bf33472bf5b99301318b7ec445002312894c7f090df94012c590a77",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7203,
+  "sha256": "b3d4aa2ce48b6cd851e3cdcded83c6d46fb72d62bd7fd243977e3c38fb2493da",
   "start": "1997-12-18"
  },
  "USB": {
-  "end": "2026-07-17",
-  "rows": 13414,
-  "sha256": "37787e32d4070a63dc329328c3ef1f94869b68e4213ab063ad923e9a86bab7eb",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13430,
+  "sha256": "0e730bef0e2ee76acc874c132bcc1f000cad05be83e583f2bbc4391540fd5869",
   "start": "1973-05-03"
  },
  "USO": {
-  "end": "2026-07-17",
-  "rows": 5099,
-  "sha256": "f57cd409d6c1f4eab6f6b221cd119702f1fd275f5844b7b87d5107adcb4b279b",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5115,
+  "sha256": "bf93446bef7a23ced8295c8fc5798ffd6034baec85b893338dfcb02862fd0ba5",
   "start": "2006-04-10"
  },
  "UUP": {
-  "end": "2026-07-17",
-  "rows": 4876,
-  "sha256": "4e2af6471a755624af3a4186bb9c02a644072a94cb10545ce1d1b2b93cab0c0e",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4892,
+  "sha256": "b4844145fb922c1988692c78bbba0e68df46d264b14ec01120a865964e2e2bb3",
   "start": "2007-03-01"
  },
  "V": {
-  "end": "2026-07-17",
-  "rows": 4611,
-  "sha256": "6525372dee50861bbbf863421e6f835649b14244d80a75e1303d7a914b397916",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4627,
+  "sha256": "e80c2241389dab13792bc20615e376403b61a46652711cbbc41841449150eb05",
   "start": "2008-03-19"
  },
  "VEEV": {
-  "end": "2026-07-17",
-  "rows": 3206,
-  "sha256": "ec0b2b0c7a046fc2c332eba66cafbac9b1a059ee4db420e6875829fb43c5efd6",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3222,
+  "sha256": "2e977152a0f517128e972f0816465d2441182612b52d946603906e96a254c15c",
   "start": "2013-10-16"
  },
  "VICI": {
-  "end": "2026-07-17",
-  "rows": 2146,
-  "sha256": "df55ea5022ee5b90728d278c0a088cff2a91211ac3383f559d3c3f73b9652fee",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 2162,
+  "sha256": "e3186bb320fa2efb15bb0cdb9e92208a7d108b571672ce0d4602b49503f3fb52",
   "start": "2018-01-02"
  },
  "VLO": {
-  "end": "2026-07-17",
-  "rows": 11224,
-  "sha256": "69c1348039f396d8642bd03a369850d2b9994fd1431c20ef1ef1364be6dda1df",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11240,
+  "sha256": "ce8791a4a1071a313afd3407d03e5b79cb6e669c94178c0cca4b7c3156e81aac",
   "start": "1982-01-04"
  },
  "VLTO": {
-  "end": "2026-07-17",
-  "rows": 698,
-  "sha256": "c10a7853e6db7510b8534cf7d8644294cf417660ac045955e9ec4612b4bab272",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 714,
+  "sha256": "ec4abbb7123c27624c7ad406bc028e268e49fff2a056b68958fbc5a7a1b93165",
   "start": "2023-10-04"
  },
  "VMC": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "d904de9e7034f5869b569859551e998ae77270c04a63dc08e21f0680ad69d5cf",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13480,
+  "sha256": "c6a2112b5ec315883ffb485be1a264d209f696d3c337846c0147a0a4bc4c856b",
   "start": "1973-02-21"
  },
  "VNQ": {
-  "end": "2026-07-17",
-  "rows": 5484,
-  "sha256": "daebc85248a1eb122bf1f38153fdefde8e138c81b982b91bd57eb04a06992ae4",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5500,
+  "sha256": "b3cc184edd9f0b7acbfbd6c8bc7aa3368606cf3b2baffa80556805019dc19791",
   "start": "2004-09-29"
  },
  "VRSK": {
-  "end": "2026-07-17",
-  "rows": 4219,
-  "sha256": "02adfa9c7a7ea83f21497801d31bab0475819e3a237b1c71a04e6ebda7babf19",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 4235,
+  "sha256": "923fce898067f136ba5daf7c93548ad3d64860fe7dae847b753de447238277e7",
   "start": "2009-10-07"
  },
  "VRSN": {
-  "end": "2026-07-17",
-  "rows": 7159,
-  "sha256": "c2b82fc3cb22e94b879e70fb1c6f94c866e6da58204a5ae4c1186ed4a96d5402",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7175,
+  "sha256": "b40ddd4131bf5ff624974a43efe7ecc74c59d917302f03cf7a1a474b54f6eb9d",
   "start": "1998-01-30"
  },
  "VRT": {
-  "end": "2026-07-17",
-  "rows": 1999,
-  "sha256": "a1b639cb9872438966d989495e157617a5043718a9ab187977ed601e733c3658",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 2015,
+  "sha256": "d85dc7b8dbbf5ce6d0f9d5eaf092764b55f03face6a7af873f316d2d89e5a270",
   "start": "2018-08-02"
  },
  "VRTX": {
-  "end": "2026-07-17",
-  "rows": 8808,
-  "sha256": "2dff6b105d1f0ee7c6e46129c159fbb40b48d7af18422df5efb0e6998332e43b",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8824,
+  "sha256": "02065d4471a6a2e4bd3033957068c8bea3b77632b2c552a1271551d22730006e",
   "start": "1991-07-24"
  },
  "VST": {
-  "end": "2026-07-17",
-  "rows": 2458,
-  "sha256": "f52d54e3b0b23fb38f4c0d309695221c037eb16aff798b48013566b0b4f6cbc1",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 2474,
+  "sha256": "b038900eb80c45270b20151823f121dfdce1e4497fce681209f49b7b4599b4e3",
   "start": "2016-10-05"
  },
  "VTR": {
-  "end": "2026-07-17",
-  "rows": 7346,
-  "sha256": "f17ae19a5e9fa62e9a03a6c6a1fe807f2499fb9afa373254b4782cd73f662cf8",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7362,
+  "sha256": "e1f814443556e63fa0faff098f68d0a8eb894a0fc5c481344c82e6bb4fb95e9b",
   "start": "1997-05-05"
  },
  "VTRS": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "24f6b4c3ccba6a0f151545dff5bb55bbda78a1a4160414b24484193464a70516",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "43902b9921e489bac97708731d38235f8f7d9b0841cb8ae82f7688e54bdbf806",
   "start": "1980-03-17"
  },
  "VTV": {
-  "end": "2026-07-17",
-  "rows": 5651,
-  "sha256": "401704f1bcce166099d28d37be1833919b9cdf0b6035ebdecb5ba97a3d381e48",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5667,
+  "sha256": "14cafa70fb9ce4aa18b3a5d1a8307a115b053783f0ee903a3397d7a569be19c4",
   "start": "2004-01-30"
  },
  "VUG": {
-  "end": "2026-07-17",
-  "rows": 5651,
-  "sha256": "c650d084f6fee3a3141d85aa7d67ebfaa037da33a2e2c608c3d840f17e56f1c8",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5667,
+  "sha256": "6a6c4cd230bc2b676c25a5af62c8961be6d438b0517ced70fef7975fd074e9e4",
   "start": "2004-01-30"
  },
  "VZ": {
-  "end": "2026-07-17",
-  "rows": 10746,
-  "sha256": "07b6d977a56ebe7052715f9e97b16422a7383252713c836f995891182bdb8ee4",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 10762,
+  "sha256": "df93316c3ec703ca8c8a71eccd929c79c7f108917dad40a31c105218a185b0b4",
   "start": "1983-11-21"
  },
  "WAB": {
-  "end": "2026-07-17",
-  "rows": 7822,
-  "sha256": "0bf8fe085a049f67a8a8ec10fb5df4746cd753e41d68c3057e6003bf7752587b",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7838,
+  "sha256": "a5028704c27c9bf95a772f145b2335066146e8030395ceabeb86fd1baa883dae",
   "start": "1995-06-16"
  },
  "WAT": {
-  "end": "2026-07-17",
-  "rows": 7714,
-  "sha256": "6db8667eaa72ec5e4d360ce4470e22f271103bee5a692e2ae20a6d9824d6af93",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7730,
+  "sha256": "52700434cad6c2ef426d76da479d44221b9ecf47a510cdc967e849bc89324f26",
   "start": "1995-11-17"
  },
  "WBD": {
-  "end": "2026-07-17",
-  "rows": 5289,
-  "sha256": "5c893221ed3043cdee6528e2fbf784fcda0cf81b5111c1c3b36b5efa38217cc9",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5305,
+  "sha256": "a4c241bb6301ce261f379b1545c40b9cc7cfb50d6df163016d3ed2c166dec847",
   "start": "2005-07-08"
  },
  "WDAY": {
-  "end": "2026-07-17",
-  "rows": 3458,
-  "sha256": "0e50a3c372ff0c4de12bf5897876a4aea6df964fda844f09fba000b5f0493eaa",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3474,
+  "sha256": "b7be08197e4d4a4c5abbc157d811db0d8718313384d735d7f9fcb1fe7a16ecde",
   "start": "2012-10-12"
  },
  "WDC": {
-  "end": "2026-07-17",
-  "rows": 12025,
-  "sha256": "e9e1c7a4568ed7df4c807879e2f8d7e7158d8fb2b2f20bd883e14ab5d54222a8",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 12041,
+  "sha256": "68d27d94e6857b648aef38f2895b92c1f414a555ac15d98787a1d8e6e9dc37e5",
   "start": "1978-10-31"
  },
  "WEC": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "75447a4abc7f72440971a79cd20be348e5caed61fc0610cc411cc432f923c3a0",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "205f1e6e6aa6a4eaccfed85a91aa8ab3cccfafa4284fff9e118ae298e1f9f00a",
   "start": "1980-03-17"
  },
  "WELL": {
-  "end": "2026-07-17",
-  "rows": 11676,
-  "sha256": "493b77763eba9293a7ae2be5765f565da6b3754423a08b7ecb1b3d1870d99b90",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 11692,
+  "sha256": "3af850fa9e166eb5c87e123986ab5480b9fa3cf3a756e8e404ebe18421e2ad24",
   "start": "1980-03-19"
  },
  "WFC": {
-  "end": "2026-07-17",
-  "rows": 13644,
-  "sha256": "7161dc1d39e6c97908ff7fe892bec8cc0ff6edddaf55421b831aa0e6e3820270",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13660,
+  "sha256": "a3aae152282a5d2291503b7e0120e76b017dba89833d8eacdb57f5fc77d5051c",
   "start": "1972-06-01"
  },
  "WM": {
-  "end": "2026-07-17",
-  "rows": 9588,
-  "sha256": "ed631a01dac2148c6b829787aff8b03c729e9433529d3bf84da088abc320ec78",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 9604,
+  "sha256": "c0a64f2edddb86fef1303c951f4766cf09947f48a625eadb0b0bbe48bee33dd6",
   "start": "1988-06-22"
  },
  "WMB": {
-  "end": "2026-07-17",
-  "rows": 11225,
-  "sha256": "656ef856e2c93275fcd54cc5fa95299ad7d8849ff36a0df60282af428cd5fdec",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11241,
+  "sha256": "ef47ab3a9d11b863ffa583769d2c59e240183c732a6d0ac35547a5e3eb89e908",
   "start": "1981-12-31"
  },
  "WMT": {
-  "end": "2026-07-17",
-  "rows": 13584,
-  "sha256": "84f8eaf59c3f9ec9f3517453104339950a22fb479968501c7587aa30389e2479",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13600,
+  "sha256": "274195dc259b8a40348cdae90f91c0bbbc08055c0f0286e5d15efcd4d92ca6b3",
   "start": "1972-08-25"
  },
  "WRB": {
-  "end": "2026-07-17",
-  "rows": 13294,
-  "sha256": "fc15aa88120833bbc461856d10bb450a9b76203320a4b98ec62a717b05173653",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13310,
+  "sha256": "9b2bcfe0662121352fcdb0ca26d6720efdccbd9bab66e75cb13669fb55a60d2f",
   "start": "1973-10-23"
  },
  "WSM": {
-  "end": "2026-07-17",
-  "rows": 10842,
-  "sha256": "1e2fb3684bec7aa9dc5be5f5670a7ed4eaf662faf491dd43aeddaac8787a9490",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 10858,
+  "sha256": "4cc35ac3fdbda003ae1489938e8ae2dcaf18d7958bc0b7fa16ec9796631958b5",
   "start": "1983-07-07"
  },
  "WST": {
-  "end": "2026-07-17",
-  "rows": 11678,
-  "sha256": "9445f42de666b4897de39caa012598c35bc0447b35816b995561b485f951276e",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 11694,
+  "sha256": "257989a8c6b42315ab8e916466c8db13d60499e21ae32f0a644cba34b62fdec0",
   "start": "1980-03-17"
  },
  "WTW": {
-  "end": "2026-07-17",
-  "rows": 6311,
-  "sha256": "f0c0087e2d745a14f42622f4c0df806956ddcd989d45434c05dfaf8cbade49e0",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6327,
+  "sha256": "ce9250bbadbfee36641b7d7e3f7ed1ae7ece06c9d48a4056806c5afbd6210878",
   "start": "2001-06-12"
  },
  "WY": {
-  "end": "2026-07-17",
-  "rows": 13414,
-  "sha256": "0539d32155bfc770b36bc5c6b93dab670e06926482824a27850e5095140f9e47",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 1,
+  "rows": 13430,
+  "sha256": "e073b9ae36509250c22678c7c389a0e70420cdacec52efd79feb5b8d90332e1c",
   "start": "1973-05-03"
  },
  "WYNN": {
-  "end": "2026-07-17",
-  "rows": 5968,
-  "sha256": "ad76586d0265afc82173d1685b7c31af2b0432683a364875c5e446631a6185b1",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5984,
+  "sha256": "4a861625944160e5a3ca5ecc2a822e05f16fc9eff783f0cba2f951b48e5b68cc",
   "start": "2002-10-25"
  },
  "XEL": {
-  "end": "2026-07-17",
-  "rows": 13464,
-  "sha256": "770f265fa6e503377facc922da1f89a11d5ef112a00c4a7e9c0fa3980b3efa3e",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 13480,
+  "sha256": "6879ed14b9987462e587e983af3cc636bf203e0b5a5ff3b32cd0ae2a5b30c371",
   "start": "1973-02-21"
  },
  "XHB": {
-  "end": "2026-07-17",
-  "rows": 5143,
-  "sha256": "3b70516c3123f6d4e37619259f08d4697e434c4efcb7ee5896d5fac51e7796ae",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5159,
+  "sha256": "1295c79f0d9707af51e6edcbf0f2bdb6ed8be61a0d9d118aef7f28b7b375fa30",
   "start": "2006-02-06"
  },
  "XLB": {
-  "end": "2026-07-17",
-  "rows": 6933,
-  "sha256": "d116a0d1290ecc1c802e173070bccf38665619f749602e6319c86d0adcefaaf0",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6949,
+  "sha256": "3e4b2a118eb5eb2af1e11574fde1709372c2efabe28d8dd744207a13994ffc97",
   "start": "1998-12-22"
  },
  "XLC": {
-  "end": "2026-07-17",
-  "rows": 2030,
-  "sha256": "a45e4ff88dcaf777d7703fd730fa360151fe8226e9442f3e5359572a6fde3e2d",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 2046,
+  "sha256": "ae1681eade2da81512c933d79f8e9349d00332aaf4e34a8c48ac9b8905d84cba",
   "start": "2018-06-19"
  },
  "XLE": {
-  "end": "2026-07-17",
-  "rows": 6933,
-  "sha256": "2c38721fa1a98dc626534df6718bb48db1fa398dd3650478c86374b13cde3aae",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6949,
+  "sha256": "8f8c20dc800aabb2e0d3c25cca11fdcd76cfb7771c0789109cdd8ccca703ca7d",
   "start": "1998-12-22"
  },
  "XLF": {
-  "end": "2026-07-17",
-  "rows": 6933,
-  "sha256": "ad9f0d897bfa9f4ee32db0b49fead8e7f8b0e4bc8a9776adda5db0d891e4914a",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6949,
+  "sha256": "488cf666903627134d201c1d9292a6fc9cfb85cded1780fb434f6665d552e52b",
   "start": "1998-12-22"
  },
  "XLI": {
-  "end": "2026-07-17",
-  "rows": 6933,
-  "sha256": "38d1fa067db4b86a4123208799aa0111ecefbecb30bfb68d8bc7ca6db66681ad",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6949,
+  "sha256": "2dd0df5e3ac55de717644b4ee6fda13a816f4f1240702caa1b548c118c7a5ad1",
   "start": "1998-12-22"
  },
  "XLK": {
-  "end": "2026-07-17",
-  "rows": 6933,
-  "sha256": "128fbf34ed05d0f904a410502cd2a347d41c6e61681c20513aba67089e5e8518",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6949,
+  "sha256": "05dae0f938d70b3a80472e905e97109bf080019f930acd48adddbe49ecee5987",
   "start": "1998-12-22"
  },
  "XLP": {
-  "end": "2026-07-17",
-  "rows": 6933,
-  "sha256": "6d50739d8236664de031646aced19cd214ee19fa46296338381b080a862c4939",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6949,
+  "sha256": "089d98964cfda15e9c935ded6205e8592b7d402138a257a8e7749f239726a069",
   "start": "1998-12-22"
  },
  "XLRE": {
-  "end": "2026-07-17",
-  "rows": 2708,
-  "sha256": "83d582cde7b32adb3d74af26dd9212d4fc5e0dde62060329711529c2dc62d24f",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 2724,
+  "sha256": "87d66ccb1d3ef7113055dd36d4212e6610f775f50f92c2ed60bbf8f6e2398fcf",
   "start": "2015-10-08"
  },
  "XLU": {
-  "end": "2026-07-17",
-  "rows": 6933,
-  "sha256": "a47e484336d81a0020132657a81067e2103a1099812295b3017e18bdf9a9da23",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6949,
+  "sha256": "0735cbb07334180f3a0e72dd2b2d0da63ed8796c421b26b12e7a9eda3a64c4a5",
   "start": "1998-12-22"
  },
  "XLV": {
-  "end": "2026-07-17",
-  "rows": 6933,
-  "sha256": "a4b1ed67aac683686ab49c84c0bacfa7b2cabcd895ba7e212f46ce5e48f43f75",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6949,
+  "sha256": "1a025179964dab76f1098fa22d554ebb89b72dbfac11e563bfe138d9c1019452",
   "start": "1998-12-22"
  },
  "XLY": {
-  "end": "2026-07-17",
-  "rows": 6933,
-  "sha256": "47f5a12c40979d051e3ef89d4fb4e8a56edfac7991b2e85e0042f171421b96fb",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6949,
+  "sha256": "d8490f9137920ffcd0d6c2792f9d70e3bd744475f1b1baa8969957db6c18ff17",
   "start": "1998-12-22"
  },
  "XOM": {
-  "end": "2026-07-17",
-  "rows": 14256,
-  "sha256": "16a1fb4780329fb194bb36b63a9928088971515dda5a7787cb2cb6f0668c25e5",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 14272,
+  "sha256": "3a844e35123377adf0d8e77c2e8cca1be5b43f11c346f2e2d7d26934224a6488",
   "start": "1970-01-02"
  },
  "XOP": {
-  "end": "2026-07-17",
-  "rows": 5048,
-  "sha256": "f7569466c4e35c54ba6a1f7d7497074100a4775401c3c692e45f74ccbaee7d1a",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5064,
+  "sha256": "3710c184c03c882bddef9eedee0cbf8ae524b0f646d96595228cace305bd13de",
   "start": "2006-06-22"
  },
  "XRT": {
-  "end": "2026-07-17",
-  "rows": 5048,
-  "sha256": "ba8444092a3d2575af09c42953f73cf0476b194feef9ec336f5c753173f99a4d",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 5064,
+  "sha256": "676ab2a1fc54a3d5333cf058bb8ed47be7837b86c4c33f1fccc8a20549254703",
   "start": "2006-06-22"
  },
  "XYL": {
-  "end": "2026-07-17",
-  "rows": 3710,
-  "sha256": "a17929e424cce4501a41b9628bfe0846afcf7952874920aa304a09764f672039",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3726,
+  "sha256": "e4211b8265db63a39db7004feea91401ce6dafaa96cb7a2bd1085a8179b6099e",
   "start": "2011-10-13"
  },
  "XYZ": {
-  "end": "2026-07-17",
-  "rows": 2678,
-  "sha256": "ad707b34474f3ee0de85c04cf0cd97c4c7ca8b4c4cc208082bfada325da878eb",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 2694,
+  "sha256": "5b56634abb9d5e541e858fb17a25eff6ec556e185fc2dc098f302e8a72aed99c",
   "start": "2015-11-19"
  },
  "YUM": {
-  "end": "2026-07-17",
-  "rows": 7252,
-  "sha256": "f22997b32741050095c8a180d8e6d565254896e17ea35e290f4657e82bfdc086",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 7268,
+  "sha256": "cb4b8522feba499904745e843f497f55367922b8c965f82a800e1f590b0b5060",
   "start": "1997-09-17"
  },
  "ZBH": {
-  "end": "2026-07-17",
-  "rows": 6281,
-  "sha256": "b34365f96915eb682594805fca9815f1e3f50e2c83c680d9280ddb53743900f2",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 6297,
+  "sha256": "ce03e3c5fb3dbc6ab0264623a2a7b7532cea924ca91fbdf33f38589fd92d5a02",
   "start": "2001-07-25"
  },
  "ZBRA": {
-  "end": "2026-07-17",
-  "rows": 8792,
-  "sha256": "4013bf2ab872ede06d35741bb1369d7a3a79cd7c52d9a189027604f0f36f91b1",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 8808,
+  "sha256": "a66a82278cb891887d7bdf597e615a0b97b087d41b531d8cd9a54af72e0392f6",
   "start": "1991-08-15"
  },
  "ZTS": {
-  "end": "2026-07-17",
-  "rows": 3384,
-  "sha256": "10b290bbe64d717f9c0bbfb9def163f31826907e0b5fbefa62c007eb14984e93",
+  "end": "2026-08-10",
+  "quarantined_ohlc_rows": 0,
+  "rows": 3400,
+  "sha256": "59fc1ea48c9d970e8fcb1a5ec9b70d28dd89a844663c85e3c7ad1b0b3d14e1e1",
   "start": "2013-02-01"
  }
 }

@@ -1,11 +1,8 @@
-"""C015: 63-day std of daily range fraction, long high (spec.md)."""
+"""C015: 63-day volatility of daily range fraction, long high."""
 
-import pandas as pd
-
+SIGNAL_KIND = "range_volatility"
+ORIGIN = "G2"
+HOLDOUT_END = "2030-01-01"
 WINDOW = 63
 HOLD = 5
-
-
-def compute_signal(fields: dict[str, pd.DataFrame]) -> pd.DataFrame:
-    rng_frac = (fields["high"] - fields["low"]) / fields["close"]
-    return rng_frac.rolling(WINDOW, min_periods=WINDOW // 2).std()
+PERTURBATIONS = ("WINDOW", "HOLD")

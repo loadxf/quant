@@ -21,7 +21,7 @@ class TestMetricsJsonWarnings:
         assert result.exit_code == 0, result.output
         payload = json.loads(result.output)
         assert payload["schema_version"] == 2
-        assert "extras" not in payload
+        assert "annualization_periods" in payload["extras"]
         assert any("MAE/MFE" in w for w in payload["warnings"])
 
     def test_json_warnings_empty_for_full_fidelity_log(self, tmp_path) -> None:

@@ -11,14 +11,16 @@ where C_i is the cumulative day PnL after trade i. Padding slots are
 no-ops: low=+inf (never breaches), high=-inf (never ratchets), close
 repeats the day's final cumulative.
 
-The within-trade point order is high -> low -> close, identical to the
-deterministic evaluator (see rules/trailing_dd.py) — the Monte Carlo
-engine replays these arrays trade-step by trade-step, which is what
-makes exact scalar<->vector equivalence possible.
+The within-trade point order is normally high -> low -> close. When an
+export provides MAE but no MFE, however, inventing a pre-MAE favorable
+extreme from the profitable close is wrong: the only defensible chronology
+is entry -> MAE -> close. ``low_first`` records that distinction so both
+engines replay the same evidence-backed path.
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 
 import numpy as np
@@ -37,13 +39,24 @@ def trade_points(trade: Trade, base: float) -> tuple[float, float, float]:
     MAE (or above the MFE) must still count — equity provably passed
     through the close.
     """
-    if trade.mae is not None and trade.mfe is not None:
-        low = base + min(trade.mae, trade.pnl)
-        high = base + max(trade.mfe, trade.pnl)
-    else:
-        low = base + min(0.0, trade.pnl)
-        high = base + max(0.0, trade.pnl)
-    return high, low, base + trade.pnl
+    close = base + trade.pnl
+    # A missing excursion is not evidence that equity revisited the entry
+    # level. Falling back to the close preserves genuine trade-close
+    # fidelity instead of inventing a high->entry->close path for winners.
+    low = base + min(trade.mae, trade.pnl) if trade.mae is not None else close
+    high = base + max(trade.mfe, trade.pnl) if trade.mfe is not None else close
+    return high, low, close
+
+
+def trade_low_first(trade: Trade) -> bool:
+    """Return whether the recorded path must visit its low before its high.
+
+    MAE-only data proves an adverse point occurred and provides no favorable
+    point before it. The close is therefore visited last. With both
+    excursions present their ordering is unknowable, so high-first remains
+    the conservative assumption for trailing-drawdown rules.
+    """
+    return trade.mae is not None and trade.mfe is None
 
 
 @dataclass
@@ -53,9 +66,11 @@ class DayProfile:
     low_rel: np.ndarray  # (D, K)
     high_rel: np.ndarray  # (D, K)
     close_rel: np.ndarray  # (D, K)
+    low_first: np.ndarray  # (D, K) bool; MAE-only trades visit low first
     n_trades: np.ndarray  # (D,) int
     day_pnl: np.ndarray  # (D,)
     has_excursions: bool
+    excursion_fidelity: str = "close-only"
 
     @property
     def n_days(self) -> int:
@@ -64,19 +79,21 @@ class DayProfile:
     def scaled(self, factor: float) -> DayProfile:
         """PnL-scaled copy (position-sizing what-ifs). factor must be > 0;
         +/-inf padding survives scaling unchanged."""
-        if factor <= 0:
+        if not math.isfinite(factor) or factor <= 0:
             # A negative factor flips low/high WITHOUT swapping their roles:
             # breach checks would run against favorable excursions.
-            raise QuantLabError(f"scale factor must be positive (got {factor:g})")
+            raise QuantLabError(f"scale factor must be finite and positive (got {factor})")
         if factor == 1.0:
             return self
         return DayProfile(
             low_rel=self.low_rel * factor,
             high_rel=self.high_rel * factor,
             close_rel=self.close_rel * factor,
+            low_first=self.low_first,
             n_trades=self.n_trades,
             day_pnl=self.day_pnl * factor,
             has_excursions=self.has_excursions,
+            excursion_fidelity=self.excursion_fidelity,
         )
 
     @property
@@ -90,9 +107,11 @@ class DayProfile:
             low_rel=self.low_rel[idx],
             high_rel=self.high_rel[idx],
             close_rel=self.close_rel[idx],
+            low_first=self.low_first[idx],
             n_trades=self.n_trades[idx],
             day_pnl=self.day_pnl[idx],
             has_excursions=self.has_excursions,
+            excursion_fidelity=self.excursion_fidelity,
         )
 
     @classmethod
@@ -101,15 +120,27 @@ class DayProfile:
             days = log.daily_groups(boundary)
         if not days:
             raise QuantLabError("Trade log has no trading days")
-        return cls.from_day_lists([trades for _, trades in days], log.has_excursions)
+        return cls.from_day_lists(
+            [trades for _, trades in days],
+            log.has_excursions,
+            excursion_fidelity=log.excursion_fidelity,
+        )
 
     @classmethod
-    def from_day_lists(cls, day_lists: list[list[Trade]], has_excursions: bool) -> DayProfile:
+    def from_day_lists(
+        cls,
+        day_lists: list[list[Trade]],
+        has_excursions: bool,
+        excursion_fidelity: str | None = None,
+    ) -> DayProfile:
+        if not day_lists or any(not trades for trades in day_lists):
+            raise QuantLabError("DayProfile requires at least one trade in every source day")
         n_days = len(day_lists)
         k = max(len(trades) for trades in day_lists)
         low = np.full((n_days, k), np.inf)
         high = np.full((n_days, k), -np.inf)
         close = np.zeros((n_days, k))
+        low_first = np.zeros((n_days, k), dtype=bool)
         n_trades = np.zeros(n_days, dtype=np.int64)
         for d, trades in enumerate(day_lists):
             cum = 0.0
@@ -119,13 +150,16 @@ class DayProfile:
                 low[d, i] = lo
                 cum = c
                 close[d, i] = cum
+                low_first[d, i] = trade_low_first(trade)
             n_trades[d] = len(trades)
             close[d, len(trades) :] = cum  # padding repeats the final cumulative
         return cls(
             low_rel=low,
             high_rel=high,
             close_rel=close,
+            low_first=low_first,
             n_trades=n_trades,
             day_pnl=close[:, -1].copy(),
             has_excursions=has_excursions,
+            excursion_fidelity=excursion_fidelity or ("full" if has_excursions else "close-only"),
         )

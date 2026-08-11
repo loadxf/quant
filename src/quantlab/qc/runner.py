@@ -50,30 +50,26 @@ def preflight() -> None:
     credentials_from_env()  # raises CloudUnavailableError when unset
 
 
-# argv flags whose VALUES are secrets: never echo them into error
-# messages (which land in terminals, CI logs, and pasted GitHub issues).
-_SENSITIVE_FLAGS = frozenset({"--api-token"})
-
-
-def _redacted(args: list[str]) -> str:
-    shown = list(args)
-    for i, arg in enumerate(shown[:-1]):
-        if arg in _SENSITIVE_FLAGS:
-            shown[i + 1] = "***"
-    return " ".join(shown)
-
-
 def _run(args: list[str], timeout: int = 1800) -> subprocess.CompletedProcess[str]:
+    def redacted(text: str) -> str:
+        safe = text
+        for option in ("--api-token", "-t"):
+            for index, value in enumerate(args[:-1]):
+                if value == option:
+                    safe = safe.replace(args[index + 1], "<redacted>")
+        return safe
+
     try:
         result = subprocess.run(args, capture_output=True, text=True, timeout=timeout, check=False)
     except subprocess.TimeoutExpired:
-        # TimeoutExpired's own message embeds the full argv (token included).
-        raise QuantLabError(f"`{_redacted(args)}` timed out after {timeout}s") from None
+        command = redacted(" ".join(args))
+        # TimeoutExpired retains the original argv (including credentials) in
+        # its repr. Suppress exception chaining so tracebacks cannot reveal it.
+        raise QuantLabError(f"`{command}` timed out after {timeout}s") from None
     if result.returncode != 0:
-        raise QuantLabError(
-            f"`{_redacted(args)}` failed ({result.returncode}):\n"
-            f"{result.stderr.strip() or result.stdout.strip()}"
-        )
+        command = redacted(" ".join(args))
+        details = redacted(result.stderr.strip() or result.stdout.strip())
+        raise QuantLabError(f"`{command}` failed ({result.returncode}):\n{details}")
     return result
 
 
@@ -84,10 +80,10 @@ def login() -> None:
 
 
 def push_project(project: Path) -> None:
-    preflight()
-    login()
     if not project.exists():
         raise QuantLabError(f"Project directory not found: {project}")
+    preflight()
+    login()
     _run(["lean", "cloud", "push", "--project", str(project)])
 
 

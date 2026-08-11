@@ -1,18 +1,7 @@
-"""C010: G2 winner — 63-day vol of the daily range fraction (spec.md)."""
+"""C010: 63-day volatility of the daily range fraction."""
 
-import pandas as pd
-from edgelab.grammar import build_terminals, evaluate
-
+SIGNAL_KIND = "expression"
+ORIGIN = "G2"
+HOLDOUT_END = "2030-01-01"
 EXPR = ("roll_std", "rng", 63)
-
-
-def compute_signal(fields: dict[str, pd.DataFrame]) -> pd.DataFrame:
-    terms = build_terminals(
-        fields["open"],
-        fields["high"],
-        fields["low"],
-        fields["close"],
-        fields["adjclose"],
-        fields["volume"],
-    )
-    return evaluate(EXPR, terms)
+PERTURBATIONS = ("EXPR",)

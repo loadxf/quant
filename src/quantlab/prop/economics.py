@@ -326,7 +326,9 @@ def summarize(
         n_paths=n,
         seed=cfg.seed,
         bootstrap=bootstrap_used,
-        block_len=block_len_used if block_len_used is not None else cfg.block_len,
+        # IID resampling has no block length, even if an irrelevant explicit
+        # value was supplied in the shared configuration.
+        block_len=block_len_used,
         fidelity=fidelity,
         scale_challenge=scale_challenge,
         scale_funded=scale_funded,

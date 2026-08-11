@@ -12,6 +12,8 @@ research/prior_art/multiple_testing.md):
 
 from __future__ import annotations
 
+from numbers import Integral, Real
+
 import numpy as np
 import pandas as pd
 from scipy import stats as sps
@@ -22,6 +24,8 @@ TRADING_DAYS = 252
 
 def sharpe_ratio(returns: pd.Series, annualize: bool = True) -> float:
     r = pd.Series(returns).dropna()
+    if not np.isfinite(r.to_numpy(dtype=float)).all():
+        raise ValueError("returns contain infinite values")
     if len(r) < 3 or r.std(ddof=1) == 0:
         return float("nan")
     sr = r.mean() / r.std(ddof=1)
@@ -31,6 +35,14 @@ def sharpe_ratio(returns: pd.Series, annualize: bool = True) -> float:
 def newey_west_tstat(returns: pd.Series, lags: int = 10) -> float:
     """t-stat of the mean daily return with a Newey-West (Bartlett) HAC variance."""
     r = pd.Series(returns).dropna().to_numpy(dtype=float)
+    if (
+        not isinstance(lags, Integral)
+        or isinstance(lags, bool)
+        or lags < 0
+        or not np.isfinite(r).all()
+    ):
+        raise ValueError("lags must be non-negative and returns finite")
+    lags = int(lags)
     n = len(r)
     if n < lags + 2:
         return float("nan")
@@ -64,8 +76,13 @@ def expected_max_sharpe(n_trials: int, var_sr: float) -> float:
     (per-period units), under the null of zero true SR:
     SR0 = sqrt(V) * ( (1-gamma) * Phi^-1(1 - 1/N) + gamma * Phi^-1(1 - 1/(N e)) ).
     """
-    if n_trials < 2 or not np.isfinite(var_sr) or var_sr <= 0:
+    if not isinstance(n_trials, Integral) or isinstance(n_trials, bool) or n_trials < 1:
+        raise ValueError("n_trials must be a positive integer")
+    n_trials = int(n_trials)
+    if n_trials < 2:
         return 0.0
+    if not np.isfinite(var_sr) or var_sr <= 0:
+        return float("nan")
     return float(
         np.sqrt(var_sr)
         * (
@@ -102,7 +119,18 @@ def deflated_sharpe_ratio(returns: pd.Series, n_trials: int, var_sr_trials: floa
 def stationary_bootstrap_indices(n: int, mean_block: float, rng: np.random.Generator) -> np.ndarray:
     """Politis-Romano stationary bootstrap index sequence of length n:
     geometric block lengths with mean ``mean_block``, wrapping circularly."""
-    p = 1.0 / mean_block
+    if (
+        not isinstance(n, Integral)
+        or isinstance(n, bool)
+        or n < 1
+        or not isinstance(mean_block, Real)
+        or isinstance(mean_block, bool)
+        or not np.isfinite(mean_block)
+        or mean_block <= 0
+    ):
+        raise ValueError("n and mean_block must be positive")
+    n = int(n)
+    p = min(1.0, 1.0 / mean_block)
     idx = np.empty(n, dtype=int)
     t = rng.integers(0, n)
     for i in range(n):
@@ -122,27 +150,66 @@ def reality_check_pvalue(
 ) -> dict:
     """White (2000)-style Reality Check on a family of candidate return series.
 
-    H0: the best candidate has zero mean return. Statistic: max over candidates
-    of sqrt(n) * mean. Bootstrap: stationary bootstrap of the recentered panel.
+    H0: the best candidate has zero expected return. The pre-registered
+    statistic is the maximum daily Sharpe across candidates. Bootstrap:
+    stationary bootstrap of the recentered panel.
     """
-    panel = candidate_returns.dropna(how="all")
-    filled = panel.fillna(0.0).to_numpy(dtype=float)
+    if (
+        not isinstance(n_boot, Integral)
+        or isinstance(n_boot, bool)
+        or n_boot < 1
+        or not isinstance(mean_block, Real)
+        or isinstance(mean_block, bool)
+        or not np.isfinite(mean_block)
+        or mean_block <= 0
+        or not isinstance(seed, Integral)
+        or isinstance(seed, bool)
+    ):
+        raise ValueError("n_boot and mean_block must be positive")
+    n_boot = int(n_boot)
+    seed = int(seed)
+    if candidate_returns.shape[1] < 1:
+        raise ValueError("candidate return panel needs at least one column")
+    # Common support prevents short histories from acquiring synthetic
+    # zero-return observations that improve their apparent risk profile.
+    panel = candidate_returns.dropna(how="any")
+    filled = panel.to_numpy(dtype=float)
+    if not np.isfinite(filled).all():
+        raise ValueError("candidate returns contain infinite values")
     n = filled.shape[0]
     if n < 60:
         return {"p_value": float("nan"), "n_obs": n}
     means = filled.mean(axis=0)
-    stat = np.sqrt(n) * means.max()
+    standard_deviations = filled.std(axis=0, ddof=1)
+    observed = np.divide(
+        means,
+        standard_deviations,
+        out=np.full_like(means, -np.inf),
+        where=standard_deviations > 0,
+    )
+    stat = observed.max()
+    if not np.isfinite(stat):
+        return {"p_value": float("nan"), "n_obs": n}
     centered = filled - means
     rng = np.random.default_rng(seed)
     exceed = 0
     for _ in range(n_boot):
         idx = stationary_bootstrap_indices(n, mean_block, rng)
-        boot_means = centered[idx].mean(axis=0)
-        if np.sqrt(n) * boot_means.max() >= stat:
+        sample = centered[idx]
+        boot_means = sample.mean(axis=0)
+        boot_std = sample.std(axis=0, ddof=1)
+        boot_sharpes = np.divide(
+            boot_means,
+            boot_std,
+            out=np.full_like(boot_means, -np.inf),
+            where=boot_std > 0,
+        )
+        if boot_sharpes.max() >= stat:
             exceed += 1
     return {
-        "p_value": exceed / n_boot,
+        "p_value": (exceed + 1) / (n_boot + 1),
         "statistic": float(stat),
+        "statistic_name": "maximum_daily_sharpe",
         "n_candidates": filled.shape[1],
         "n_obs": n,
         "n_boot": n_boot,

@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
+import datetime as dt
+
 import pytest
 
 from quantlab.errors import ConfigError, QuantLabError
-from quantlab.prop.config import ScalingPlanSpec, ScalingTier
+from quantlab.prop.config import ContractLimitSpec, ScalingPlanSpec, ScalingTier
 from quantlab.prop.evaluator import evaluate
+from quantlab.prop.exposure import peak_contract_equivalents
 from quantlab.prop.montecarlo import MCConfig, run_monte_carlo
 from quantlab.prop.outcomes import OUTCOME_LABELS
 from quantlab.prop.registry import load_firm
+from quantlab.schema.trade import Side, Trade, TradeLog
 
 from ..conftest import random_log
 from .conftest import day_trades, simple
@@ -34,13 +38,17 @@ class TestSpecValidation:
                 ]
             )
 
+    def test_first_tier_must_cover_the_starting_balance(self) -> None:
+        with pytest.raises(ConfigError, match=r"first tier.*0"):
+            ScalingPlanSpec(tiers=[ScalingTier(min_balance=1000, max_contracts=2)])
+
 
 class TestTopstepTiers:
     def test_tier_cap_binds_at_xfa_start(self) -> None:
         # XFA starts at $0 balance -> tier allows 2 of the log's 5-contract
         # base -> day-1 PnL scaled by 0.4.
         firm = load_firm("topstep_50k")
-        log = day_trades([[simple(500.0)], [simple(500.0)]], quantity=5)
+        log = day_trades([[simple(500.0)], [simple(500.0)]], quantity=5, symbol="NQ")
         result = evaluate(log, firm, phase="funded")
         assert result.timeline.iloc[0]["day_pnl"] == pytest.approx(500.0 * 2 / 5)
         assert any("scaling plan capped" in a for a in result.advisories)
@@ -49,7 +57,7 @@ class TestTopstepTiers:
         # Climb the tiers: after banked profit crosses $2,000 the full 5
         # contracts unlock and the weight cap disappears (base = 5).
         firm = load_firm("topstep_50k")
-        log = day_trades([[simple(3000.0)]] * 4, quantity=5)
+        log = day_trades([[simple(3000.0)]] * 4, quantity=5, symbol="NQ")
         result = evaluate(log, firm, phase="funded")
         # Day 1: 0.4 * 3000 = 1200 (balance 1200 -> still tier 1 -> 0.4)
         # Day 2: 1200 -> 0.4 * 3000 = 1200 (2400 -> tier 3: 5/5 = 1.0)
@@ -61,7 +69,7 @@ class TestTopstepTiers:
     def test_cap_never_scales_up(self) -> None:
         # A 1-contract log in a tier allowing 2: weight stays 1, never 2.
         firm = load_firm("topstep_50k")
-        log = day_trades([[simple(100.0)]] * 3, quantity=1)
+        log = day_trades([[simple(100.0)]] * 3, quantity=1, symbol="NQ")
         result = evaluate(log, firm, phase="funded")
         assert result.timeline.iloc[0]["day_pnl"] == pytest.approx(100.0)
 
@@ -80,6 +88,7 @@ class TestApexHalfUntilSafetyNet:
                 [simple(1000.0)],  # STILL full size (sticky)
             ],
             quantity=10,
+            symbol="NQ",
         )
         result = evaluate(log, firm, phase="funded")
         assert result.timeline.iloc[0]["day_pnl"] == pytest.approx(1000.0)
@@ -90,7 +99,7 @@ class TestApexHalfUntilSafetyNet:
     def test_challenge_phase_unaffected(self) -> None:
         # The scaling plan lives on the PA only; the eval runs full size.
         firm = load_firm("apex40_50k_eod")
-        log = day_trades([[simple(1000.0)]] * 2, quantity=10)
+        log = day_trades([[simple(1000.0)]] * 2, quantity=10, symbol="NQ")
         result = evaluate(log, firm, phase="challenge")
         assert result.timeline.iloc[0]["day_pnl"] == pytest.approx(1000.0)
 
@@ -128,7 +137,7 @@ class TestMonteCarloIntegration:
 
     def test_explicit_base_contracts_draws_no_assumption_warning(self) -> None:
         # An explicit --base-contracts is a user-supplied fact; the
-        # "assuming the log's max position IS the full allowance" text
+        # "assuming the log's peak concurrent exposure IS the full allowance" text
         # would misname the override as a log-derived guess.
         firm = load_firm("apex40_50k_eod")
         log = random_log(n_days=60, mean=40.0, std=300.0, seed=7)
@@ -182,7 +191,7 @@ class TestScaleTimesCapInteraction:
         # day PnL (already 2x in the profile) caps at 2/5 of the raw log
         # day: 2 * 500 * 0.2 = 200 = tier_allowed/base * raw.
         firm = load_firm("topstep_50k")
-        log = day_trades([[simple(500.0)]] * 3, quantity=5)
+        log = day_trades([[simple(500.0)]] * 3, quantity=5, symbol="NQ")
         capped = run_monte_carlo(
             log, firm, MCConfig(n_paths=10, seed=1, scale=2.0, funded_horizon_days=1)
         )
@@ -193,9 +202,48 @@ class TestScaleTimesCapInteraction:
         # scale 0.5 with a 5-contract log = 2.5 effective contracts: the
         # day-1 tier (2 allowed) caps weight at 2/2.5 = 0.8, NOT 2/5.
         firm = load_firm("topstep_50k")
-        log = day_trades([[simple(500.0)]] * 3, quantity=5)
+        log = day_trades([[simple(500.0)]] * 3, quantity=5, symbol="NQ")
         run = run_monte_carlo(
             log, firm, MCConfig(n_paths=10, seed=1, scale=0.5, funded_horizon_days=1)
         )
         # Raw day at scale 0.5 = 250; capped at 0.8 -> 200 (= tier cap in $).
         assert float(run.funded.final_balance[0]) == pytest.approx(200.0)
+
+
+class TestMicroMiniScalingUnits:
+    @staticmethod
+    def _log(*contracts: tuple[str, float, float]) -> TradeLog:
+        start = dt.datetime(2026, 1, 5, 9, tzinfo=dt.UTC)
+        return TradeLog(
+            trades=[
+                Trade(
+                    start,
+                    start + dt.timedelta(minutes=20),
+                    symbol,
+                    Side.LONG,
+                    quantity,
+                    pnl,
+                    mae=min(pnl, 0),
+                    mfe=max(pnl, 0),
+                )
+                for symbol, quantity, pnl in contracts
+            ],
+            source="scaling-unit-test",
+        )
+
+    def test_twenty_micros_equal_two_minis_and_are_not_capped(self) -> None:
+        firm = load_firm("topstep_50k")
+        log = self._log(("MES", 20, 1000.0))
+        result = evaluate(log, firm, phase="funded")
+        assert result.timeline.iloc[0]["day_pnl"] == pytest.approx(1000.0)
+
+    def test_twenty_one_micros_cap_at_twenty(self) -> None:
+        firm = load_firm("topstep_50k")
+        log = self._log(("MES", 21, 1050.0))
+        result = evaluate(log, firm, phase="funded")
+        assert result.timeline.iloc[0]["day_pnl"] == pytest.approx(1000.0)
+
+    def test_mixed_mini_and_micros_sum_in_mini_equivalents(self) -> None:
+        log = self._log(("ES", 1, 100.0), ("MES", 10, 100.0))
+        spec = ContractLimitSpec(max_contracts=2)
+        assert peak_contract_equivalents(log.trades, spec) == pytest.approx(2.0)

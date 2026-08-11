@@ -56,7 +56,8 @@ def register_report_commands(app: typer.Typer) -> None:
             _render_verdict(verdict)
         if html is not None:
             build_html_report(log, metrics, verdict, html, title="Strategy verdict")
-            console.print(f"HTML report written to {html}")
+            # Preserve stdout as one parseable JSON document in machine mode.
+            typer.echo(f"HTML report written to {html}", err=as_json)
 
     @app.command("report")
     def report_cmd(
@@ -112,7 +113,9 @@ def register_report_commands(app: typer.Typer) -> None:
 
             bars, _ = load_ohlcv(ohlcv)
         metrics = compute_metrics(
-            log, starting_equity=equity if equity is not None else firm.account_size
+            log,
+            starting_equity=equity if equity is not None else firm.account_size,
+            boundary=firm.day_boundary.to_boundary(),
         )
         mc = run_monte_carlo(log, firm, MCConfig(n_paths=paths, seed=seed, scale=scale))
         rc = (
@@ -141,6 +144,8 @@ def register_report_commands(app: typer.Typer) -> None:
             deflated=rc.deflated if rc else None,
             clustering=rc.clustering if rc else None,
             regime=rc.regime if rc else None,
+            boundary=firm.day_boundary.to_boundary(),
+            firm=firm,
         )
 
         _render_verdict(verdict)
@@ -160,7 +165,14 @@ def register_report_commands(app: typer.Typer) -> None:
             write_text(
                 json_out,
                 json.dumps(
-                    combined_json(metrics, verdict, mc, reality=rc, log=log),
+                    combined_json(
+                        metrics,
+                        verdict,
+                        mc,
+                        reality=rc,
+                        log=log,
+                        boundary=firm.day_boundary.to_boundary(),
+                    ),
                     indent=2,
                     default=str,
                 ),

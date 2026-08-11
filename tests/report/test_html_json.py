@@ -6,8 +6,10 @@ from quantlab.metrics.core import compute_metrics
 from quantlab.metrics.scorecard import compute_scorecard
 from quantlab.prop.montecarlo import MCConfig, run_monte_carlo
 from quantlab.prop.registry import load_firm
+from quantlab.report.charts import fig_daily_pnl_hist
 from quantlab.report.html import build_html_report
 from quantlab.report.jsonout import combined_json
+from quantlab.schema.trade import FTMO_DAY
 
 from ..conftest import random_log
 
@@ -33,6 +35,21 @@ class TestHtmlReport:
             "http://www.w3.org", ""
         )  # no external loads in head
 
+    def test_daily_chart_honors_firm_boundary(self) -> None:
+        import datetime as dt
+
+        from quantlab.schema.trade import Side, Trade, TradeLog
+
+        trades = []
+        for hour, pnl in ((22, 100.0), (23, -40.0)):
+            stamp = dt.datetime(2026, 3, 20, hour, 30, tzinfo=dt.UTC)
+            trades.append(Trade(stamp, stamp, "EURUSD", Side.LONG, 1, pnl))
+        log = TradeLog(trades)
+        assert len(log.daily_groups()) == 1
+        assert len(log.daily_groups(FTMO_DAY)) == 2
+        chart = fig_daily_pnl_hist(log, FTMO_DAY)
+        assert list(chart.data[0].x) == [100.0, -40.0]
+
     def test_verdict_only_report(self, tmp_path) -> None:
         log = random_log(n_days=40, seed=42)
         metrics = compute_metrics(log)
@@ -42,6 +59,7 @@ class TestHtmlReport:
         html = out.read_text()
         assert "Prop-firm simulation" not in html
         assert "The Verdict" in html
+        assert "every trade reports zero fees" in html
 
 
 class TestCombinedJson:
@@ -56,6 +74,6 @@ class TestCombinedJson:
         assert parsed["schema_version"] == 4
         assert set(parsed) == {"schema_version", "metrics", "verdict", "prop_simulation"}
         assert parsed["metrics"]["schema_version"] == 2  # same shape as `quant metrics --json`
-        assert "extras" not in parsed["metrics"]
+        assert "annualization_periods" in parsed["metrics"]["extras"]
         assert parsed["prop_simulation"]["economics"]["pass_prob"] >= 0.0
         assert parsed["verdict"]["overall"] in "ABCDF"

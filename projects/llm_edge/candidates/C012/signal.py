@@ -1,18 +1,7 @@
-"""C012: G2 rediscovery — one-month reversal (spec.md)."""
+"""C012: one-month reversal."""
 
-import pandas as pd
-from edgelab.grammar import build_terminals, evaluate
-
-EXPR = ("neg", "ret21")
-
-
-def compute_signal(fields: dict[str, pd.DataFrame]) -> pd.DataFrame:
-    terms = build_terminals(
-        fields["open"],
-        fields["high"],
-        fields["low"],
-        fields["close"],
-        fields["adjclose"],
-        fields["volume"],
-    )
-    return evaluate(EXPR, terms)
+SIGNAL_KIND = "plain_reversal"
+ORIGIN = "G2"
+HOLDOUT_END = "2030-01-01"
+RETURN_WINDOW = 21
+PERTURBATIONS = ("RETURN_WINDOW",)

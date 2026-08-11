@@ -1,8 +1,8 @@
 # Can an LLM Create a Genuinely Novel Trading Edge?
 
-**Final report.** The methodology was pre-registered before any data analysis existed
-(commit `1761f72`, the second commit on this branch, preceding every result in commit
-order). One audit caveat, disclosed rather than papered over: the branch was rebased during
+**Final report.** The methodology was pre-registered before any experiment data analysis
+(the experiment's pre-registration commit `1761f72`, preceding every experiment result in
+commit order). One audit caveat, disclosed rather than papered over: the branch was rebased during
 pull-request setup, so commit *timestamps* are rewritten and the audit rests on commit
 **order and content**, which the rebase preserved. Sections 7 and 9 were written last; the
 draft was then attacked by two reviewers with opposite mandates — one hunting overclaims,
@@ -140,20 +140,26 @@ generation trace (`candidates/C###/spec.md`).
   be memorized. Access was token-gated and logged; to prevent generation/evaluation
   contamination the G1 generation window was excluded from those candidates' holdout
   (deviation D1, committed before any post-2023 data was touched). The model then
-  articulated hypotheses from anomalous cells: a lag-7 reversal spike (IC −0.056, t≈−3.0),
+  articulated hypotheses from anomalous cells: what the original panel labeled a lag-7
+  reversal spike (IC −0.056, t≈−3.0),
   a gap×intraday "coherence" U-shape (+40.5/+29.0 bps corners), and a negative sector-ETF
-  lead-lag. (Disclosure found in review: C009's frozen spec claims 8/11 sectors negative;
-  the panel shows **7/11** — an arithmetic error inside the very generation trace the
-  mechanism showcases, left uncorrected in the spec as historical record.) → C007, C008,
-  C009, plus two slow variants in loop 2 (C013, C014).
+  lead-lag. (Disclosure found in review: the historical C009 trace claimed 8/11 sectors
+  negative while the panel shows **7/11**; the corrected engineering spec now records 7/11
+  and does not present that edit as original provenance.) Retrospective
+  chronology audit D6 found that the reversal cell was actually lag 8; on the same fixed
+  window, corrected lag 7 is −0.00542 (t=−0.28) and lag 8 is −0.05594 (t=−2.96). → C007,
+  C008, C009, plus two slow variants in loop 2 (C013, C014).
 - **G2 — FunSearch-style evolutionary search with data fitness.** A small signal grammar
   (8 OHLCV-derived terminals, 13 operators, depth ≤ 5) chosen once by the model; an
-  evolutionary search (checkpointed, deterministic seeds) then explored it with fitness =
-  net train-period Sharpe only. The data, not the model, selects survivors → P-derived at
-  the selection level. Three searches (1-day hold; 5-day hold; ETF universe) produced
+  evolutionary search (checkpointed, deterministic seeds) then explored it. The corrected
+  forward driver binds fitness to the registered train start, but retrospective audit D5
+  found that the original default equity and ETF searches used available pre-2005 history
+  through 2018. Those historical selections are not exact executions of the registered
+  2005–2018 experiment and were not rerun as though they were. The data, not the model,
+  selected survivors → P-derived at the selection level. The historical searches produced
   **1,932 ledgered fitness evaluations covering 856 distinct parameterizations**
-  (interrupted-run repeats were retained in the ledger, inflating the multiple-testing N
-  against ourselves). → C010–C012, C015, C016.
+  (interrupted-run repeats were retained, preserving the full attempt count; D5 explains why
+  the historical mixed-window ledger cannot calibrate DSR). → C010–C012, C015, C016.
 - **G3 — cross-domain structural transfer (the "thinking outside the box" test).** The
   model deliberately imported formalisms for which our searches found no prior finance
   application, before seeing any project data: streamflow-recession constants from
@@ -169,25 +175,41 @@ generation trace (`candidates/C###/spec.md`).
 
 ## 6. Empirical results
 
+**Hardened engineering replay.** The historical experiment contained implementation
+deviations discovered only after validation had been seen (D4–D7), so the current artifacts
+are not presented as a retroactive restoration of pre-registration. They are a fully
+recomputed engineering audit of the corrected candidates and gates; the original selection
+provenance remains qualified above.
+
 **Harness.** Yahoo daily OHLCV for 503 current S&P constituents + 71 ETFs; train
-2005–2018, validation 2019–2023, holdout 2024+ **locked in code and git history**
-(single-shot access requires a committed spec hash; `holdout_gate.py`); cross-sectional
-decile long-short with t+2 execution lag and 10 bps/side costs (5 bps ETFs); a
-no-lookahead test suite (a perfect-foresight signal cannot profit in this engine); and an
-**append-only trials ledger written inside the backtest engine** so every evaluation ever
-run — including every search evaluation and every dead candidate — counts against the
-Deflated Sharpe Ratio. The ledger stood at **N = 1,998 trials when the final DSR was
-computed** (2,000 after the two diagnostic runs it triggered). PSR/DSR implementations are
-unit-pinned to the worked examples in Bailey–López de Prado (verified symbol-by-symbol
-against the papers in `multiple_testing.md`). *Scope deviation found by our own final
-review and logged retrospectively (D4): the protocol pre-registered "~400 names with ≥15y
-history"; the harness used all 503 current constituents with no history filter — a
-direction-known error that worsens survivorship/recent-listing exposure, i.e. it biases
-toward false positives, and the experiment still produced none.*
+2005–2018, validation 2019–2023, and holdout 2024+ behind a fail-closed, single-use gate
+requiring clean committed signal/spec/engine/environment/manifest/universe/ledger seals.
+This provides strong process enforcement and auditability, not physical protection against a
+malicious repository owner. Candidate code is declaration-only and dispatches through a
+strict trusted signal registry. Every shipped handler has exhaustive prefix-causality tests
+and an independently written formula regression. The portfolio uses each declaration's
+cross-sectional tails, t+2 execution, terminal liquidation, and 10 bps costs (5 bps ETFs),
+with same-date price eligibility and missing held returns rejected. The final cache contains
+574/574 declared symbols: 573 through 2026-08-10 and EA through 2026-08-07. EA's stable Yahoo
+pre-2005 history rewrite is explicitly sealed and disclosed in D7.
+
+Every backtest attempt is appended inside the engine to a concurrency-safe ledger. The final
+diagnostic snapshot contains **N = 2,854 rows**, including failed, interrupted, repeated, and
+adversarial-audit attempts. D5 found that historical validation-labeled rows stored pooled
+train-plus-validation Sharpe values; corrected rows now bind the exact scoring window in the
+parameter identity and successful validation rows contain exactly 1,258 observations. The
+historical mixed dispersion cannot calibrate DSR, so diagnostics report DSR as unavailable
+and Gate 3 fails closed rather than using a misleading number. The standalone PSR/DSR
+formula implementation remains unit-pinned to Bailey–López de Prado. The current-constituent
+scope deviation (D4) worsens survivorship/recent-listing exposure, biasing toward false
+positives; the corrected replay still produced none.
 
 **Pre-registered gates.** Gate 1 (validation): cost-adjusted SR > 0.5, Newey–West \|t\| >
-2, predicted sign, CPCV median > 0. Gate 2 (robustness): positive in both validation
-halves, both volatility regimes, ±25% parameter perturbations, and at 25 bps costs. Gate 3
+2, predicted sign, combinatorial subperiod-stability median > 0 (descriptive, not an
+independent OOS estimate). Gate 2 (robustness): positive in both validation
+halves, both volatility regimes, executable ±25% perturbations of every declared strategy
+parameter, candidate-specific baseline/correlation requirements, and the registered
+0/5/10/25 bps cost sweep (pass keyed to 25 bps). Gate 3
 (one-shot holdout): SR > 0, DSR > 0.95 at full-ledger N, pooled \|t\| > 3 (≈ the
 Harvey–Liu–Zhu standard).
 
@@ -196,35 +218,37 @@ informative:
 
 | Group | Net validation SR | Diagnosis |
 |---|---|---|
-| Reversal family (C004 control + G3 conditionings) | −0.81 … −2.15 | gross-positive (+0.68 control) but ~1.6×/day turnover → costs kill; matches the documented post-publication death of short-term reversal in large caps |
-| G1 post-cutoff hypotheses (C007–C009) | −2.82 … −4.10 | **gross-negative** — the 115-day panel patterns were noise, exactly the pre-declared small-sample risk; C009's sign even flipped |
-| G2 search winners (C010–C012) | best +0.57 (C010, t=1.41) | the only Gate-2 survivor; lowest turnover (0.18×/day); fails Gate 1 significance. (Review disclosure: C010's ±25% perturbation sub-check was *vacuous* — its windows are hardcoded in the expression, so the gate passed on the remaining checks; a harness-design lesson. C015's later perturbation check was real.) |
+| Reversal family (C004 control + G3 conditionings) | −0.79 … −2.14 | gross-positive control behavior but high turnover and costs kill; matches the documented post-publication death of short-term reversal in large caps |
+| G1 post-cutoff hypotheses (C007–C009) | −2.82 … −3.96 | **gross-negative** — the 115-day panel patterns were noise, exactly the pre-declared small-sample risk; C009's sign even flipped |
+| G2 search winners (C010–C012) | best +0.56 (C010, t=1.41) | the only loop-1 Gate-2 survivor; lowest turnover; fails Gate 1 significance. Historical C010 perturbation coverage was vacuous (D5); the hardened replay perturbs its declared expression window and verifies that validation holdings change. |
 | Controls behaved as documented | C005 (deliberately inverted conditioning) near-worst | evidence the harness measures real structure |
 
 **Loop 2 (pre-declared pivot to low-turnover space, deviation D2).** New searches at 5-day
-holds (equities + ETFs) and two slow G3/G1 variants. Results: C013 +0.10, C014 −0.27,
-C016 +0.22 (all fail); **C015** — the 63-day standard deviation of the daily high-low
+holds (equities + ETFs) and two slow G3/G1 variants. Corrected replay results: C013 +0.10,
+C014 −0.28, C016 +0.13 (all fail); **C015** — the 63-day standard deviation of the daily high-low
 range, *independently rediscovered by the second search* (different seed, window, universe
-sample; same family as C010) — validation SR +0.66, passes all Gate-2 robustness checks
-including a real ±25% window perturbation, **fails Gate 1 at t = 1.63**.
+sample; same family as C010) — validation SR +0.65, passes all Gate-2 robustness checks,
+**fails Gate 1 at t = 1.62**.
 
 **Loop 3 (pre-declared as diagnostics-only, deviation D3; generation stopped to avoid
 selecting for flukes, risk R8).**
 
-- **Family-wide Reality Check** (pre-registered; White-style stationary bootstrap over all
-  18 gated candidates' validation returns): **p = 0.171**. No family-level discovery.
-- **Deflated Sharpe Ratio of the best candidate** against the full ledger (N = 1,998
-  trials, V[SR] as recorded): **DSR ≈ 0** (the expected-maximum benchmark after ~2,000
-  trials of that dispersion is far above C015's 0.66). Arithmetic:
-  `report/loop3_diagnostics.json`. Caveat: ledger V includes deliberately bad search
-  expressions, making this DSR conservative; the Reality Check, computed only on the 18
-  gated candidates' actual return paths, independently agrees.
+- **Family-wide Reality Check** (pre-registered maximum-Sharpe statistic; stationary
+  bootstrap over all 18 gated series' validation returns): **p = 0.4306**. No family-level
+  discovery.
+- **Deflated Sharpe Ratio of the best candidate:** **unavailable, fail-closed**. The final
+  append-only ledger has N=2,854, but historical validation-labeled rows mix pooled and
+  validation-only Sharpe horizons (D5), so the raw variance is not a calibrated trial
+  dispersion. `report/loop3_diagnostics.json` records the count, raw mixed variance, null
+  DSR, and reason. The Reality Check remains valid because it operates on the exact sealed
+  18-column validation return panel rather than ledger summaries.
 - **Survivorship autopsy of the range-vol family** (its spec *pre-declared* this
   suspicion): the "premium" is long high-volatility names beating the current-constituent
-  average (long leg vs EW market: +0.73 SR; short leg vs market: −0.61) — the classic
+  average (long leg vs EW market: +0.72 SR; short-member basket vs EW market: −0.68) — the classic
   survivorship signature, since today's constituent list contains only the volatile names
-  that survived. The same construct on the ETF universe (no deletion bias): SR 0.47,
-  t = 1.15 — weaker and insignificant. Its sign is also *opposite* the documented
+  that survived. The same construct on the current ETF list — less exposed to S&P membership
+  selection, but still subject to fund-closure survivorship — has SR 0.45, t = 1.10, weaker
+  and insignificant. Its sign is also *opposite* the documented
   low-volatility anomaly, which is what survivorship inflation of a current-constituent
   panel would manufacture.
 - **The holdout was never fired.** No candidate met the pre-registered Gate-1+2 bar, so the
@@ -243,19 +267,19 @@ kill; absence claims are always scoped to the documented searches.
 
 | Candidate(s) | Mechanism | Validation outcome | Novelty verdict | Provenance |
 |---|---|---|---|---|
-| C001/C013 — volume-recession conditioning | G3 | −1.20 / +0.10, fail | **T1** — Cooper (1999) trades the same volume-trend×reversal combination; Llorente et al. (2002) per-stock volume-return moderation; no finance application of the hydrology framing found in our searches | P-ambiguous |
-| C002 — TOM phase-response interaction | G3 | −1.10, fail | **T1**, but the **nearest approach to T2** in the project: the killing prior art is aggregate-index-level (Graziani 2024 JMP, end-of-month shock reversal with a mid-month placebo; Etula et al. 2020 for the flow mechanism), while the only direct cross-sectional test found (Heston–Korajczyk–Sadka 2010) shows *no* TOM dependence, and C002's exact cross-sectional formulation was not found in the documented scope. T1 stands via the near-neighbor clause | P-ambiguous |
-| C003 — MVT patch-abandonment timing | G3 | −1.17, fail | **T1** — the volume-dry-up entry is documented practitioner method (Wyckoff secondary test; VDU rules); academic anchors in Cooper (1999), Li-Yin-Zhao (2024) | P-ambiguous |
-| C007–C009 — post-cutoff panel hypotheses | G1 | −2.82 … −4.10, gross-negative | not attacked: falsified before novelty was binding; diagnosed as 115-day panel noise (C014, the one panel cell matching *documented* prior art, also failed) | **P-derived** (trace verifiable) |
-| C010/C015 — range-volatility family | G2 | +0.57/+0.66, Gate-2 pass, Gate-1 fail | **T1** — Baltussen et al. (2018) vol-of-vol (same construction via their unscaled variant, opposite sign); Blau-Whitby (2017) range sorts; WQ101 Alpha#40 contains a near-identical rank-of-rolling-std-of-price-extreme term at the same horizon; the long-high sign is a survivorship artifact (§6) | **P-derived** (selection by data) |
-| C011/C012/C016 — other G2 winners | G2 | ≤ +0.48, fail | C012 is a T0 rediscovery of monthly reversal — the search finding a real documented anomaly is a successful positive control of the pipeline; others not attacked (dead) | P-derived |
+| C001/C013 — volume-recession conditioning | G3 | −1.18 / +0.10, fail | **T1** — Cooper (1999) trades the same volume-trend×reversal combination; Llorente et al. (2002) per-stock volume-return moderation; no finance application of the hydrology framing found in our searches | P-ambiguous |
+| C002 — TOM phase-response interaction | G3 | −0.79, fail | **T1**, but the **nearest approach to T2** in the project: the killing prior art is aggregate-index-level (Graziani 2024 JMP, end-of-month shock reversal with a mid-month placebo; Etula et al. 2020 for the flow mechanism), while the only direct cross-sectional test found (Heston–Korajczyk–Sadka 2010) shows *no* TOM dependence, and C002's exact cross-sectional formulation was not found in the documented scope. T1 stands via the near-neighbor clause | P-ambiguous |
+| C003 — MVT patch-abandonment timing | G3 | −0.82, fail | **T1** — the volume-dry-up entry is documented practitioner method (Wyckoff secondary test; VDU rules); academic anchors in Cooper (1999), Li-Yin-Zhao (2024) | P-ambiguous |
+| C007–C009 — post-cutoff panel hypotheses | G1 | −2.82 … −3.96, gross-negative | not attacked: falsified before novelty was binding; diagnosed as 115-day panel noise (C014, the one panel cell matching *documented* prior art, also failed) | **P-derived** (trace verifiable, with D6 chronology correction) |
+| C010/C015 — range-volatility family | G2 | +0.56/+0.65, Gate-2 pass, Gate-1 fail | **T1** — Baltussen et al. (2018) vol-of-vol (same construction via their unscaled variant, opposite sign); Blau-Whitby (2017) range sorts; WQ101 Alpha#40 contains a near-identical rank-of-rolling-std-of-price-extreme term at the same horizon; the long-high sign is consistent with the pre-declared survivorship-bias mechanism (§6), not causal proof of it | **P-derived** (historical selection by data; D5-qualified window) |
+| C011/C012/C016 — other G2 winners | G2 | max +0.13, fail | C012 is a T0 rediscovery of monthly reversal — the search finding a documented anomaly is a positive control of the proposal mechanism; others not attacked (dead) | P-derived (D5-qualified window) |
 | C004–C006, B002/B003 — controls/baselines | G4 | −0.6 … −2.2, fail | T0/T1 by construction | P-known |
 
-**Headline evidence-table result: nothing above T1.** Zero of the 18 gated candidates
+**Headline evidence-table result: nothing above T1.** Zero of the 18 gated family series
 reached T2; zero passed Gate 1; the holdout was never fired. The single most instructive
 pattern: every "creative" hypothesis with any structure landed within one step of
 documented territory, and the one family with empirical life was a documented
-characteristic wearing a survivorship-flipped sign.
+characteristic whose sign and leg decomposition were consistent with survivorship distortion.
 
 ## 8. Limitations — and what each does to the conclusion
 
@@ -270,8 +294,11 @@ characteristic wearing a survivorship-flipped sign.
   post-cutoff; it powered hypothesis *generation*, not validation. *Effect: the P-derived
   provenance mechanism was demonstrated, but its hypotheses were noise — 115 days cannot
   reliably seed daily-frequency cross-sectional hypotheses.*
-- **R4 — Ledger completeness.** Enforced by writing inside the engine; interrupted runs'
-  rows were retained (overcounting N, in the DSR's disfavor — the conservative direction).
+- **R4 — Ledger completeness and comparability.** Completeness is enforced by writing inside
+  the engine, and interrupted/repeated attempts remain append-only. However, D5 found that
+  historical validation-labeled rows stored pooled-horizon Sharpe values. *Effect: N remains
+  an honest attempt count, but the mixed variance is not a calibrated DSR input; DSR is null
+  and Gate 3 fails closed. The family Reality Check is unaffected.*
 - **R5 — Narrative-memory contamination.** The model has memorized 2024–2025 market
   narratives; only the 2026 window is provably clean, and G1 traces cite specific
   statistics rather than narratives. *Effect: provenance grades for non-G1 mechanisms cap
@@ -292,10 +319,11 @@ characteristic wearing a survivorship-flipped sign.
 ## 9. Conclusion
 
 **Direct answer to the question posed.** In this experiment, the LLM system did **not**
-create a genuinely novel trading edge. The evidence table is one-sided: 18 candidates over
-two generation loops, ~2,000 ledgered trials, zero pre-registered gate passes; a
-family-wide Reality Check p of 0.171; a best-candidate Deflated Sharpe Ratio of ≈ 0; the
-best family revealed as a documented characteristic (T1) whose apparent premium matches the
+create a genuinely novel trading edge. The evidence table is one-sided: 18 gated series over
+two generation loops, 2,854 append-only ledger rows, zero Gate-1 passes; a family-wide
+Reality Check p of 0.4306; a best-candidate DSR that is unavailable and fail-closed because
+historical ledger horizons were mixed; the best family revealed as a documented
+characteristic (T1) whose apparent premium is consistent with
 survivorship signature of the data; and a holdout that was never earned. Best (Tier,
 Provenance) pair achieved: **T1 / P-derived** — data-driven provenance was demonstrated,
 novelty was not.
@@ -338,8 +366,8 @@ the experiment sharpens where the boundary is:
    provably-clean windows, live forward validation — would find something real (R1); daily
    bars on current S&P constituents are close to the worst possible arena for new
    discovery. Nor is the negative specific to LLMs: there is no human control arm, so
-   "LLM vs human" is not what this measures. What it establishes, with pre-registered
-   rigor, is the *shape* of the limitation: idea generation was never the binding
+   "LLM vs human" is not what this measures. What the corrected, audited replay establishes
+   is the *shape* of the limitation: idea generation was never the binding
    constraint; the pre-registered statistical bar was.
 5. **The honest positive findings — stated as findings, not consolation.**
    - *The pipeline detects real structure*: controls reproduced documented behavior; the
@@ -351,21 +379,25 @@ the experiment sharpens where the boundary is:
      that later killed it, and the system executed that kill on its only live candidate —
      a concrete counterexample to the LLM self-evaluation failures the creativity
      literature documents, in one instance, under this protocol.
-   - *Every auditable p-hacking channel ended empty*: the holdout gate was never invoked;
-     no sign was flipped after specification (C009's flip was reported as a failure, not
-     rescued); the ledger overcounts against the result; deviations were pre-declared —
-     with one exception (D4, the universe-scope error), which was caught by the project's
-     own adversarial review and cuts against the direction of the headline finding.
-   - *A full pre-registered research program — literature base, harness, 28 tests,
+   - *The strongest prospective selection controls remained intact*: the holdout gate was
+     never invoked; no sign was flipped after specification (C009's flip was reported as a failure, not
+     rescued); every attempted evaluation remains ledgered; and retrospective deviations
+     D4–D7 are disclosed rather than silently repaired. The universe-scope error (D4) cuts
+     against the direction of the headline finding, while other deviations qualify exact
+     historical provenance and disable DSR rather than being waved away.
+   - *A broad research program — pre-registered literature base and gates, then a
+     retrospectively corrected and hardened harness with a
+     212-test edge-lab suite plus repository-wide tests,
      generation, gates, adversarial review — was designed and executed end-to-end by the
      LLM system in roughly a day of wall-clock time* (exact hours not cleanly auditable
      post-rebase, which we disclose rather than estimate). Whatever the verdict on novel
-     *edges*, rigorous *process* is demonstrably within reach — and process is what the
-     execution-gap literature identifies as the human bottleneck.
+     *edges*, an auditable process is within reach; the retrospective defects also show that
+     rigor depends on sustained adversarial verification, not merely a pre-registration label.
 
 **One-sentence verdict:** *this experiment found that an LLM-with-tools system can generate
-hypotheses that are provably not memorized and superficially new, but — in the most-mined
-data arena in finance, under a pre-registered multiple-testing-corrected protocol — it
+hypotheses driven by provably unseen statistics and superficially new, but — in the most-mined
+data arena in finance, under pre-registered gates and a valid family-level Reality Check
+(with ledger-based DSR unavailable after D5) — it
 created no validated novel edge; the failure was never an inability to engage with
 never-seen information, and whether it reflects markets' brutal verification economics, a
 generation ceiling at recombination, or both, is exactly the boundary this experiment

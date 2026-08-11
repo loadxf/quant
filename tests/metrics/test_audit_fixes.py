@@ -137,13 +137,15 @@ class TestPostReviewRegressions:
         m = compute_metrics(_log_on_dates(days, pnl=-100.1), starting_equity=50_000)
         assert m.sharpe == float("-inf")
 
-    def test_partitions_beyond_sampler_range_clean_error(self) -> None:
-        """--partitions 68 used to raise a raw OverflowError (P5)."""
+    def test_partitions_beyond_enumeration_sampled_cleanly(self) -> None:
+        """--partitions 68 used to raise a raw OverflowError (P5); the
+        arbitrary-precision Floyd sampler now handles any even S."""
         import numpy as np
 
-        from quantlab.errors import QuantLabError
-        from quantlab.metrics.pbo import compute_pbo
+        from quantlab.metrics.pbo import MAX_COMBOS, compute_pbo
 
         m = np.random.default_rng(0).normal(size=(140, 3))
-        with pytest.raises(QuantLabError, match="66 or fewer"):
-            compute_pbo(m, partitions=68)
+        result = compute_pbo(m, partitions=68)
+        assert result.combos_evaluated == MAX_COMBOS
+        assert result.combos_total == pytest.approx(2.8453e19, rel=1e-3)
+        assert any("deterministic sample" in w for w in result.warnings)

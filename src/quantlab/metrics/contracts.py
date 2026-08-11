@@ -13,6 +13,7 @@ Fees change quarterly — users can override via --commission.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 
 
@@ -31,14 +32,13 @@ CONTRACTS: dict[str, ContractSpec] = {
     "NQ": ContractSpec("NQ", 0.25, 5.00, 3.00),
 }
 
-# Longest roots first so MESH26/MES1! never prefix-match ES.
-_ROOTS_BY_LENGTH = sorted(CONTRACTS, key=len, reverse=True)
+_FUTURES_SYMBOL = re.compile(r"^(MES|MNQ|ES|NQ)(?:[FGHJKMNQUVXZ]\d{1,4}|[1-9]\d*!|=F)?$")
 
 
 def resolve_contract(symbol: str) -> ContractSpec | None:
     """Match a trade symbol (MNQ, MNQH26, MES1!, /ES) to a known contract."""
+    if not isinstance(symbol, str):
+        return None
     cleaned = symbol.strip().upper().lstrip("/@")
-    for root in _ROOTS_BY_LENGTH:
-        if cleaned.startswith(root):
-            return CONTRACTS[root]
-    return None
+    match = _FUTURES_SYMBOL.fullmatch(cleaned)
+    return CONTRACTS[match.group(1)] if match else None

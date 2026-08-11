@@ -21,7 +21,9 @@ from __future__ import annotations
 import dataclasses
 import itertools
 import math
+import random
 from dataclasses import dataclass, field
+from numbers import Integral
 
 import numpy as np
 
@@ -29,6 +31,33 @@ from quantlab.errors import QuantLabError
 
 DEFAULT_PARTITIONS = 16  # the paper's S; C(16,8) = 12,870 splits
 MAX_COMBOS = 12_870  # evaluate all splits up to S=16; sample beyond
+
+
+def _unrank_combination(n: int, k: int, rank: int) -> tuple[int, ...]:
+    """Lexicographic combination at `rank`, without enumerating prior rows."""
+    result: list[int] = []
+    candidate = 0
+    for position in range(k):
+        remaining = k - position - 1
+        while candidate < n:
+            count = math.comb(n - candidate - 1, remaining)
+            if rank < count:
+                result.append(candidate)
+                candidate += 1
+                break
+            rank -= count
+            candidate += 1
+    return tuple(result)
+
+
+def _sample_ranks(total: int, count: int, seed: int) -> list[int]:
+    """Floyd sampling uses O(count) memory even when `total` is enormous."""
+    rng = random.Random(seed)
+    selected: set[int] = set()
+    for upper in range(total - count, total):
+        pick = rng.randrange(upper + 1)
+        selected.add(upper if pick in selected else pick)
+    return sorted(selected)
 
 
 @dataclass
@@ -50,23 +79,6 @@ class PboResult:
         return dataclasses.asdict(self)
 
 
-def _unrank_combination(rank: int, n: int, k: int) -> tuple[int, ...]:
-    """The rank-th k-subset of range(n) in lexicographic order — the same
-    order itertools.combinations enumerates (combinatorial number system)."""
-    combo = []
-    x = 0
-    for slot in range(k):
-        while True:
-            with_x = math.comb(n - x - 1, k - slot - 1)
-            if rank < with_x:
-                combo.append(x)
-                x += 1
-                break
-            rank -= with_x
-            x += 1
-    return tuple(combo)
-
-
 def _sharpe(sums: np.ndarray, sumsq: np.ndarray, n: int) -> np.ndarray:
     """Per-day Sharpe from pooled sums/sums-of-squares; degenerate
     (zero-variance) variants rank by sign of the mean at +/-inf."""
@@ -82,6 +94,9 @@ def compute_pbo(
     matrix: np.ndarray, partitions: int = DEFAULT_PARTITIONS, seed: int = 0
 ) -> PboResult:
     """CSCV over a (days x variants) daily-PnL matrix."""
+    if not isinstance(partitions, Integral) or isinstance(partitions, bool):
+        raise QuantLabError(f"--partitions must be an even integer >= 4 (got {partitions})")
+    partitions = int(partitions)
     m = np.asarray(matrix, dtype=float)
     if m.ndim != 2 or m.shape[1] < 2:
         raise QuantLabError(
@@ -89,6 +104,14 @@ def compute_pbo(
         )
     if not np.isfinite(m).all():
         raise QuantLabError("PBO matrix contains NaN/inf — variants must be aligned, no gaps")
+    if m.shape[0] < 2:
+        raise QuantLabError("PBO matrix needs at least two daily observations")
+    if not np.any(m.std(axis=0, ddof=1) > 0):
+        raise QuantLabError("PBO is unavailable: every variant has zero return variance")
+    if np.unique(m, axis=1).shape[1] < 2:
+        raise QuantLabError(
+            "PBO is unavailable: the matrix has fewer than two distinct variant paths"
+        )
     if partitions < 4 or partitions % 2:
         raise QuantLabError(f"--partitions must be an even number >= 4 (got {partitions})")
     t, n_variants = m.shape
@@ -114,25 +137,19 @@ def compute_pbo(
     block_sumsq = (blocks**2).sum(axis=1)
 
     combos_total = math.comb(s, s // 2)
-    if combos_total > 2**63 - 1:
-        # rng.choice cannot draw from a population beyond int64.
-        raise QuantLabError(
-            f"--partitions {s} yields {combos_total:.2e} splits — beyond the "
-            "split sampler's range; use 66 or fewer partitions"
-        )
-    if combos_total <= MAX_COMBOS:
-        combos = list(itertools.combinations(range(s), s // 2))
-    else:
+    if combos_total > MAX_COMBOS:
         # Sample WITHOUT materializing all C(S, S/2) tuples (--partitions 30
-        # would need ~29 GB): draw lexicographic ranks, then unrank each.
-        # Identical split sets to enumerate-then-index for any seed, since
-        # itertools.combinations is lexicographic.
-        rng = np.random.default_rng(seed)
-        picks = rng.choice(combos_total, size=MAX_COMBOS, replace=False)
-        combos = [_unrank_combination(int(r), s, s // 2) for r in sorted(picks)]
+        # would need ~29 GB of them): draw lexicographic ranks (Floyd
+        # sampling — works for arbitrarily large totals), unrank each.
+        combos = [
+            _unrank_combination(s, s // 2, rank)
+            for rank in _sample_ranks(combos_total, MAX_COMBOS, seed)
+        ]
         warnings.append(
             f"evaluated {MAX_COMBOS} of {combos_total} splits (deterministic sample, seed {seed})"
         )
+    else:
+        combos = list(itertools.combinations(range(s), s // 2))
     mask = np.zeros((len(combos), s), dtype=bool)
     for row, combo in enumerate(combos):
         mask[row, list(combo)] = True

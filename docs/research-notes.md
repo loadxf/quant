@@ -271,7 +271,8 @@ phase's DECISION levers hardcoded or absent. All four gaps built:
   until the EOD balance reaches the safety net (start + DD + $100), then
   a permanent unlock (proptradingvibes/traderssecondbrain 4.0 guides,
   verified 2026-07-20). Contracts map to weights via the log's max
-  position (--base-contracts to override) — same-fill linear scaling.
+  peak concurrent gross exposure in mini-equivalents (`--base-contracts`
+  uses the same unit) — same-fill linear scaling.
 - **Payout policies** (`quant prop policies`): withdraw-max-ASAP was the
   engine's hardcoded behavior; it is now one policy among several
   (keep_buffer leaves $B working above the payout floor; extraction cuts

@@ -86,6 +86,8 @@ def compute_reality_check(
         raise QuantLabError(f"--trials must be >= 1 (got {trials})")
     if decay_window < 2:
         raise QuantLabError(f"--window must be >= 2 (got {decay_window})")
+    if outer < 0 or (outer > 0 and inner_paths < 1):
+        raise QuantLabError("--outer must be >= 0 and --inner-paths >= 1 when enabled")
     pnls = np.array([t.pnl for t in log.trades], dtype=float)
     # Same scale as the caller's headline simulation, so the sweep's
     # baseline anchor and the report's headline never disagree.

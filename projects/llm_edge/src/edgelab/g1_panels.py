@@ -1,9 +1,9 @@
 """G1 mechanism, step 1: descriptive-statistics panels on the post-cutoff slice.
 
 These tables are the raw material for LLM hypothesis generation: the model
-reads the numbers (patterns it has provably never seen — the window postdates
+reads the numbers (patterns it has provably never seen — the fixed window postdates
 its training cutoff) and articulates mechanisms, which are then formalized as
-signals and validated on 2005-2023 data. With ~115 trading days the panels are
+signals and validated on 2005-2023 data. With 115 trading days the panels are
 hypothesis GENERATORS, not evidence; power comes later from 19 years of
 train/validation history.
 
@@ -14,14 +14,13 @@ stricter t+2 execution; the extra day of slippage is part of validation.)
 
 from __future__ import annotations
 
-import json
-
 import numpy as np
 import pandas as pd
 
 from . import REPO_ROOT
-from .data import load_g1_window
+from .data import FieldBundle, load_g1_panels
 from .grammar import build_terminals
+from .jsonutil import atomic_write_text, dumps
 
 SECTOR_ETFS = {
     "XLB": "Materials",
@@ -73,11 +72,20 @@ def _single_sort(cond: pd.DataFrame, fwd: pd.DataFrame, q: int = 5) -> pd.Series
     return pd.Series(means)
 
 
+def _lag_condition(ret1: pd.DataFrame, lag: int) -> pd.DataFrame:
+    """Return the close-t condition labeled lag 1, lag 2, ... ."""
+    if not isinstance(lag, int) or isinstance(lag, bool) or lag < 1:
+        raise ValueError("lag must be a positive integer")
+    # At close t, ret1[t] is the most recent completed return and therefore
+    # lag 1. Each additional label moves the condition one session older.
+    return ret1.shift(lag - 1)
+
+
 def compute_panels() -> dict:
-    fields = {
-        f: load_g1_window(field=f) for f in ["open", "high", "low", "close", "adjclose", "volume"]
-    }
-    universe = json.loads((REPO_ROOT / "data" / "universe.json").read_text())
+    fields = load_g1_panels()
+    if not isinstance(fields, FieldBundle) or fields.universe is None:
+        raise RuntimeError("G1 panels are missing their bound universe snapshot")
+    universe = fields.universe
     eq_cols = [t for t in universe["equities"] if t in fields["adjclose"].columns]
     eq = {k: v[eq_cols] for k, v in fields.items()}
     terms = build_terminals(
@@ -90,12 +98,14 @@ def compute_panels() -> dict:
         "window": [str(ret1.index.min().date()), str(ret1.index.max().date())],
         "n_days": len(ret1),
         "n_names": int(ret1.shape[1]),
+        "input_identity": fields.input_identity,
+        "chronology": "corrected close-t lag labels; retrospective audit D6",
     }
 
     # 1. Cross-sectional lag-response profile (Spearman, mean across days)
     lag_profile = {}
     for lag in range(1, 11):
-        daily = ret1.shift(lag).corrwith(fwd1, axis=1, method="spearman")
+        daily = _lag_condition(ret1, lag).corrwith(fwd1, axis=1, method="spearman")
         lag_profile[f"lag_{lag}"] = {
             "mean_ic": round(float(daily.mean()), 5),
             "t_stat": round(float(daily.mean() / daily.std() * np.sqrt(daily.notna().sum())), 2),
@@ -122,7 +132,7 @@ def compute_panels() -> dict:
     for d, name in enumerate(["Mon", "Tue", "Wed", "Thu", "Fri"]):
         mask = ret1.index.dayofweek == d
         dow[name] = round(float(ret1[mask].stack().mean() * 1e4), 1)
-        daily_ic = ret1.shift(1).corrwith(fwd1, axis=1, method="spearman")
+        daily_ic = _lag_condition(ret1, 1).corrwith(fwd1, axis=1, method="spearman")
         rev_by_dow[name] = round(float(daily_ic[mask].mean()), 5)
     panels["day_of_week_ret_bps"] = dow
     panels["lag1_ic_by_dow"] = rev_by_dow
@@ -151,7 +161,7 @@ def compute_panels() -> dict:
         "autocorr_lag1": round(float(disp.autocorr(1)), 4),
         "autocorr_lag5": round(float(disp.autocorr(5)), 4),
     }
-    daily_ic = ret1.shift(1).corrwith(fwd1, axis=1, method="spearman")
+    daily_ic = _lag_condition(ret1, 1).corrwith(fwd1, axis=1, method="spearman")
     hi = disp > disp.median()
     panels["lag1_ic_by_dispersion"] = {
         "high_dispersion_days": round(float(daily_ic[hi].mean()), 5),
@@ -176,8 +186,8 @@ def main() -> None:
     panels = compute_panels()
     out = REPO_ROOT / "report" / "g1_panels.json"
     out.parent.mkdir(exist_ok=True)
-    out.write_text(json.dumps(panels, indent=1))
-    print(json.dumps(panels, indent=1))
+    atomic_write_text(out, dumps(panels, indent=1))
+    print(dumps(panels, indent=1))
 
 
 if __name__ == "__main__":

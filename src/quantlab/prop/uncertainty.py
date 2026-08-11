@@ -28,9 +28,11 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from quantlab.errors import QuantLabError
 from quantlab.prop.bootstrap import MIN_DAYS_FOR_BLOCKS, resolve_sampler
 from quantlab.prop.config import FirmConfig
 from quantlab.prop.dayprofile import DayProfile
+from quantlab.prop.exposure import firm_scaling_contract_limit, scaling_base_contracts
 from quantlab.prop.montecarlo import (
     MCConfig,
     _run_from_profile,
@@ -68,6 +70,8 @@ def source_uncertainty(
     """Distribution of (pass_prob, expected_net) across outer block-bootstrap
     resamples of the source days. `mc_cfg` carries the headline run's scale,
     horizons, sizing, and seed; its n_paths is replaced by `inner_paths`."""
+    if n_outer < 1 or inner_paths < 1:
+        raise QuantLabError("n_outer and inner_paths must both be >= 1")
     cfg = mc_cfg or MCConfig()
     boundary = firm.day_boundary.to_boundary()
     days = log.daily_groups(boundary)
@@ -108,7 +112,9 @@ def source_uncertainty(
             source_trades=len(log),
             warnings=[],
             base_contracts=(
-                cfg.base_contracts if cfg.base_contracts is not None else log.max_abs_quantity()
+                cfg.base_contracts
+                if cfg.base_contracts is not None
+                else scaling_base_contracts(log, firm_scaling_contract_limit(firm))
             ),
         )
         if b == 0:

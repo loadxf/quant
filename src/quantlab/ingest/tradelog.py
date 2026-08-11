@@ -84,9 +84,10 @@ def parse_money(value: object) -> float:
     values (NaN/'inf') raise so the row drops with a reason instead of
     corrupting every downstream statistic."""
     if isinstance(value, int | float):
-        if isinstance(value, float) and not math.isfinite(value):
-            raise ValueError(f"missing or non-finite money value ({value!r})")
-        return float(value)
+        number = float(value)
+        if not math.isfinite(number):
+            raise ValueError(f"money value must be finite (got {value!r})")
+        return number
     text = str(value).strip().replace("\u2212", "-")  # unicode minus
     text = _CURRENCY_RE.sub("", text)
     negative = text.startswith("(") and text.endswith(")")
@@ -96,7 +97,7 @@ def parse_money(value: object) -> float:
         raise ValueError(f"empty money value {value!r}")
     number = float(_resolve_separators(text))
     if not math.isfinite(number):
-        raise ValueError(f"non-finite money value {value!r}")
+        raise ValueError(f"money value must be finite (got {value!r})")
     return -abs(number) if negative else number
 
 
@@ -137,21 +138,29 @@ def _attach_tz(stamp: Any, tzinfo: ZoneInfo) -> dt.datetime:
         raise ValueError("unparseable timestamp")
     # floor("us"): python datetime is microsecond-precision — truncate
     # sub-us explicitly instead of warning per row.
-    py = pd.Timestamp(stamp).floor("us").to_pydatetime()
-    if py.tzinfo is None:
-        py = py.replace(tzinfo=tzinfo)
+    normalized = pd.Timestamp(stamp).floor("us")
+    if normalized.tzinfo is None:
+        try:
+            normalized = normalized.tz_localize(tzinfo, ambiguous="raise", nonexistent="raise")
+        except ValueError as exc:
+            raise ValueError(
+                f"ambiguous or nonexistent local timestamp {normalized} in {tzinfo.key}"
+            ) from exc
+    py = normalized.to_pydatetime()
     return py.astimezone(dt.UTC)
 
 
 def _combine_split_date_time(frame: pd.DataFrame, column: str) -> str:
     """Handle exports with separate Date and Time columns.
 
-    If the mapped timestamp column holds time-of-day only ('09:31:00'),
-    pandas would silently fill in TODAY's date for every trade. Look for a
-    companion date column and combine; fail loudly when there is none.
+    If any mapped timestamp cell holds time-of-day only ('09:31:00'), pandas
+    would silently fill in TODAY's date. Combine only those rows with a
+    companion date while leaving already-complete timestamps unchanged;
+    fail loudly when a time-only row has no companion date column.
     """
-    sample = frame[column].dropna().astype(str).head(20)
-    if sample.empty or not all(_TIME_ONLY_RE.match(v.strip()) for v in sample):
+    values = frame[column].astype(str).str.strip()
+    time_only = frame[column].notna() & values.str.match(_TIME_ONLY_RE)
+    if not time_only.any():
         return column
     normalized: dict[str, str] = {}
     for h in frame.columns:
@@ -166,14 +175,13 @@ def _combine_split_date_time(frame: pd.DataFrame, column: str) -> str:
         date_col = normalized.get(synonym)
         if date_col is not None and date_col != column:
             combined = f"__combined_{column}"
-            frame[combined] = (
-                frame[date_col].astype(str).str.strip()
-                + " "
-                + frame[column].astype(str).str.strip()
+            frame[combined] = frame[column].copy()
+            frame.loc[time_only, combined] = (
+                frame.loc[time_only, date_col].astype(str).str.strip() + " " + values.loc[time_only]
             )
             return combined
     raise MappingError(
-        f"Column {column!r} contains time-of-day values only and no companion "
+        f"Column {column!r} contains time-of-day values and no companion "
         "date column was found — pandas would assign today's date to every "
         "trade. Provide a combined datetime column or a Date column."
     )
@@ -196,14 +204,11 @@ def _parse_time_column(frame: pd.DataFrame, column: str, mapping: ColumnMapping)
     try:
         parsed = _to_ns(pd.to_datetime(frame[combined], format=fmt, errors="coerce"))
     except (ValueError, TypeError):
-        # pandas 3 raises "Mixed timezones detected" even with
-        # errors="coerce" when rows carry different UTC offsets (any
-        # DST-spanning ISO export). The offsets are explicit, so parsing
-        # straight to UTC is lossless; scalar parsing is the last resort.
-        try:
-            parsed = _to_ns(pd.to_datetime(frame[combined], format=fmt, errors="coerce", utc=True))
-        except (ValueError, TypeError):
-            parsed = frame[combined].map(lambda v: _scalar_stamp(v, fmt))
+        # pandas 3 rejects a valid vector containing different explicit UTC
+        # offsets (for example New York summer and winter timestamps).
+        # Scalar parsing keeps naive rows naive, so an explicit mapping tz
+        # still localizes them (a vectorized utc=True would mislabel them).
+        parsed = frame[combined].map(lambda value: _scalar_stamp(value, fmt))
     # Rescue rounds stay VECTORIZED: each pass re-infers a format from the
     # remaining stragglers' first row, so a two-format file costs two array
     # passes — not one scalar parse per row, which would silently reintroduce
@@ -291,8 +296,8 @@ def load_trade_log(
         frame = pd.read_csv(path, dtype=str, skipinitialspace=True)
     except pd.errors.EmptyDataError:
         raise MappingError(f"{path}: file is empty") from None
-    except pd.errors.ParserError as exc:
-        raise MappingError(f"{path}: not a readable CSV ({exc})") from None
+    except (OSError, UnicodeError, pd.errors.ParserError) as exc:
+        raise MappingError(f"Could not read trade-log CSV {path}: {exc}") from exc
     frame.columns = [str(c).strip() for c in frame.columns]
     headers = list(frame.columns)
 
@@ -308,8 +313,8 @@ def load_trade_log(
     assert mapping.exit_time is not None and mapping.pnl is not None  # validate_against ran
     try:
         tzinfo = ZoneInfo(mapping.tz or "UTC")
-    except (KeyError, ValueError, ZoneInfoNotFoundError) as exc:
-        raise MappingError(f"Unknown timezone {mapping.tz!r} in mapping: {exc}") from None
+    except (KeyError, TypeError, ValueError, ZoneInfoNotFoundError) as exc:
+        raise MappingError(f"Unknown mapping timezone {mapping.tz!r}") from exc
     exit_stamps = _parse_time_column(frame, mapping.exit_time, mapping)
     entry_stamps = (
         _parse_time_column(frame, mapping.entry_time, mapping) if mapping.entry_time else None

@@ -1,6 +1,10 @@
 from __future__ import annotations
 
+import numpy as np
+import pytest
+
 from quantlab.metrics.core import compute_metrics
+from quantlab.metrics.deflate import compute_deflated
 from quantlab.metrics.scorecard import compute_scorecard
 
 from ..conftest import random_log, trades_from_daily
@@ -36,6 +40,12 @@ class TestPillars:
         assert set(payload) == {"overall", "points", "capped_by_sample", "pillars", "flags"}
         assert set(payload["pillars"]) == {"edge", "robustness", "risk", "sample"}
         assert len(payload["flags"]) == 10  # M10 adds regime_dependent_edge
+
+    def test_supplied_deflated_stats_must_match_declared_trials(self) -> None:
+        log = random_log(n_days=30, seed=25)
+        stats = compute_deflated(np.array([trade.pnl for trade in log]), n_trials=2)
+        with pytest.raises(ValueError, match="use 2 trials"):
+            compute_scorecard(log, trials=3, deflated=stats)
 
 
 class TestRiskPillar:

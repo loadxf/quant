@@ -8,10 +8,12 @@ with UTC ISO-8601 timestamps, strictly increasing.
 from __future__ import annotations
 
 import re
+import secrets
 from dataclasses import dataclass, field
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
+import numpy as np
 import pandas as pd
 
 from quantlab.errors import MappingError
@@ -125,13 +127,42 @@ def _combine_split_date_time(frame: pd.DataFrame, columns: dict[str, str]) -> st
     return None
 
 
+def _normalize_stamps(values: pd.Series, tzinfo: ZoneInfo) -> pd.Series:
+    """Parse naive local times and explicit-offset instants without mixing them."""
+    try:
+        stamps = pd.to_datetime(values, errors="coerce")
+    except (TypeError, ValueError):
+        # pandas 3 rejects a vector containing valid summer/winter offsets.
+        # The rare heterogeneous batch is parsed scalar-wise, then unified.
+        stamps = values.map(lambda value: pd.to_datetime(value, errors="coerce"))
+
+    if isinstance(stamps.dtype, pd.DatetimeTZDtype):
+        return stamps.dt.tz_convert("UTC")
+    if isinstance(stamps.dtype, np.dtype) and stamps.dtype.kind == "M":
+        return stamps.dt.tz_localize(tzinfo, nonexistent="NaT", ambiguous="NaT").dt.tz_convert(
+            "UTC"
+        )
+
+    def normalize(stamp):
+        if pd.isna(stamp):
+            return pd.NaT
+        parsed = pd.Timestamp(stamp)
+        if parsed.tzinfo is None:
+            localized = parsed.tz_localize(tzinfo, nonexistent="NaT", ambiguous="NaT")
+            return pd.NaT if pd.isna(localized) else pd.Timestamp(localized).tz_convert("UTC")
+        return parsed.tz_convert("UTC")
+
+    normalized = stamps.map(normalize)
+    return pd.to_datetime(normalized, errors="coerce", utc=True)
+
+
 def load_ohlcv(path: Path | str, tz: str = "UTC") -> tuple[pd.DataFrame, OhlcvReport]:
     try:
         frame = pd.read_csv(path)
     except pd.errors.EmptyDataError:
         raise MappingError(f"{path}: file is empty") from None
-    except pd.errors.ParserError as exc:
-        raise MappingError(f"{path}: not a readable CSV ({exc})") from None
+    except (OSError, UnicodeError, pd.errors.ParserError) as exc:
+        raise MappingError(f"Could not read OHLCV CSV {path}: {exc}") from exc
     frame.columns = [str(c).strip() for c in frame.columns]
     columns = _detect_columns(list(frame.columns))
     # Compact YYYYMMDD integer dates would otherwise parse as epoch
@@ -148,47 +179,10 @@ def load_ohlcv(path: Path | str, tz: str = "UTC") -> tuple[pd.DataFrame, OhlcvRe
 
     try:
         tzinfo = ZoneInfo(tz)
-    except (KeyError, ValueError, ZoneInfoNotFoundError) as exc:
-        raise MappingError(f"Unknown timezone {tz!r}: {exc}") from None
+    except (ZoneInfoNotFoundError, TypeError) as exc:
+        raise MappingError(f"Unknown OHLCV timezone {tz!r}") from exc
     out = pd.DataFrame()
-    try:
-        stamps = pd.to_datetime(frame[columns["datetime"]], errors="coerce")
-    except (ValueError, TypeError):
-        # pandas 3: "Mixed timezones detected" raises even with
-        # errors="coerce" for DST-spanning ISO-offset exports; the offsets
-        # are explicit so parsing straight to UTC is lossless.
-        stamps = pd.to_datetime(frame[columns["datetime"]], errors="coerce", utc=True)
-    valid = stamps.dropna()
-    if valid.is_monotonic_decreasing and not valid.is_monotonic_increasing:
-        # Newest-first export (common broker format): DST inference below
-        # needs chronological order — with reversed input it does NOT fail,
-        # it silently assigns the fall-back hour's two passes swapped UTC
-        # offsets. Reverse while keeping the original index so drop-report
-        # row numbers still match the file.
-        frame = frame.iloc[::-1]
-        stamps = stamps.iloc[::-1]
-    if getattr(stamps.dt, "tz", None) is None:
-        # DST fall-back folds: bars in the repeated span are real data, and
-        # a blanket ambiguous=True would stamp both passes with the same
-        # UTC instant (the dedupe below silently deletes the second pass).
-        # Label every fold daylight time, then relabel the SECOND
-        # occurrence of each duplicated wall time as standard time — that
-        # pass is the replay, and taking the ambiguous=False localization
-        # (rather than adding a constant hour) yields the exact fold width
-        # for any zone (Lord Howe folds 30 minutes, Troll 2 hours). This
-        # is per-fold inference: lone fold stamps simply keep the DST
-        # label (bar preserved), where pandas' ambiguous="infer" raises
-        # for the whole column. Only the UTC instants are published, so
-        # the offset label itself is moot. Nonexistent spring-forward
-        # stamps shift forward instead of deleting an hour per transition.
-        localized = stamps.dt.tz_localize(tzinfo, nonexistent="shift_forward", ambiguous=True)
-        probe = stamps.dt.tz_localize(tzinfo, nonexistent="shift_forward", ambiguous="NaT")
-        second_pass = probe.isna() & stamps.notna() & stamps.duplicated(keep="first")
-        if second_pass.any():
-            standard = stamps.dt.tz_localize(tzinfo, nonexistent="shift_forward", ambiguous=False)
-            localized = localized.where(~second_pass, standard)
-        stamps = localized
-    out["datetime"] = stamps.dt.tz_convert("UTC")
+    out["datetime"] = _normalize_stamps(frame[columns["datetime"]], tzinfo)
     for name in ("open", "high", "low", "close"):
         out[name] = pd.to_numeric(frame[columns[name]], errors="coerce")
     out["volume"] = (
@@ -196,18 +190,38 @@ def load_ohlcv(path: Path | str, tz: str = "UTC") -> tuple[pd.DataFrame, OhlcvRe
     )
 
     bad_time = out["datetime"].isna()
-    bad_price = out[["open", "high", "low", "close"]].isna().any(axis=1)
+    price_values = out[["open", "high", "low", "close"]]
+    bad_price = (
+        price_values.isna().any(axis=1)
+        | price_values.isin([np.inf, -np.inf]).any(axis=1)  # NaN already via isna
+        | (price_values <= 0).any(axis=1)
+    )
+    bad_volume = out["volume"].isna() | ~np.isfinite(out["volume"]) | (out["volume"] < 0)
     bad_ohlc = (out["high"] < out[["open", "close"]].max(axis=1)) | (
         out["low"] > out[["open", "close"]].min(axis=1)
     )
     for index in out.index[bad_time]:
-        report.dropped.append((int(index), "unparseable timestamp"))
+        report.dropped.append(
+            (int(index), "unparseable, ambiguous, or nonexistent local timestamp")
+        )
     for index in out.index[~bad_time & bad_price]:
-        report.dropped.append((int(index), "non-numeric price"))
-    for index in out.index[~bad_time & ~bad_price & bad_ohlc]:
+        report.dropped.append((int(index), "price must be numeric, finite, and positive"))
+    for index in out.index[~bad_time & ~bad_price & bad_volume]:
+        report.dropped.append((int(index), "invalid volume (must be finite and non-negative)"))
+    for index in out.index[~bad_time & ~bad_price & ~bad_volume & bad_ohlc]:
         report.dropped.append((int(index), "inconsistent OHLC (high/low violate open/close)"))
 
-    out = out[~(bad_time | bad_price | bad_ohlc)].sort_values("datetime", kind="stable")
+    out = out[~(bad_time | bad_price | bad_volume | bad_ohlc)].sort_values(
+        "datetime", kind="stable"
+    )
+    duplicate_rows = out.duplicated(subset="datetime", keep=False)
+    value_columns = ["open", "high", "low", "close", "volume"]
+    for stamp, group in out.loc[duplicate_rows].groupby("datetime", sort=False):
+        if len(group[value_columns].drop_duplicates()) > 1:
+            raise MappingError(
+                f"Conflicting OHLCV bars in {path} at {stamp.isoformat()}; "
+                "duplicate timestamps must have identical values"
+            )
     before = len(out)
     out = out.drop_duplicates(subset="datetime", keep="first")
     report.duplicate_timestamps = before - len(out)
@@ -224,7 +238,15 @@ def load_ohlcv(path: Path | str, tz: str = "UTC") -> tuple[pd.DataFrame, OhlcvRe
 
 def write_normalized(frame: pd.DataFrame, out_path: Path | str) -> Path:
     out_path = Path(out_path)
-    export = frame.copy()
-    export["datetime"] = pd.DatetimeIndex(export["datetime"]).strftime("%Y-%m-%dT%H:%M:%SZ")
-    export.to_csv(prepared(out_path), index=False)
+    out_path = prepared(out_path)  # missing parent dirs must not fail the write
+    temporary = out_path.with_name(f".{out_path.name}.{secrets.token_hex(6)}.tmp")
+    try:
+        export = frame.copy()
+        export["datetime"] = pd.DatetimeIndex(export["datetime"]).strftime("%Y-%m-%dT%H:%M:%SZ")
+        export.to_csv(temporary, index=False)
+        temporary.replace(out_path)
+    except Exception as exc:
+        raise MappingError(f"Could not write normalized OHLCV {out_path}: {exc}") from exc
+    finally:
+        temporary.unlink(missing_ok=True)
     return out_path

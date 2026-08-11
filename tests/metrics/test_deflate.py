@@ -157,6 +157,11 @@ class TestContracts:
 
     def test_unknown_is_none(self) -> None:
         assert resolve_contract("CL") is None
+        assert resolve_contract("ESPR") is None
+        assert resolve_contract("NQXYZ") is None
+
+    def test_continuous_yahoo_symbol(self) -> None:
+        assert resolve_contract("NQ=F").root == "NQ"
 
 
 class TestChi2:

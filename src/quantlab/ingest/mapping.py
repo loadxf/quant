@@ -12,7 +12,7 @@ import re
 from pathlib import Path
 
 import yaml
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from quantlab.errors import MappingError
 
@@ -73,11 +73,11 @@ DEFAULT_SHORT_VALUES = ("short", "sell", "s", "sellshort", "sld", "sold", "-1")
 class SideMapping(BaseModel):
     # extra="forbid": a typo'd key must fail loudly, not silently change
     # parsing semantics (e.g. `long_vals:` being ignored).
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid", strict=True)
 
     column: str
-    long_values: tuple[str, ...] = DEFAULT_LONG_VALUES
-    short_values: tuple[str, ...] = DEFAULT_SHORT_VALUES
+    long_values: list[str] = Field(default_factory=lambda: list(DEFAULT_LONG_VALUES))
+    short_values: list[str] = Field(default_factory=lambda: list(DEFAULT_SHORT_VALUES))
 
 
 class ColumnMapping(BaseModel):
@@ -87,7 +87,7 @@ class ColumnMapping(BaseModel):
     sensible default (entry_time falls back to exit_time, quantity to 1, ...).
     """
 
-    model_config = {"extra": "forbid"}
+    model_config = ConfigDict(extra="forbid", strict=True)
 
     entry_time: str | None = None
     exit_time: str | None = None
@@ -111,7 +111,10 @@ class ColumnMapping(BaseModel):
 
     @classmethod
     def from_yaml(cls, path: Path | str) -> ColumnMapping:
-        raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+        try:
+            raw = yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, yaml.YAMLError) as exc:
+            raise MappingError(f"Could not read mapping file {path}: {exc}") from exc
         if not isinstance(raw, dict):
             raise MappingError(f"Mapping file {path} must contain a YAML mapping")
         if isinstance(raw.get("side"), str):

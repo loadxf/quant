@@ -75,11 +75,11 @@ funded: {name: funded}
 """,
             encoding="utf-8",
         )
-        with pytest.raises(ConfigError, match="positive"):
+        with pytest.raises(ConfigError, match="greater than 0"):
             load_firm(yaml_path)
 
     def test_profit_split_fraction_enforced(self) -> None:
-        with pytest.raises((ConfigError, ValueError), match="FRACTION"):
+        with pytest.raises((ConfigError, ValueError), match="less than or equal to 1"):
             FirmConfig.model_validate(
                 {
                     "name": "f",
@@ -103,14 +103,14 @@ funded: {name: funded}
             )
 
     def test_bad_timezone_rejected(self) -> None:
-        with pytest.raises((ConfigError, ValueError), match="IANA"):
+        with pytest.raises((ConfigError, ValueError), match="unknown timezone"):
             make_firm(
                 [{"type": "static_max_loss", "amount": 2000}],
                 day_boundary={"tz": "Not/AZone"},
             )
 
     def test_account_size_positive(self) -> None:
-        with pytest.raises((ConfigError, ValueError), match="positive"):
+        with pytest.raises((ConfigError, ValueError), match="greater than 0"):
             make_firm([{"type": "static_max_loss", "amount": 2000}], size=0)
 
 
@@ -168,7 +168,7 @@ class TestIidTradeProvenance:
         from quantlab.schema.trade import TradeLog
 
         firm = make_firm([{"type": "static_max_loss", "amount": 2000}])
-        with pytest.raises(QuantLabError, match="no trading days"):
+        with pytest.raises(QuantLabError, match="at least one source trade"):
             run_monte_carlo(
                 TradeLog(trades=[]), firm, MCConfig(n_paths=10, seed=1, bootstrap="iid_trade")
             )
@@ -224,8 +224,11 @@ class TestEquityCheckMultiRule:
         )
         curve = self._curve([50_000, 48_300])  # crosses both widths
         result = check_equity_curve(curve, firm)
-        assert len(result.daily_loss_hits) == 2  # both crossings recorded
-        assert result.first_breach is None  # locked out at 49,000 first
+        # The account flattens at 49,000: the fail floor below is phantom
+        # and never crossed, so only the lockout crossing is recorded.
+        assert len(result.daily_loss_hits) == 1
+        assert result.daily_loss_hits[0].rule == "daily_loss_limit[lockout]"
+        assert result.first_breach is None
 
     def test_fail_above_lockout_level_ends_the_phase(self) -> None:
         firm = make_firm(
@@ -250,25 +253,28 @@ class TestEquityCheckMultiRule:
         curve = self._curve([50_000, 47_400])  # crosses daily 49,000 and trailing 47,500
         result = check_equity_curve(curve, firm)
         assert result.first_breach is not None
-        assert result.first_breach.rule == "daily_loss_limit"
+        assert result.first_breach.rule == "daily_loss_limit[fail]"
         assert result.first_breach.threshold == pytest.approx(49_000)
 
-    def test_next_session_breach_after_lockout_caught_with_warning(self) -> None:
-        """locked_today must reset at rollover, and the post-lockout
-        approximation must be disclosed."""
+    def test_next_session_breach_after_lockout_rebase(self) -> None:
+        """The locked day closes AT the lockout level and the next session
+        rebases onto it; a deep-enough rebased drop still breaches."""
         firm = make_firm(
             [
-                {"type": "daily_loss_limit", "amount": 1000, "effect": "lockout"},
+                {"type": "daily_loss_limit", "amount": 2000, "effect": "lockout"},
                 {"type": "trailing_drawdown", "amount": 2500},
             ]
         )
-        # Session 1: lockout at 49,000 (phantom 47,000 below the trailing
-        # floor is ignored); session 2 (marks 24h later): real breach.
-        curve = self._curve([50_000, 48_800, 47_000, 47_200, 47_100])
+        # Session 1: lockout at 48,000 on the 47,000 mark. Session 2 rebases
+        # its first mark to 48,000 and re-arms the lockout at 46,000; the raw
+        # 1,600 drop lands the balance at 46,400 — through the 47,500
+        # trailing floor but above the day's lockout level, so the trailing
+        # breach is the first hit.
+        curve = self._curve([50_000, 48_800, 47_000, 47_200, 45_600])
         result = check_equity_curve(curve, firm)
         assert result.first_breach is not None
         assert result.first_breach.rule.startswith("trailing_drawdown")
-        assert any("locked-out" in w for w in result.warnings)
+        assert result.first_breach.threshold == pytest.approx(47_500)
 
 
 class TestFrontierSinglePoint:

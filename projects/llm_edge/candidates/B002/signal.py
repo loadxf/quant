@@ -1,18 +1,7 @@
-"""B002 BASELINE: ungated one-day reversal held 5 days (C002 comparison)."""
+"""B002 baseline: ungated one-day reversal held five days."""
 
-import pandas as pd
-from edgelab.grammar import build_terminals
-
+SIGNAL_KIND = "plain_reversal"
+ORIGIN = "baseline"
+RETURN_WINDOW = 1
 HOLD = 5
-
-
-def compute_signal(fields: dict[str, pd.DataFrame]) -> pd.DataFrame:
-    terms = build_terminals(
-        fields["open"],
-        fields["high"],
-        fields["low"],
-        fields["close"],
-        fields["adjclose"],
-        fields["volume"],
-    )
-    return -terms["ret1"]
+PERTURBATIONS = ("RETURN_WINDOW", "HOLD")

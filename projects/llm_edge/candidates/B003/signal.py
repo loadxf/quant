@@ -1,21 +1,18 @@
-"""B003 BASELINE: spike-entry episode reversal held 10 days (C003 comparison)."""
+"""B003 baseline: spike-entry five-day reversal held ten days."""
 
-import pandas as pd
-from edgelab.grammar import build_terminals
-
+SIGNAL_KIND = "spike_reversal"
+ORIGIN = "baseline"
+EPISODE_Z = 2.0
+RETURN_WINDOW = 5
+VOL_WINDOW = 63
 HOLD = 10
 MIN_NAMES = 4
 QUANTILE = 0.5
-
-
-def compute_signal(fields: dict[str, pd.DataFrame]) -> pd.DataFrame:
-    terms = build_terminals(
-        fields["open"],
-        fields["high"],
-        fields["low"],
-        fields["close"],
-        fields["adjclose"],
-        fields["volume"],
-    )
-    trigger = terms["volz"] > 2.0
-    return (-terms["ret5"]).where(trigger)
+PERTURBATIONS = (
+    "EPISODE_Z",
+    "RETURN_WINDOW",
+    "VOL_WINDOW",
+    "HOLD",
+    "MIN_NAMES",
+    "QUANTILE",
+)

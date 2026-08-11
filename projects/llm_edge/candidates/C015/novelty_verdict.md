@@ -1,11 +1,12 @@
 # Phase D novelty verdict — Family C010 + C015 (range-volatility / vol-of-range)
 
 **Scope of this verdict.** Covers the family `roll_std(rng, 63)` with `rng = (high-low)/close`
-(C015, 5-day hold) and `roll_mean(roll_std(rng,10), 63)` (C010, 1-day hold): cross-sectional
-decile long-short, LONG highest range-volatility, S&P 500 equities, 1-5 day holds.
+(C015, 5-day hold; C010, 1-day hold): cross-sectional decile long-short, LONG highest
+range-volatility, S&P 500 equities, 1-5 day holds.
 Adversarial prior-art attack performed 2026-07-20 per `research/methodology/novelty_scale.md`
 (frozen). This verdict is diagnostic only: the family already failed the empirical gates
-(val t < 2, DSR ~ 0, survivorship-suspect per the specs' own declared suspicion), so no tier
+(val t < 2; DSR unavailable after the mixed-window ledger defect in retrospective D5;
+survivorship-suspect per the specs' own declared suspicion), so no tier
 here promotes it.
 
 **Verdict: T1 — recombination / re-parameterization of documented ideas.** Provenance grade
@@ -89,7 +90,8 @@ lineage). The only aspect for which no exact match was found is the specific pac
 than a new hypothesis class, the positive sign itself has documented near-neighbors at exactly
 this horizon (Fu 2009; Khovansky-Zhylyevskyy 2013's daily-frequency positive premium; Nagel
 2012's liquidity-provision mechanism), and the family's own empirical record (val t < 2,
-DSR ~ 0, survivorship-suspect on a current-constituent universe) indicates the flipped sign is
+DSR unavailable under retrospective D5, survivorship-suspect on a current-constituent
+universe) indicates the flipped sign is
 an artifact, not an undocumented premium. This is T1: recombination/re-parameterization with
 obvious near-neighbors, not T2. No claim about nonexistence of further prior art is made;
 findings are limited to the documented search scope below.
