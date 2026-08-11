@@ -84,6 +84,10 @@ class EconomicsSummary:
     # (P,) single-attempt net per path — feeds the multi-account analysis;
     # deliberately NOT serialized (to_json_dict enumerates fields).
     net_per_path: np.ndarray | None = None
+    # (P,) net received per funded account (split, haircut, and per-payout
+    # processing applied) — the payout histogram plots THIS so the chart
+    # can never disagree with the payout_quantiles row. Not serialized.
+    received_per_path: np.ndarray | None = None
     # Path-exact linear pieces of expected_net (eval_fees + payout_value +
     # activation + overheads sum to it EXACTLY) — the EV waterfall's bars.
     ev_decomposition: dict[str, float] | None = None

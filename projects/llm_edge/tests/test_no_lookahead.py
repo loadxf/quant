@@ -96,3 +96,23 @@ def test_ledger_row_written(tmp_path, monkeypatch):
     assert len(ledger) == 1
     assert ledger.loc[0, "candidate_id"] == "test_ledger"
     assert ledger.loc[0, "n_obs"] > 0
+
+
+def test_exit_day_liquidation_cost_charged():
+    """A signal that goes flat mid-sample must pay the liquidation turnover:
+    the flat day carries held==0 but turnover>0 and must stay in the series."""
+    prices = make_prices(n_days=120)
+    rng = np.random.default_rng(11)
+    signal = pd.DataFrame(rng.normal(size=prices.shape), index=prices.index, columns=prices.columns)
+    signal.iloc[60:] = np.nan  # book liquidates when the signal disappears
+    result = run_backtest(signal, prices, "test_exit", "unit", cost_bps=25.0, ledger=False)
+    # The last live row is the liquidation day: flat book, nonzero turnover.
+    last = result.turnover.index[-1]
+    assert result.weights.loc[last].abs().sum() == 0.0
+    assert result.turnover.loc[last] > 0
+    assert result.returns_net.loc[last] == pytest.approx(
+        -result.turnover.loc[last] * 25.0 / 10_000.0
+    )
+    # Total costs include BOTH entry and exit turnover.
+    implied_costs = (result.returns_gross - result.returns_net).sum()
+    assert implied_costs == pytest.approx((result.turnover * 25.0 / 10_000.0).sum())

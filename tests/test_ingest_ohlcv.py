@@ -164,3 +164,133 @@ class TestNonHourFoldWidth:
             "15:15",
             "15:45",
         ]
+
+
+class TestSplitDateTimeColumns:
+    def test_date_plus_time_columns_combine(self, tmp_path):
+        """Split Date/Time exports must not collapse to one bar per day (F4)."""
+        csv = tmp_path / "bars.csv"
+        csv.write_text(
+            "Date,Time,Open,High,Low,Close,Volume\n"
+            "2024-01-05,09:30:00,100,101,99,100.5,1000\n"
+            "2024-01-05,09:31:00,100.5,102,100,101.5,900\n"
+            "2024-01-05,09:32:00,101.5,103,101,102.5,800\n",
+            encoding="utf-8",
+        )
+        frame, report = load_ohlcv(csv)
+        assert report.bars_kept == 3
+        assert report.duplicate_timestamps == 0
+        minutes = [ts.minute for ts in frame["datetime"]]
+        assert minutes == [30, 31, 32]
+
+    def test_time_only_without_date_refuses(self, tmp_path):
+        csv = tmp_path / "bars.csv"
+        csv.write_text(
+            "Time,Open,High,Low,Close\n09:30:00,1,2,0.5,1.5\n09:31:00,1.5,2,1,1.8\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(MappingError, match="time-of-day"):
+            load_ohlcv(csv)
+
+    def test_zero_byte_file_clean_error(self, tmp_path):
+        empty = tmp_path / "empty.csv"
+        empty.write_bytes(b"")
+        with pytest.raises(MappingError, match="empty"):
+            load_ohlcv(empty)
+
+    def test_bad_timezone_clean_error(self, tmp_path):
+        csv = tmp_path / "bars.csv"
+        csv.write_text(
+            "datetime,Open,High,Low,Close\n2024-01-05 09:30:00,1,2,0.5,1.5\n", encoding="utf-8"
+        )
+        with pytest.raises(MappingError, match="timezone"):
+            load_ohlcv(csv, tz="Not/AZone")
+
+    def test_mixed_utc_offsets_load(self, tmp_path):
+        csv = tmp_path / "bars.csv"
+        csv.write_text(
+            "datetime,Open,High,Low,Close\n"
+            "2024-01-05T10:30:00-05:00,1,2,0.5,1.5\n"
+            "2024-06-05T10:30:00-04:00,1.5,2,1,1.8\n",
+            encoding="utf-8",
+        )
+        _, report = load_ohlcv(csv)
+        assert report.bars_kept == 2
+
+
+class TestPostReviewRegressions:
+    def test_daily_file_with_empty_time_column_loads(self, tmp_path):
+        """A vestigial empty Time column must not poison every stamp (P2)."""
+        csv = tmp_path / "daily.csv"
+        csv.write_text(
+            "Date,Time,Open,High,Low,Close\n"
+            "2024-01-03,,100,101,99,100.5\n"
+            "2024-01-04,,100.5,102,100,101.5\n"
+            "2024-01-05,,101.5,103,101,102.5\n",
+            encoding="utf-8",
+        )
+        _frame, report = load_ohlcv(csv)
+        assert report.bars_kept == 3 and not report.dropped
+
+    def test_partial_time_column_keeps_dateonly_rows(self, tmp_path):
+        csv = tmp_path / "partial.csv"
+        csv.write_text(
+            "Date,Time,Open,High,Low,Close\n"
+            "2024-01-03,09:30:00,100,101,99,100.5\n"
+            "2024-01-03,09:31:00,100.5,102,100,101.5\n"
+            "2024-01-04,,101.5,103,101,102.5\n",
+            encoding="utf-8",
+        )
+        _frame, report = load_ohlcv(csv)
+        assert report.bars_kept == 3 and not report.dropped
+
+    def test_yyyymmdd_integer_dates(self, tmp_path):
+        """Compact int dates must not parse as epoch nanoseconds (P3)."""
+        csv = tmp_path / "compact.csv"
+        csv.write_text(
+            "Date,Time,Open,High,Low,Close\n"
+            "20240105,09:30:00,100,101,99,100.5\n"
+            "20240105,09:31:00,100.5,102,100,101.5\n"
+            "20240105,09:32:00,101.5,103,101,102.5\n",
+            encoding="utf-8",
+        )
+        frame, report = load_ohlcv(csv)
+        assert report.bars_kept == 3
+        assert report.duplicate_timestamps == 0
+        assert all(ts.year == 2024 for ts in frame["datetime"])
+
+    def test_bar_time_synonym_combines(self, tmp_path):
+        """'Bar Time' companions must be found by synonym, not exact 'time' (P10)."""
+        csv = tmp_path / "bartime.csv"
+        csv.write_text(
+            "Date,Bar Time,Open,High,Low,Close\n"
+            "2024-01-05,09:30:00,100,101,99,100.5\n"
+            "2024-01-05,09:31:00,100.5,102,100,101.5\n",
+            encoding="utf-8",
+        )
+        _frame, report = load_ohlcv(csv)
+        assert report.bars_kept == 2 and report.duplicate_timestamps == 0
+
+    def test_report_names_user_columns_not_scratch(self, tmp_path):
+        csv = tmp_path / "named.csv"
+        csv.write_text(
+            "Date,Time,Open,High,Low,Close\n2024-01-05,09:30:00,100,101,99,100.5\n",
+            encoding="utf-8",
+        )
+        _, report = load_ohlcv(csv)
+        assert "__combined" not in report.columns_used["datetime"]
+        assert report.columns_used["datetime"] == "Date + Time"
+
+
+    def test_partial_time_column_with_hhmm_times(self, tmp_path):
+        """Bare HH:MM times + injected midnights must share ONE format."""
+        csv = tmp_path / "hhmm.csv"
+        csv.write_text(
+            "Date,Time,Open,High,Low,Close\n"
+            "2024-01-03,09:30,100,101,99,100.5\n"
+            "2024-01-03,09:31,100.5,102,100,101.5\n"
+            "2024-01-04,,101.5,103,101,102.5\n",
+            encoding="utf-8",
+        )
+        _frame, report = load_ohlcv(csv)
+        assert report.bars_kept == 3 and not report.dropped

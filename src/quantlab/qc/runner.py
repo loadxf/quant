@@ -50,11 +50,28 @@ def preflight() -> None:
     credentials_from_env()  # raises CloudUnavailableError when unset
 
 
+# argv flags whose VALUES are secrets: never echo them into error
+# messages (which land in terminals, CI logs, and pasted GitHub issues).
+_SENSITIVE_FLAGS = frozenset({"--api-token"})
+
+
+def _redacted(args: list[str]) -> str:
+    shown = list(args)
+    for i, arg in enumerate(shown[:-1]):
+        if arg in _SENSITIVE_FLAGS:
+            shown[i + 1] = "***"
+    return " ".join(shown)
+
+
 def _run(args: list[str], timeout: int = 1800) -> subprocess.CompletedProcess[str]:
-    result = subprocess.run(args, capture_output=True, text=True, timeout=timeout, check=False)
+    try:
+        result = subprocess.run(args, capture_output=True, text=True, timeout=timeout, check=False)
+    except subprocess.TimeoutExpired:
+        # TimeoutExpired's own message embeds the full argv (token included).
+        raise QuantLabError(f"`{_redacted(args)}` timed out after {timeout}s") from None
     if result.returncode != 0:
         raise QuantLabError(
-            f"`{' '.join(args)}` failed ({result.returncode}):\n"
+            f"`{_redacted(args)}` failed ({result.returncode}):\n"
             f"{result.stderr.strip() or result.stdout.strip()}"
         )
     return result

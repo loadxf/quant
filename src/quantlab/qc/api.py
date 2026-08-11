@@ -63,25 +63,65 @@ class QCClient:
         basic = base64.b64encode(f"{self.user_id}:{hashed}".encode()).decode()
         return {"Authorization": f"Basic {basic}", "Timestamp": timestamp}
 
-    def _post(self, endpoint: str, data: dict | None = None, files: dict | None = None) -> dict:
-        response = self.session.post(
-            f"{self.base_url}/{endpoint.lstrip('/')}",
-            headers=self._headers(),
-            data=data,
-            files=files,
-            timeout=60,
+    def _post(
+        self,
+        endpoint: str,
+        data: dict | None = None,
+        files: dict | None = None,
+        retries: int = 2,
+    ) -> dict:
+        """POST with clean errors: transient 429/5xx and connection blips
+        retry briefly (uploads too — QC's object/set is idempotent per
+        key), then every failure surfaces as a QuantLabError the CLI
+        renders as one line, never a raw requests traceback."""
+        last_error = ""
+        for attempt in range(retries + 1):
+            try:
+                response = self.session.post(
+                    f"{self.base_url}/{endpoint.lstrip('/')}",
+                    headers=self._headers(),
+                    data=data,
+                    files=files,
+                    timeout=60,
+                )
+            except requests.RequestException as exc:
+                last_error = f"network error ({exc.__class__.__name__}: {exc})"
+                if attempt < retries:
+                    time.sleep(2.0 * (attempt + 1))
+                    continue
+                break
+            if response.status_code == 401:
+                raise CloudUnavailableError(
+                    f"QuantConnect rejected the credentials (401) — check {ENV_USER}/{ENV_TOKEN}."
+                )
+            if response.status_code == 429 or response.status_code >= 500:
+                last_error = f"HTTP {response.status_code}: {response.text[:200].strip()}"
+                if attempt < retries:
+                    time.sleep(2.0 * (attempt + 1))
+                    continue
+                break
+            if response.status_code >= 400:
+                raise QuantLabError(
+                    f"QuantConnect API error on {endpoint} "
+                    f"(HTTP {response.status_code}): {response.text[:300].strip()}"
+                )
+            try:
+                payload = response.json()
+            except ValueError:
+                # Maintenance/CDN pages return 200 with HTML bodies.
+                raise QuantLabError(
+                    f"QuantConnect returned a non-JSON response on {endpoint} "
+                    f"(HTTP {response.status_code}): {response.text[:200].strip()!r}"
+                ) from None
+            if not payload.get("success", False):
+                raise QuantLabError(
+                    f"QuantConnect API error on {endpoint}: {payload.get('errors', payload)}"
+                )
+            return payload
+        raise QuantLabError(
+            f"QuantConnect API unreachable on {endpoint} after {retries + 1} attempts — "
+            f"last: {last_error}"
         )
-        if response.status_code == 401:
-            raise CloudUnavailableError(
-                f"QuantConnect rejected the credentials (401) — check {ENV_USER}/{ENV_TOKEN}."
-            )
-        response.raise_for_status()
-        payload = response.json()
-        if not payload.get("success", False):
-            raise QuantLabError(
-                f"QuantConnect API error on {endpoint}: {payload.get('errors', payload)}"
-            )
-        return payload
 
     def read_backtest(self, project_id: int, backtest_id: str) -> dict[str, Any]:
         payload = self._post(

@@ -27,6 +27,7 @@ from . import (
     VALIDATION_START,
 )
 from .backtest import run_backtest
+from .costs import cost_rate
 from .cpcv import cpcv_sharpe_distribution
 from .data import load_panel
 from .stats import newey_west_tstat, sharpe_ratio
@@ -75,7 +76,7 @@ def evaluate_candidate(candidate_id: str, fields: dict[str, pd.DataFrame]) -> di
     hold = int(getattr(module, "HOLD", 1))
     quantile = float(getattr(module, "QUANTILE", 0.1))
     min_names = int(getattr(module, "MIN_NAMES", 20))
-    base_cost = 5.0 if getattr(module, "UNIVERSE", "equities") == "etfs" else 10.0
+    base_cost = cost_rate(getattr(module, "UNIVERSE", "equities"))
 
     signal = module.compute_signal(fields)
 
@@ -117,6 +118,19 @@ def evaluate_candidate(candidate_id: str, fields: dict[str, pd.DataFrame]) -> di
     # Gate 1
     cpcv = cpcv_sharpe_distribution(full.returns_net)
     results["cpcv"] = cpcv
+    if len(val_net) == 0:
+        # Degenerate candidate (all-NaN signal, empty quantiles, MIN_NAMES
+        # above the cross-section): record failing gates instead of
+        # crashing the whole batch on the mid-split below. The on-disk
+        # record is written exactly like the normal path — a stale PASS
+        # file from an earlier run must not survive a now-degenerate
+        # signal.
+        results["gate1"] = {"pass": False, "reason": "no live validation days"}
+        results["gate2"] = {"pass": False, "reason": "no live validation days"}
+        results["strategy_returns_net_train_val"] = None
+        out_path = CANDIDATES_DIR / candidate_id / "results_validation.json"
+        out_path.write_text(json.dumps(results, indent=1, default=str))
+        return results | {"_returns_net": val_net}
     g1 = {
         "val_sr_gt_0.5": bool(results["validation"]["sr_net"] > GATE1["min_val_sr"]),
         "abs_t_gt_2": bool(abs(results["validation"]["nw_t"]) > GATE1["min_abs_t"]),

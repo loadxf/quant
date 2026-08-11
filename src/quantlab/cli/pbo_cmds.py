@@ -36,17 +36,24 @@ def register_pbo_commands(app: typer.Typer) -> None:
         in-sample winner is a coin flip out-of-sample; near 0 means the
         winner genuinely dominates. The measured complement to --trials.
         """
-        matrix, _names = load_variant_matrix(variants)
+        matrix, _names, notes = load_variant_matrix(variants)
         result = compute_pbo(matrix, partitions=partitions, seed=seed)
         if json_out:
-            typer.echo(json.dumps(sanitize(result.to_json_dict()), indent=2, default=str))
+            payload = result.to_json_dict()
+            payload["loader_notes"] = notes
+            typer.echo(json.dumps(sanitize(payload), indent=2, default=str))
             return
+        for note in notes:
+            console.print(f"[dim]{note}[/dim]")
         table = Table(title=f"PBO / CSCV ({result.n_variants} variants, {result.n_days} days)")
         table.add_column("Statistic")
         table.add_column("Value", justify="right")
         table.add_row("[bold]PBO (IS winner in bottom half OOS)[/bold]", f"{result.pbo:.1%}")
         table.add_row("P(IS winner loses money OOS)", f"{result.p_oos_loss:.1%}")
-        table.add_row("logit mean / median", f"{result.logit_mean:+.2f}")
+        table.add_row(
+            "logit mean / median",
+            f"{result.logit_mean:+.2f} / {result.logit_quantiles['p50']:+.2f}",
+        )
         table.add_row(
             "degradation (OOS SR vs IS SR)",
             f"slope {result.degradation_slope:+.2f}, intercept {result.degradation_intercept:+.3f}",

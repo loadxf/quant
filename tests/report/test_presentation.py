@@ -362,16 +362,16 @@ class TestWaterfallDecomposition:
     """Regression from the M10 adversarial review (line-scan pass): the
     EV-waterfall bars must sum exactly to expected_net, overheads included."""
 
-    def _waterfall_total(self, eco, activation: float) -> float:
+    def _waterfall_total(self, eco) -> float:
         from quantlab.report.charts import fig_ev_waterfall
 
-        fig = fig_ev_waterfall(eco, activation)
+        fig = fig_ev_waterfall(eco)
         ys = fig.data[0].y
         return float(sum(v for v in ys if v is not None))
 
     def test_sums_to_expected_net_without_knobs(self, bundle) -> None:
         eco = bundle["mc"].economics
-        total = self._waterfall_total(eco, bundle["firm"].fees.activation)
+        total = self._waterfall_total(eco)
         assert total == pytest.approx(eco.expected_net, abs=1e-6)
 
     def test_sums_to_expected_net_with_overheads(self) -> None:
@@ -381,5 +381,5 @@ class TestWaterfallDecomposition:
         log = random_log(n_days=80, mean=40.0, std=300.0, seed=7)
         eco = run_monte_carlo(log, firm, MCConfig(n_paths=300, seed=5)).economics
         assert eco.pass_prob > 0  # otherwise the identity is trivially 0-fee only
-        total = self._waterfall_total(eco, firm.fees.activation)
+        total = self._waterfall_total(eco)
         assert total == pytest.approx(eco.expected_net, abs=1e-6)

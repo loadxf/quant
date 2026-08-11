@@ -48,7 +48,7 @@ class RealityCheck:
 
     def to_json_dict(self) -> dict:
         return {
-            "schema_version": 3,  # v3: adds sampling_uncertainty (M10)
+            "schema_version": 4,  # v4: adds decay.wfe_reason; v3: sampling_uncertainty
             "costs": self.costs.to_json_dict(),
             "decay": dataclasses.asdict(self.decay),
             "deflated": dataclasses.asdict(self.deflated),

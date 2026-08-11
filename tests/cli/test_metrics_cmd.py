@@ -20,7 +20,8 @@ class TestMetricsJsonWarnings:
         result = CliRunner().invoke(app, ["metrics", str(parquet), "--json"])
         assert result.exit_code == 0, result.output
         payload = json.loads(result.output)
-        assert payload["schema_version"] == 1
+        assert payload["schema_version"] == 2
+        assert "extras" not in payload
         assert any("MAE/MFE" in w for w in payload["warnings"])
 
     def test_json_warnings_empty_for_full_fidelity_log(self, tmp_path) -> None:
@@ -30,3 +31,15 @@ class TestMetricsJsonWarnings:
         assert result.exit_code == 0, result.output
         payload = json.loads(result.output)
         assert not any("MAE/MFE" in w for w in payload["warnings"])
+
+
+def test_version_flag_prints_version():
+    """Bare `quant --version` must print the version, not 'Missing command'."""
+    from typer.testing import CliRunner
+
+    from quantlab import __version__
+    from quantlab.cli.app import app
+
+    result = CliRunner().invoke(app, ["--version"])
+    assert result.exit_code == 0
+    assert __version__ in result.output

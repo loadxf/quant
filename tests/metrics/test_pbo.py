@@ -78,8 +78,9 @@ class TestCsvLoading:
         frame.insert(0, "date", pd.bdate_range("2026-01-05", periods=64).strftime("%Y-%m-%d"))
         path = tmp_path / "variants.csv"
         frame.to_csv(path, index=False)
-        matrix, names = load_variant_matrix(path)
+        matrix, names, notes = load_variant_matrix(path)
         assert names == ["a", "b", "c"]
+        assert any("dropped" in n for n in notes)
         assert matrix.shape == (64, 3)
 
     def test_bad_values_rejected(self, tmp_path) -> None:
@@ -104,3 +105,85 @@ class TestCli:
         assert result.exit_code == 0, result.output
         payload = jsonlib.loads(result.output)
         assert 0.0 <= payload["pbo"] <= 1.0
+
+
+class TestIndexColumnTraps:
+    """A pandas-default index or numeric date column must never become a
+    variant — a monotone ramp wins every split and drives PBO to 0 (F1)."""
+
+    @pytest.mark.parametrize(
+        "insert",
+        ["unnamed", "ramp", "yyyymmdd", "epoch"],
+    )
+    def test_index_like_first_columns_dropped(self, tmp_path, insert) -> None:
+        import pandas as pd
+
+        m = _noise(t=64, n=4)
+        frame = pd.DataFrame(m, columns=["a", "b", "c", "d"])
+        path = tmp_path / "variants.csv"
+        if insert == "unnamed":
+            frame.to_csv(path)  # pandas default: index kept -> 'Unnamed: 0'
+        else:
+            values = {
+                "ramp": range(64),
+                "yyyymmdd": [
+                    int(d.strftime("%Y%m%d")) for d in pd.bdate_range("2026-01-05", periods=64)
+                ],
+                "epoch": [1704153600 + 86400 * i for i in range(64)],
+            }[insert]
+            frame.insert(0, "trade_date", list(values))
+            frame.to_csv(path, index=False)
+        matrix, names, notes = load_variant_matrix(path)
+        assert matrix.shape == (64, 4)
+        assert names == ["a", "b", "c", "d"]
+        assert any("dropped" in n for n in notes)
+
+    def test_legit_numeric_first_variant_kept(self, tmp_path) -> None:
+        import pandas as pd
+
+        m = _noise(t=64, n=3)
+        frame = pd.DataFrame(m, columns=["v0", "v1", "v2"])
+        path = tmp_path / "variants.csv"
+        frame.to_csv(path, index=False)
+        _matrix, names, notes = load_variant_matrix(path)
+        assert names == ["v0", "v1", "v2"] and notes == []
+
+    def test_zero_byte_csv_clean_error(self, tmp_path) -> None:
+        empty = tmp_path / "empty.csv"
+        empty.write_bytes(b"")
+        with pytest.raises(QuantLabError, match="empty"):
+            load_variant_matrix(empty)
+
+
+class TestTieHandling:
+    def test_identical_variants_report_uninformative_half(self) -> None:
+        """All-identical columns: PBO must be ~0.5 with a tie warning, not
+        a spurious 1.0 'SEVERE overfitting' (F35)."""
+        col = np.random.default_rng(3).normal(0, 1, size=64)
+        m = np.column_stack([col] * 6)
+        result = compute_pbo(m, partitions=8)
+        assert result.pbo == pytest.approx(0.5)
+        assert any("ties every variant" in w for w in result.warnings)
+
+
+class TestLargePartitionSampling:
+    def test_partitions_28_no_oom(self) -> None:
+        """C(28,14) ~ 40M splits must sample lazily, not materialize (F13)."""
+        m = _noise(t=2 * 28, n=4)
+        result = compute_pbo(m, partitions=28)
+        assert result.combos_evaluated == 12_870
+        assert result.combos_total == 40_116_600
+        assert any("deterministic sample" in w for w in result.warnings)
+
+    def test_unranking_matches_enumeration(self) -> None:
+        """Lazy unranking must reproduce enumerate-then-index bit-for-bit."""
+        import itertools
+        import math as m_
+
+        from quantlab.metrics.pbo import _unrank_combination
+
+        s, k = 10, 5
+        all_combos = list(itertools.combinations(range(s), k))
+        assert m_.comb(s, k) == len(all_combos)
+        for rank in range(len(all_combos)):
+            assert _unrank_combination(rank, s, k) == all_combos[rank]

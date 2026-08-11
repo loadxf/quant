@@ -33,13 +33,25 @@ register_stress_commands(app)
 register_pbo_commands(app)
 
 
-@app.callback()
-def _root(
-    version: bool = typer.Option(False, "--version", help="Print version and exit."),
-) -> None:
-    if version:
+def _version_callback(value: bool) -> None:
+    if value:
         typer.echo(__version__)
         raise typer.Exit()
+
+
+@app.callback()
+def _root(
+    version: bool = typer.Option(
+        False,
+        "--version",
+        help="Print version and exit.",
+        # Eager: runs during parsing, BEFORE the missing-subcommand check —
+        # a group callback alone never fires on bare `quant --version`.
+        callback=_version_callback,
+        is_eager=True,
+    ),
+) -> None:
+    pass
 
 
 def main() -> None:

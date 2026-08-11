@@ -10,11 +10,12 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import pandas as pd
 
 from quantlab.errors import MappingError
+from quantlab.output import prepared
 
 _SYNONYMS = {
     "datetime": ("datetime", "date", "time", "timestamp", "dt", "bartime"),
@@ -40,8 +41,18 @@ def _normalize_header(header: str) -> str:
     return re.sub(r"[^a-z0-9]", "", header.lower())
 
 
+_TIME_ONLY_RE = re.compile(r"^\d{1,2}:\d{2}(:\d{2}(\.\d+)?)?\s*([AaPp][Mm])?$")
+_DATE_ONLY_RE = re.compile(
+    r"^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}$|^\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}$|^\d{8}$"
+)
+_TIME_HEADER_SYNONYMS = ("time", "bartime", "timeofday")
+_DATE_HEADER_SYNONYMS = ("date", "tradedate", "tradeday", "day")
+
+
 def _detect_columns(headers: list[str]) -> dict[str, str]:
-    normalized = {_normalize_header(h): h for h in headers}
+    normalized: dict[str, str] = {}
+    for h in headers:  # first-wins: duplicate-normalizing headers must not shadow
+        normalized.setdefault(_normalize_header(h), h)
     found: dict[str, str] = {}
     for field_name, synonyms in _SYNONYMS.items():
         for candidate in synonyms:
@@ -54,15 +65,101 @@ def _detect_columns(headers: list[str]) -> dict[str, str]:
     return found
 
 
+def _find_companion(
+    frame: pd.DataFrame, exclude: str, synonyms: tuple[str, ...]
+) -> str | None:
+    normalized: dict[str, str] = {}
+    for h in frame.columns:
+        normalized.setdefault(_normalize_header(str(h)), str(h))
+    for syn in synonyms:
+        candidate = normalized.get(syn)
+        if candidate is not None and candidate != exclude:
+            return candidate
+    return None
+
+
+def _combine(frame: pd.DataFrame, date_col: str, time_col: str) -> None:
+    # Empty time cells become midnight explicitly: "" would leave a
+    # date-only string in a mixed-format column, which pandas coerces to
+    # NaT (row silently dropped); "nan" would poison the stamp outright.
+    # Bare HH:MM values gain ":00" so the whole column parses under ONE
+    # format alongside the injected midnights (pandas 3 infers a single
+    # format and NaTs the stragglers).
+    times = frame[time_col].fillna("").astype(str).str.strip().replace("", "00:00:00")
+    times = times.str.replace(r"^(\d{1,2}:\d{2})$", r"\1:00", regex=True)
+    frame["__combined_datetime"] = frame[date_col].astype(str).str.strip() + " " + times
+
+
+def _combine_split_date_time(frame: pd.DataFrame, columns: dict[str, str]) -> str | None:
+    """Split Date/Time exports: a bare Date column with a separate Time
+    column would parse every bar to midnight and the timestamp dedupe
+    below would then silently keep one bar per day. Combine them; a
+    time-only column without any date companion cannot be loaded.
+    Returns a display name for the report when a combine happened."""
+    col = columns["datetime"]
+    sample = frame[col].dropna().astype(str).head(20)
+    if sample.empty:
+        return None
+    if all(_DATE_ONLY_RE.match(v.strip()) for v in sample):
+        time_col = _find_companion(frame, col, _TIME_HEADER_SYNONYMS)
+        if time_col is None:
+            return None
+        # Only combine when the companion actually holds time-of-day
+        # values — a vestigial empty "Time" column must not poison every
+        # stamp with " nan" suffixes.
+        time_sample = frame[time_col].dropna().astype(str).head(20)
+        if time_sample.empty or not all(_TIME_ONLY_RE.match(v.strip()) for v in time_sample):
+            return None
+        _combine(frame, col, time_col)
+        columns["datetime"] = "__combined_datetime"
+        return f"{col} + {time_col}"
+    if all(_TIME_ONLY_RE.match(v.strip()) for v in sample):
+        date_col = _find_companion(frame, col, _DATE_HEADER_SYNONYMS)
+        if date_col is None:
+            raise MappingError(
+                f"Column {col!r} holds time-of-day values only and no Date column "
+                "was found — bars cannot be dated. Provide a combined datetime "
+                "column or a Date column."
+            )
+        _combine(frame, date_col, col)
+        columns["datetime"] = "__combined_datetime"
+        return f"{date_col} + {col}"
+    return None
+
+
 def load_ohlcv(path: Path | str, tz: str = "UTC") -> tuple[pd.DataFrame, OhlcvReport]:
-    frame = pd.read_csv(path)
+    try:
+        frame = pd.read_csv(path)
+    except pd.errors.EmptyDataError:
+        raise MappingError(f"{path}: file is empty") from None
+    except pd.errors.ParserError as exc:
+        raise MappingError(f"{path}: not a readable CSV ({exc})") from None
     frame.columns = [str(c).strip() for c in frame.columns]
     columns = _detect_columns(list(frame.columns))
-    report = OhlcvReport(rows_read=len(frame), columns_used=columns)
+    # Compact YYYYMMDD integer dates would otherwise parse as epoch
+    # NANOSECONDS (every bar lands on 1970-01-01 and dedupes to one row).
+    raw_dates = frame[columns["datetime"]]
+    if raw_dates.dtype.kind in "iu" and raw_dates.dropna().between(19000101, 21001231).all():
+        frame[columns["datetime"]] = raw_dates.astype("Int64").astype(str)
+    combined_display = _combine_split_date_time(frame, columns)
+    # The report names user columns, never the internal scratch column.
+    columns_used = dict(columns)
+    if combined_display is not None:
+        columns_used["datetime"] = combined_display
+    report = OhlcvReport(rows_read=len(frame), columns_used=columns_used)
 
-    tzinfo = ZoneInfo(tz)
+    try:
+        tzinfo = ZoneInfo(tz)
+    except (KeyError, ValueError, ZoneInfoNotFoundError) as exc:
+        raise MappingError(f"Unknown timezone {tz!r}: {exc}") from None
     out = pd.DataFrame()
-    stamps = pd.to_datetime(frame[columns["datetime"]], errors="coerce")
+    try:
+        stamps = pd.to_datetime(frame[columns["datetime"]], errors="coerce")
+    except (ValueError, TypeError):
+        # pandas 3: "Mixed timezones detected" raises even with
+        # errors="coerce" for DST-spanning ISO-offset exports; the offsets
+        # are explicit so parsing straight to UTC is lossless.
+        stamps = pd.to_datetime(frame[columns["datetime"]], errors="coerce", utc=True)
     valid = stamps.dropna()
     if valid.is_monotonic_decreasing and not valid.is_monotonic_increasing:
         # Newest-first export (common broker format): DST inference below
@@ -131,5 +228,5 @@ def write_normalized(frame: pd.DataFrame, out_path: Path | str) -> Path:
     out_path = Path(out_path)
     export = frame.copy()
     export["datetime"] = pd.DatetimeIndex(export["datetime"]).strftime("%Y-%m-%dT%H:%M:%SZ")
-    export.to_csv(out_path, index=False)
+    export.to_csv(prepared(out_path), index=False)
     return out_path

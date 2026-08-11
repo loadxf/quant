@@ -73,18 +73,18 @@ def evaluate(
     log: TradeLog,
     firm: FirmConfig,
     phase: str = "challenge",
-    start_day: int = 0,
     sizing: VolSizingParams | None = None,
     cushion_clip: tuple[float, float] | None = None,
 ) -> EvaluationResult:
-    """Replay `log` (from trading-day index `start_day`) against one phase.
+    """Replay the full `log` against one phase.
 
     `sizing`: optional vol-targeted dynamic sizing — the same EwmaSizer
     recursion the Monte Carlo uses (golden equivalence by construction).
     `cushion_clip`: optional buffer-aware sizing — the same cushion_weight
-    kernel the Monte Carlo uses."""
+    kernel the Monte Carlo uses. Phase chaining (each phase consuming
+    days) lives in evaluate_sequence."""
     phase_cfg = _find_phase(firm, phase)
-    days = log.daily_groups(firm.day_boundary.to_boundary())[start_day:]
+    days = log.daily_groups(firm.day_boundary.to_boundary())
     return _evaluate_days(
         days,
         firm,

@@ -18,7 +18,8 @@ from . import (
     REGISTRY_PATH,
 )
 from .backtest import ledger_trial_stats, run_backtest
-from .gates import load_equity_fields, load_signal_module
+from .costs import cost_rate
+from .gates import load_equity_fields, load_etf_fields, load_signal_module
 from .holdout_gate import authorize, record_results
 from .stats import deflated_sharpe_ratio, newey_west_tstat, sharpe_ratio
 
@@ -31,8 +32,12 @@ def evaluate_holdout(candidate_id: str) -> dict:
     entry = registry[candidate_id]
     holdout_end = entry.get("holdout_end", "2030-01-01")
 
-    fields = load_equity_fields(end=holdout_end, token=token)
     module = load_signal_module(candidate_id)
+    universe = entry.get("universe", getattr(module, "UNIVERSE", "equities"))
+    if universe == "etfs":
+        fields = load_etf_fields(end=holdout_end, token=token)
+    else:
+        fields = load_equity_fields(end=holdout_end, token=token)
     hold = int(getattr(module, "HOLD", 1))
     quantile = float(getattr(module, "QUANTILE", 0.1))
     min_names = int(getattr(module, "MIN_NAMES", 20))
@@ -43,7 +48,7 @@ def evaluate_holdout(candidate_id: str) -> dict:
         fields["adjclose"],
         candidate_id=candidate_id,
         split="holdout",
-        cost_bps=10.0,
+        cost_bps=cost_rate(universe),
         quantile=quantile,
         holding_days=hold,
         min_names=min_names,

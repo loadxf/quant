@@ -140,6 +140,11 @@ def load_panel(
         if not path.exists():
             continue
         cols[ticker] = pd.read_parquet(path, columns=[field])[field]
+    if not cols:
+        raise RuntimeError(
+            f"no cached data for the requested tickers under {CACHE_DIR} — "
+            "run `python -m edgelab.data download` first"
+        )
     panel = pd.DataFrame(cols)
     panel = panel.loc[panel.index <= end_ts]
     if token_scope == "g1_generation":

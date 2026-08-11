@@ -16,6 +16,13 @@ profit targets) need fills, which the trade-log evaluator already
 handles at full fidelity. The curve's own resolution bounds the check:
 daily-sampled charts still miss intra-bar excursions (reported).
 
+Lockout caveat: a rule-free backtest keeps trading through a daily-loss
+lockout the ruled account would have sat out. The locked remainder of
+that session is ignored (phantom under the rules), but LATER sessions
+replay the raw curve — the ruled account's balances would have diverged
+at the lockout, so results after a locked session are indicative, not
+exact (a warning says so).
+
 Alignment convention: the curve's first mark is the backtest's starting
 capital, mapped to the phase's initial balance — balance_t = initial +
 (equity_t - equity_0). A session's opening balance is the prior
@@ -80,18 +87,20 @@ def check_equity_curve(
     initial = phase.resolved_initial(firm.account_size)
     boundary = firm.day_boundary.to_boundary()
 
-    trailing: TrailingDrawdownRule | None = None
-    static: StaticMaxLossRule | None = None
-    daily: DailyLossRule | None = None
-    dll_fails = False
+    # Rule LISTS, exactly like the evaluator: a phase may carry several
+    # rules of one type (two trailing floors, fail + lockout daily loss),
+    # and every one must be replayed — keeping only the last silently
+    # misses real breaches.
+    trailing: list[TrailingDrawdownRule] = []
+    static: list[StaticMaxLossRule] = []
+    daily: list[tuple[DailyLossRule, bool]] = []  # (rule, fails_account)
     for spec in phase.rules:
         if isinstance(spec, TrailingDrawdownSpec):
-            trailing = TrailingDrawdownRule(spec, initial, firm.account_size)
+            trailing.append(TrailingDrawdownRule(spec, initial, firm.account_size))
         elif isinstance(spec, StaticMaxLossSpec):
-            static = StaticMaxLossRule(spec, initial, firm.account_size)
+            static.append(StaticMaxLossRule(spec, initial, firm.account_size))
         elif isinstance(spec, DailyLossLimitSpec):
-            daily = DailyLossRule(spec, firm.account_size)
-            dll_fails = spec.effect == "fail"
+            daily.append((DailyLossRule(spec, firm.account_size), spec.effect == "fail"))
 
     points = sorted(curve.points, key=lambda p: p.time)
     base = points[0].equity
@@ -101,48 +110,70 @@ def check_equity_curve(
     current_session = None
     day_open = initial
     last_balance = initial
-    dll_hit_today = False
+    dll_hit_today: set[int] = set()
+    locked_today = False
+    locked_sessions = 0
 
     for point in points:
         balance = initial + (point.equity - base)
         session = boundary.session_date(point.time)
         if session != current_session:
-            if trailing is not None and current_session is not None:
-                trailing.day_close(last_balance)
+            if current_session is not None:
+                for tr_rule in trailing:
+                    tr_rule.day_close(last_balance)
             current_session = session
             sessions.add(session)
             day_open = last_balance
-            dll_hit_today = False
-            if daily is not None:
-                daily.day_start(day_open)
+            dll_hit_today.clear()
+            locked_today = False
+            for dl_rule, _ in daily:
+                dl_rule.day_start(day_open)
 
         day_index = len(sessions) - 1
-        if trailing is not None and first_breach is None:
-            trailing.observe_high(balance)
-            event = trailing.check(balance, session, day_index, -1)
-            if event is not None:
-                first_breach = _to_breach(event, point.time)
-        if static is not None and first_breach is None:
-            event = static.check(balance, session, day_index, -1)
-            if event is not None:
-                first_breach = _to_breach(event, point.time)
-        # Guarded on first_breach like the hard rules: a QC equity curve
-        # runs to the end of the backtest, but the account is already
-        # liquidated after a hard breach — later daily-loss crossings
-        # would be phantom activity.
-        if daily is not None and first_breach is None and not dll_hit_today and daily.hit(balance):
-            dll_hit_today = True
-            hit = EquityBreach(
-                rule="daily_loss_limit",
-                when=point.time.isoformat(),
-                balance=balance,
-                threshold=daily.level,
-                detail=f"balance {balance:,.2f} crossed day floor {daily.level:,.2f} "
-                f"(day open {day_open:,.2f})",
-            )
-            dll_hits.append(hit)
-            if dll_fails and first_breach is None:
-                first_breach = hit
+        # After a hard breach the account is liquidated (later marks are
+        # phantom); after a lockout the rest of THIS session is phantom —
+        # the firm flattened the account at the lockout level, so equity
+        # below it never happened under the rules.
+        if first_breach is None and not locked_today:
+            # First-hit resolution at the mark, matching the evaluator:
+            # equity descends, so among all levels crossed the HIGHEST
+            # fired first; a fail rule beats a lockout on exact ties.
+            fail_hits: list[EquityBreach] = []
+            for tr_rule in trailing:
+                tr_rule.observe_high(balance)
+                event = tr_rule.check(balance, session, day_index, -1)
+                if event is not None:
+                    fail_hits.append(_to_breach(event, point.time))
+            for st_rule in static:
+                event = st_rule.check(balance, session, day_index, -1)
+                if event is not None:
+                    fail_hits.append(_to_breach(event, point.time))
+            lock_hits: list[EquityBreach] = []
+            for k, (dl_rule, fails) in enumerate(daily):
+                if k in dll_hit_today or not dl_rule.hit(balance):
+                    continue
+                dll_hit_today.add(k)
+                hit = EquityBreach(
+                    rule="daily_loss_limit",
+                    when=point.time.isoformat(),
+                    balance=balance,
+                    threshold=dl_rule.level,
+                    detail=(
+                        f"balance {balance:,.2f} crossed day floor "
+                        f"{dl_rule.level:,.2f} (day open {day_open:,.2f})"
+                    ),
+                )
+                dll_hits.append(hit)
+                (fail_hits if fails else lock_hits).append(hit)
+            best_fail = max(fail_hits, key=lambda b: b.threshold, default=None)
+            best_lock = max(lock_hits, key=lambda b: b.threshold, default=None)
+            if best_fail is not None and (
+                best_lock is None or best_fail.threshold >= best_lock.threshold
+            ):
+                first_breach = best_fail
+            elif best_lock is not None:
+                locked_today = True
+                locked_sessions += 1
         last_balance = balance
 
     n_sessions = len(sessions)
@@ -154,13 +185,20 @@ def check_equity_curve(
         first_breach=first_breach,
         daily_loss_hits=dll_hits,
     )
+    if locked_sessions:
+        result.warnings.append(
+            f"the curve kept trading through {locked_sessions} locked-out "
+            "session(s) the ruled account would have sat out — rule state "
+            "after those sessions is approximate; treat later results as "
+            "indicative, not exact"
+        )
     if not result.intraday_marks:
         result.warnings.append(
             "equity chart is ~daily-sampled: intra-session excursions between "
             "marks remain invisible — this check tightens the trade-log verdict "
             "but is still an optimistic bound"
         )
-    if trailing is None and static is None and daily is None:
+    if not trailing and not static and not daily:
         result.warnings.append(f"phase {name!r} has no equity-path rules to check")
     return result
 
@@ -179,8 +217,15 @@ def load_equity_csv(path) -> EquityCurve:
     """Read the datetime,equity CSV that `quant cloud results --chart` writes."""
     import pandas as pd
 
-    frame = pd.read_csv(path)
-    cols = {c.lower().strip(): c for c in frame.columns}
+    try:
+        frame = pd.read_csv(path)
+    except pd.errors.EmptyDataError:
+        raise QuantLabError(f"{path}: file is empty") from None
+    except pd.errors.ParserError as exc:
+        raise QuantLabError(f"{path}: not a readable CSV ({exc})") from None
+    cols: dict[str, str] = {}
+    for c in frame.columns:  # first-wins on duplicate-normalizing headers
+        cols.setdefault(str(c).lower().strip(), str(c))
     if "datetime" not in cols or "equity" not in cols:
         raise QuantLabError(
             f"{path}: expected datetime,equity columns (from `quant cloud results --chart`)"

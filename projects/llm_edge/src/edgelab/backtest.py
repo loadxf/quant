@@ -114,7 +114,11 @@ def run_backtest(
     costs = turnover * (cost_bps / 10_000.0)
     net = gross - costs
 
-    live = held.abs().sum(axis=1) > 0
+    # Held OR traded: the day the book goes flat carries the liquidation
+    # turnover on a held==0 row — dropping it would charge the re-entry
+    # cost but never the exit cost, silently inflating sharpe_net for any
+    # signal with intermittent coverage.
+    live = (held.abs().sum(axis=1) > 0) | (turnover > 0)
     gross, net, turnover = gross[live], net[live], turnover[live]
 
     result = BacktestResult(

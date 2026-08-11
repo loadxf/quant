@@ -25,7 +25,12 @@ from dataclasses import dataclass
 import numpy as np
 
 from quantlab.errors import ConfigError, QuantLabError
-from quantlab.prop.bootstrap import BootstrapName, make_bootstrapper, optimal_block_length
+from quantlab.prop.bootstrap import (
+    MIN_DAYS_FOR_BLOCKS,
+    BootstrapName,
+    make_bootstrapper,
+    resolve_sampler,
+)
 from quantlab.prop.config import (
     ConsistencySpec,
     ContractLimitSpec,
@@ -60,7 +65,6 @@ from quantlab.prop.voltarget import (
 )
 from quantlab.schema.trade import TradeLog
 
-MIN_DAYS_FOR_BLOCKS = 30
 DEFAULT_SESSIONS_PER_WEEK = 5.0
 
 
@@ -707,6 +711,8 @@ def _iid_trade_profile(
 ) -> DayProfile:
     if days is None:
         days = log.daily_groups(boundary)
+    if not days:
+        raise QuantLabError("Trade log has no trading days")
     sizes = np.array([len(trades) for _, trades in days])
     all_trades = log.trades
     synth = []
@@ -733,19 +739,19 @@ def run_monte_carlo(
         sampler = make_bootstrapper("iid_day")
     else:
         profile = DayProfile.from_log(log, boundary, days=source_day_groups)
-        if bootstrap_name == "stationary" and profile.n_days < MIN_DAYS_FOR_BLOCKS:
+        # Fallback policy + Politis-White block length live in ONE place
+        # (bootstrap.resolve_sampler) — uncertainty band and regime stress
+        # resolve their samplers through the same helper.
+        sampler, resolved, block_len_used, fell_back = resolve_sampler(
+            bootstrap_name, profile.day_pnl, cfg.block_len
+        )
+        if fell_back:
             warnings.append(
                 f"only {profile.n_days} source trading days (<{MIN_DAYS_FOR_BLOCKS}): "
                 "stationary block bootstrap degenerates — fell back to iid_day; "
                 "treat results as low-confidence"
             )
-            bootstrap_name = "iid_day"
-        block_len_used = cfg.block_len
-        if block_len_used is None and bootstrap_name == "stationary":
-            # Politis-White automatic length from the day-PnL series'
-            # actual autocorrelation (see bootstrap.optimal_block_length).
-            block_len_used = optimal_block_length(profile.day_pnl)
-        sampler = make_bootstrapper(bootstrap_name, block_len_used)
+        bootstrap_name = resolved
 
     if not profile.has_excursions:
         warnings.append(
@@ -769,6 +775,9 @@ def run_monte_carlo(
         source_trades=len(log),
         warnings=warnings,
         base_contracts=base_contracts,
+        # The log's REAL day count: the iid_trade profile has 1000 synthetic
+        # days, which must never masquerade as source history in the report.
+        source_days=len(source_day_groups),
     )
 
 
@@ -792,6 +801,7 @@ def _run_from_profile(
     source_trades: int,
     warnings: list[str],
     base_contracts: float | None = None,
+    source_days: int | None = None,
 ) -> MonteCarloReport:
     """Simulation core once a DayProfile exists — run_monte_carlo's second
     half, split out so the sampling-uncertainty outer bootstrap can rerun
@@ -810,6 +820,20 @@ def _run_from_profile(
         )
     challenge_scale = cfg.challenge_scale if cfg.challenge_scale is not None else cfg.scale
     funded_scale = cfg.funded_scale if cfg.funded_scale is not None else cfg.scale
+    if challenge_scale <= 0 or funded_scale <= 0:
+        # A negative scale does NOT invert the strategy: it flips the
+        # excursion extremes without swapping their roles, so breach checks
+        # run against the flipped strategy's FAVORABLE excursions.
+        raise QuantLabError(
+            f"--scale values must be positive (got challenge {challenge_scale:g}, "
+            f"funded {funded_scale:g}); to study the inverted strategy, flip the "
+            "trades themselves (pnl, and swap MAE/MFE)"
+        )
+    if cfg.challenge_horizon_days < 1 or cfg.funded_horizon_days < 1:
+        raise QuantLabError(
+            f"--challenge-horizon/--funded-horizon must be >= 1 trading day "
+            f"(got {cfg.challenge_horizon_days}, {cfg.funded_horizon_days})"
+        )
     challenge_profile = profile.scaled(challenge_scale)
     funded_profile = profile.scaled(funded_scale)
 
@@ -831,14 +855,17 @@ def _run_from_profile(
         # would start every path systematically under-weighted whenever the
         # log is vol-clustered (RMS > median sigma), depressing the first
         # ~month of each phase below the documented median-weight-1 design.
-        return VolSizingParams(
-            lam=cfg.vol_lambda,
-            target_vol=target,
-            seed_var=target**2,
-            clip_lo=cfg.vol_clip[0],
-            clip_hi=cfg.vol_clip[1],
-            burn_in=0,
-        )
+        try:
+            return VolSizingParams(
+                lam=cfg.vol_lambda,
+                target_vol=target,
+                seed_var=target**2,
+                clip_lo=cfg.vol_clip[0],
+                clip_hi=cfg.vol_clip[1],
+                burn_in=0,
+            )
+        except ValueError as exc:  # bad --vol-clip/--vol-lambda/--vol-target
+            raise QuantLabError(str(exc)) from None
 
     challenge_sizing = _make_sizing(challenge_profile)
     funded_sizing = _make_sizing(funded_profile)
@@ -917,7 +944,7 @@ def _run_from_profile(
         cfg=cfg,
         bootstrap_used=bootstrap_name,
         fidelity="mae_mfe" if profile.has_excursions else "trade_close",
-        source_days=profile.n_days,
+        source_days=source_days if source_days is not None else profile.n_days,
         source_trades=source_trades,
         scale_challenge=challenge_scale,
         scale_funded=funded_scale,

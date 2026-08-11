@@ -15,6 +15,7 @@ import pyarrow as pa
 import pyarrow.parquet as pq
 
 from quantlab.errors import QuantLabError
+from quantlab.output import prepared
 from quantlab.schema.trade import Side, Trade, TradeLog
 
 _META_KEY = b"quantlab.tradelog"
@@ -32,14 +33,21 @@ def write_trade_log(log: TradeLog, path: Path | str) -> None:
             "source": log.source,
         }
     ).encode()
-    pq.write_table(table.replace_schema_metadata(meta), str(path))
+    pq.write_table(table.replace_schema_metadata(meta), str(prepared(path)))
 
 
 def read_trade_log(path: Path | str) -> TradeLog:
     path = Path(path)
     if not path.exists():
         raise QuantLabError(f"Trade log not found: {path}")
-    table = pq.read_table(str(path))
+    try:
+        table = pq.read_table(str(path))
+    except (pa.ArrowInvalid, pa.ArrowIOError, OSError) as exc:
+        # The classic mistake is pointing a command at the original CSV.
+        raise QuantLabError(
+            f"{path} is not a quantlab trades parquet ({exc}) — "
+            "run `quant ingest trades` on your CSV first"
+        ) from None
     meta_raw = (table.schema.metadata or {}).get(_META_KEY)
     meta = json.loads(meta_raw.decode()) if meta_raw else {}
     try:

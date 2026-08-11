@@ -93,3 +93,43 @@ def test_gate_requires_committed_registry(monkeypatch, tmp_path):
     )
     with pytest.raises(RuntimeError, match="commit"):
         gate.authorize("C001")
+
+
+def test_degenerate_candidate_writes_failing_record(tmp_path, monkeypatch):
+    """A no-live-days candidate must leave a failing results_validation.json,
+    not a stale PASS record from an earlier run (P8)."""
+    import json
+
+    import numpy as np
+    import pandas as pd
+    from edgelab import backtest, gates
+
+    # The real trials ledger is append-only research provenance — a unit
+    # test must never write to it.
+    monkeypatch.setattr(backtest, "LEDGER_PATH", tmp_path / "trials_ledger.csv")
+
+    cand_dir = tmp_path / "CTEST"
+    cand_dir.mkdir()
+    (cand_dir / "signal.py").write_text(
+        "import pandas as pd\nUNIVERSE='equities'\n"
+        "def compute_signal(fields):\n"
+        "    return fields['adjclose'] * float('nan')\n",
+        encoding="utf-8",
+    )
+    (cand_dir / "results_validation.json").write_text(
+        json.dumps({"gate1": {"pass": True}}), encoding="utf-8"
+    )  # stale PASS from an earlier run
+    monkeypatch.setattr(gates, "CANDIDATES_DIR", tmp_path)
+    dates = pd.bdate_range("2015-01-02", periods=600)
+    rng = np.random.default_rng(0)
+    prices = pd.DataFrame(
+        100 * np.cumprod(1 + rng.normal(0, 0.01, size=(600, 30)), axis=0),
+        index=dates,
+        columns=[f"T{i}" for i in range(30)],
+    )
+    fields = {"adjclose": prices}
+    result = gates.evaluate_candidate("CTEST", fields)
+    assert result["gate1"]["pass"] is False
+    on_disk = json.loads((cand_dir / "results_validation.json").read_text(encoding="utf-8"))
+    assert on_disk["gate1"]["pass"] is False
+    assert "_returns_net" not in on_disk

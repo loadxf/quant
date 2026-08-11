@@ -170,7 +170,7 @@ Standard statistics from the log alone, no firm involved: profit factor,
 expectancy with bootstrap CI and t-stat, max drawdown, daily-annualized
 Sharpe/Sortino, MAR, win/loss streaks, and profit concentration. `--equity`
 sets the starting equity used for drawdown/Sharpe context. The JSON carries
-the same fidelity/gross-PnL caveats as the table (`log_caveats`).
+the same fidelity/gross-PnL caveats as the table (the `warnings` array).
 
 ### `quant verdict` — A–F scorecard
 
@@ -341,18 +341,18 @@ The honesty layer. Sections, in order:
 - **Deflated statistics** — PSR and MinTRL always; with `--trials N` (how
   many strategy variants you tried before this one) also the Deflated
   Sharpe Ratio, MinBTL, and the Harvey–Liu haircut Sharpe.
+- **Permutation drawdowns** — trade-order-shuffled max-drawdown
+  distribution; `--ruin-capital` adds P(ruin) at your capital.
 - **Volatility clustering** — ARCH-LM and McLeod–Li tests (honest
   "insufficient data" verdicts on short logs) plus a fixed-vs-vol-targeted
   sizing counterfactual.
+- **Regime analysis** — per-day EWMA-sigma tercile regimes, per-regime
+  PnL/persistence, a worst-regime-persists stress (labeled stress, never
+  forecast); `--ohlcv bars.csv` adds a descriptive trend × vol market join.
 - **Sampling-uncertainty band** — a nested bootstrap (`--outer` resamples
   of the source days × `--inner-paths` MC paths each) showing what the log
   itself can pin down: the p5–p95 pass-prob/EV band next to the Wilson CI,
   which only measures simulation noise. `--outer 0` skips it.
-- **Regime analysis** — per-day EWMA-sigma tercile regimes, per-regime
-  PnL/persistence, a worst-regime-persists stress (labeled stress, never
-  forecast); `--ohlcv bars.csv` adds a descriptive trend × vol market join.
-- **Permutation drawdowns** — trade-order-shuffled max-drawdown
-  distribution; `--ruin-capital` adds P(ruin) at your capital.
 
 The overhead knobs (`--extra-monthly`, `--per-payout-fee`,
 `--payout-haircut`) apply here too, but — like the MC pass-prob columns
@@ -427,8 +427,8 @@ a machine that never installed lean.
 That's it — **no `lean init`, no `lean login`, no Docker**. The lean CLI
 does not read these env vars itself; `quant cloud push`/`backtest` run a
 non-interactive `lean login` for you (idempotent, on every invocation) and
-resolve project paths relative to the repo, so the wrapper is the only
-lean interface you need. If something can't work (lean missing,
+resolve project paths relative to the current working directory — run them
+from the repo root — so the wrapper is the only lean interface you need. If something can't work (lean missing,
 credentials unset), the command fails fast with the exact fix in the
 message.
 

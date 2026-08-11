@@ -122,5 +122,5 @@ def parse_equity_chart(chart: dict[str, Any]) -> EquityCurve:
 
 def load_result_file(path: Path) -> dict[str, Any]:
     """Read a saved backtests/read response (or its `backtest` object)."""
-    raw = json.loads(Path(path).read_text())
+    raw = json.loads(Path(path).read_text(encoding="utf-8"))
     return raw.get("backtest", raw)

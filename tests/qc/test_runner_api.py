@@ -71,3 +71,40 @@ class TestStrategiesParse:
         source = (root / "main.py").read_text()
         ast.parse(source)  # LEAN imports aren't installed locally; syntax must hold
         assert (root / "config.json").exists()
+
+
+class TestTokenRedaction:
+    def test_failed_lean_login_never_echoes_token(self, monkeypatch):
+        """A failed `lean login` must not print the API token (it lands in
+        terminals, CI logs, and pasted GitHub issues)."""
+        import subprocess
+
+        from quantlab.errors import QuantLabError
+        from quantlab.qc import runner
+
+        def fake_run(args, **kwargs):
+            return subprocess.CompletedProcess(args, returncode=1, stdout="", stderr="boom")
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+        monkeypatch.setenv("QC_USER_ID", "123456")
+        monkeypatch.setenv("QC_API_TOKEN", "super-secret-token")
+        with pytest.raises(QuantLabError) as excinfo:
+            runner.login()
+        assert "super-secret-token" not in str(excinfo.value)
+        assert "***" in str(excinfo.value)
+
+    def test_timeout_never_echoes_token(self, monkeypatch):
+        import subprocess
+
+        from quantlab.errors import QuantLabError
+        from quantlab.qc import runner
+
+        def fake_run(args, **kwargs):
+            raise subprocess.TimeoutExpired(cmd=args, timeout=120)
+
+        monkeypatch.setattr(subprocess, "run", fake_run)
+        monkeypatch.setenv("QC_USER_ID", "123456")
+        monkeypatch.setenv("QC_API_TOKEN", "super-secret-token")
+        with pytest.raises(QuantLabError) as excinfo:
+            runner.login()
+        assert "super-secret-token" not in str(excinfo.value)

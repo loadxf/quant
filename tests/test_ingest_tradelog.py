@@ -219,3 +219,193 @@ class TestSentinelInScalarRescueBatch:
         assert len(log) == 3
         assert report.rows_dropped == 1
         assert report.dropped[0][0] == 3
+
+
+class TestDecimalCommaFormats:
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            ("1.234,56", 1234.56),  # EU grouping + decimal comma
+            ("1 234,56", 1234.56),  # space grouping (French exports)
+            ("1234,56", 1234.56),  # bare decimal comma
+            ("1,23456", 1.23456),  # >2 decimals (FX rates)
+            ("0,12345", 0.12345),
+            ("-1234,5", -1234.5),
+            ("1.234.567", 1234567.0),  # EU grouping, no decimals
+            ("1,23,456.78", 123456.78),  # lakh grouping
+            ("1,234", 1234.0),  # documented US-default ambiguity
+            ("1.234", 1.234),  # mirror-image ambiguity stays US decimal
+            ("0,500", 0.5),  # zero lead: only ever an EU decimal
+            ("-0,125", -0.125),
+            ("(0,500)", -0.5),
+        ],
+    )
+    def test_parses(self, raw: str, expected: float) -> None:
+        assert parse_money(raw) == pytest.approx(expected)
+
+    @pytest.mark.parametrize("raw", ["inf", "-inf", "Infinity", float("inf"), float("nan")])
+    def test_rejects_non_finite(self, raw: object) -> None:
+        with pytest.raises(ValueError):
+            parse_money(raw)
+
+
+class TestPercentColumnShadowing:
+    """A percent column next to the money column must never win (F3)."""
+
+    @pytest.mark.parametrize(
+        "headers",
+        [
+            ["Exit Time", "Profit", "Profit %", "Qty"],
+            ["Exit Time", "Profit %", "Profit", "Qty"],  # reversed column order
+            ["Exit DateTime", "Net Profit", "Profit %", "Qty"],  # no normalization collision
+        ],
+    )
+    def test_pnl_binds_to_money_column(self, headers: list[str]) -> None:
+        mapping = autodetect_mapping(headers)
+        assert mapping.pnl in ("Profit", "Net Profit")
+
+    def test_true_ambiguity_refuses(self) -> None:
+        with pytest.raises(MappingError, match="Ambiguous"):
+            autodetect_mapping(["Exit Time", "Net P/L", "Net-P/L", "Qty"])
+
+    def test_map_override_resolves_ambiguity(self, tmp_path: Path) -> None:
+        csv = tmp_path / "amb.csv"
+        csv.write_text(
+            "Exit Time,Net P/L,Net-P/L,Qty\n2024-01-05 10:30:00,100,1.0,2\n", encoding="utf-8"
+        )
+        log, _report = load_trade_log(csv, overrides=["pnl=Net P/L"])
+        assert log.trades[0].pnl == 100.0
+
+
+class TestMapOverlayAutodetect:
+    """--map without --mapping overlays auto-detection (F14)."""
+
+    def test_partial_pairs_overlay(self, tmp_path: Path) -> None:
+        csv = tmp_path / "t.csv"
+        csv.write_text(
+            "Exit Time,NetPL,Qty\n2024-01-05 10:30:00,150,1\n2024-01-05 11:00:00,-50,2\n",
+            encoding="utf-8",
+        )
+        log, report = load_trade_log(csv, overrides=["pnl=NetPL", "tz=America/New_York"])
+        assert report.autodetected
+        assert len(log) == 2
+        # tz was explicit: 10:30 New York == 15:30 UTC
+        assert log.trades[0].exit_time.hour == 15
+        assert not any("timezone" in w for w in report.warnings)
+
+    def test_full_pairs_stay_authoritative(self, tmp_path: Path) -> None:
+        # A fully-specified pairs-only mapping must NOT autodetect: a Type
+        # column holding order types would otherwise be grabbed as side.
+        csv = tmp_path / "t.csv"
+        csv.write_text(
+            "Closed,NetPL,Type\n2024-01-05 10:30:00,150,market\n", encoding="utf-8"
+        )
+        log, report = load_trade_log(csv, overrides=["exit_time=Closed", "pnl=NetPL"])
+        assert not report.autodetected
+        assert len(log) == 1 and log.trades[0].side == Side.LONG
+
+
+class TestSignedQuantity:
+    def test_negative_quantity_infers_short(self, tmp_path: Path) -> None:
+        csv = tmp_path / "t.csv"
+        csv.write_text(
+            "Exit Time,PnL,Qty\n2024-01-05 10:30:00,100,-2\n2024-01-05 11:00:00,-40,3\n",
+            encoding="utf-8",
+        )
+        log, report = load_trade_log(csv)
+        assert [t.side for t in log.trades] == [Side.SHORT, Side.LONG]
+        assert [t.quantity for t in log.trades] == [2.0, 3.0]
+        assert any("side inferred" in w for w in report.warnings)
+
+    def test_signed_quantity_with_side_column_is_clamped(self, tmp_path: Path) -> None:
+        csv = tmp_path / "t.csv"
+        csv.write_text(
+            "Exit Time,PnL,Qty,Side\n2024-01-05 10:30:00,100,-2,sell\n", encoding="utf-8"
+        )
+        log, report = load_trade_log(csv)
+        assert log.trades[0].side == Side.SHORT and log.trades[0].quantity == 2.0
+        assert not any("side inferred" in w for w in report.warnings)
+
+
+class TestPerLegSplitDateTime:
+    def test_entry_and_exit_date_time_pairs(self, tmp_path: Path) -> None:
+        csv = tmp_path / "t.csv"
+        csv.write_text(
+            "Entry Date,Entry Time,Exit Date,Exit Time,PnL\n"
+            "2024-01-05,09:30:00,2024-01-05,10:45:00,125\n",
+            encoding="utf-8",
+        )
+        log, _report = load_trade_log(csv)
+        assert len(log) == 1
+        trade = log.trades[0]
+        assert (trade.entry_time.hour, trade.entry_time.minute) == (9, 30)
+        assert (trade.exit_time.hour, trade.exit_time.minute) == (10, 45)
+
+
+class TestMappingYamlStrictKeys:
+    def test_unknown_key_rejected(self, tmp_path: Path) -> None:
+        yaml_path = tmp_path / "map.yaml"
+        yaml_path.write_text(
+            "exit_time: When\npnl: Result\ndatetime_fmt: '%d/%m/%Y'\n", encoding="utf-8"
+        )
+        with pytest.raises(MappingError, match="datetime_fmt"):
+            ColumnMapping.from_yaml(yaml_path)
+
+
+class TestNaiveTzWarning:
+    def test_autodetect_naive_warns(self, tmp_path: Path) -> None:
+        csv = tmp_path / "t.csv"
+        csv.write_text("Exit Time,PnL\n2024-01-05 10:30:00,100\n", encoding="utf-8")
+        _, report = load_trade_log(csv)
+        assert any("read as UTC" in w for w in report.warnings)
+
+    def test_explicit_tz_no_warning(self, tmp_path: Path) -> None:
+        csv = tmp_path / "t.csv"
+        csv.write_text("Exit Time,PnL\n2024-01-05 10:30:00,100\n", encoding="utf-8")
+        _, report = load_trade_log(csv, overrides=["tz=UTC"])
+        assert not any("read as UTC" in w for w in report.warnings)
+
+
+class TestCleanErrors:
+    def test_zero_byte_file(self, tmp_path: Path) -> None:
+        empty = tmp_path / "empty.csv"
+        empty.write_bytes(b"")
+        with pytest.raises(MappingError, match="empty"):
+            load_trade_log(empty)
+
+    def test_bad_timezone(self, tmp_path: Path) -> None:
+        csv = tmp_path / "t.csv"
+        csv.write_text("Exit Time,PnL\n2024-01-05 10:30:00,100\n", encoding="utf-8")
+        with pytest.raises(MappingError, match="timezone"):
+            load_trade_log(csv, overrides=["tz=Not/AZone"])
+
+
+class TestWholeColumnMixedOffsets:
+    def test_two_offsets_in_column_load(self, tmp_path: Path) -> None:
+        """DST-spanning ISO export: the FIRST vectorized parse raises in
+        pandas 3 — must fall back, not crash (F2)."""
+        csv = tmp_path / "t.csv"
+        csv.write_text(
+            "exit_time,pnl\n"
+            "2024-01-05T10:30:00-05:00,100\n"
+            "2024-06-05T10:30:00-04:00,-50\n",
+            encoding="utf-8",
+        )
+        log, report = load_trade_log(csv)
+        assert len(log) == 2 and report.rows_dropped == 0
+        assert log.trades[0].exit_time.hour == 15  # -05:00 -> UTC
+        assert log.trades[1].exit_time.hour == 14  # -04:00 -> UTC
+
+
+class TestMappingUsedCompleteness:
+    def test_fees_and_prices_reported(self, tmp_path: Path) -> None:
+        csv = tmp_path / "t.csv"
+        csv.write_text(
+            "Exit Time,PnL,Fees,Entry Price,Exit Price\n"
+            "2024-01-05 10:30:00,100,2.5,5000,5010\n",
+            encoding="utf-8",
+        )
+        _, report = load_trade_log(csv)
+        assert report.mapping_used.get("fees") == "Fees"
+        assert report.mapping_used.get("entry_price") == "Entry Price"
+        assert report.mapping_used.get("exit_price") == "Exit Price"

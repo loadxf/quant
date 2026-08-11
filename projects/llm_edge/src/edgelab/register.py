@@ -15,6 +15,7 @@ import json
 import sys
 
 from . import CANDIDATES_DIR, REGISTRY_PATH
+from .gates import load_signal_module
 from .holdout_gate import spec_sha256
 
 G1_CANDIDATES = {"C007", "C008", "C009"}
@@ -32,6 +33,9 @@ def register(candidate_ids: list[str]) -> dict:
         entry = {
             "spec_sha256": spec_sha256(spec_path),
             "registered_utc": _dt.datetime.now(_dt.UTC).isoformat(timespec="seconds"),
+            # Frozen here so the one-shot holdout cannot be steered by a
+            # post-registration edit to signal.py's UNIVERSE attribute.
+            "universe": getattr(load_signal_module(cid), "UNIVERSE", "equities"),
         }
         if cid in G1_CANDIDATES:
             entry["holdout_end"] = G1_HOLDOUT_END

@@ -2,13 +2,17 @@
 
 Sharpe/Sortino are annualized from the DAILY equity series (252 trading
 days) — a documented assumption; trade-level ratios are not comparable
-across strategies with different trade frequencies.
+across strategies with different trade frequencies. That series contains
+ACTIVE days only; annual_return and MAR annualize over the log's
+calendar span instead, so a sparse trader's MAR is not inflated by the
+flat days Sharpe never sees.
 """
 
 from __future__ import annotations
 
+import datetime as dt
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 
@@ -50,7 +54,6 @@ class Metrics:
     # (a hand-built or deserialized pre-upgrade Metrics) means "unknown":
     # the scorecard recomputes rather than silently grading F on 0.0.
     bootstrap_p_positive: float | None = None
-    extras: dict[str, float] = field(default_factory=dict)
 
 
 def _max_drawdown(equity: np.ndarray) -> float:
@@ -95,9 +98,17 @@ def _annualized_ratio(daily_returns: np.ndarray, downside_only: bool) -> float:
         downside_sq = np.minimum(daily_returns, 0.0) ** 2
         denom = float(np.sqrt(downside_sq.mean()))
     else:
-        denom = float(daily_returns.std(ddof=1))
+        # ptp==0 catches the whole constant-series class: float noise in
+        # std of N identical values can leave a ~1e-14 denominator that
+        # turns "the same loss every day" into Sharpe -7e16 instead of
+        # the documented -inf convention.
+        denom = 0.0 if np.ptp(daily_returns) == 0.0 else float(daily_returns.std(ddof=1))
     if denom == 0.0:
-        return float("inf") if mean > 0 else 0.0
+        # Degenerate zero-variance series: keep the sign of the edge —
+        # a strategy losing the same amount every day is -inf, not flat.
+        if mean > 0:
+            return float("inf")
+        return float("-inf") if mean < 0 else 0.0
     return float(mean / denom * math.sqrt(TRADING_DAYS_PER_YEAR))
 
 
@@ -136,7 +147,16 @@ def compute_metrics(
     daily = log.daily_groups(boundary)
     daily_pnls = np.array([sum(t.pnl for t in trades) for _, trades in daily], dtype=float)
     daily_returns = daily_pnls / starting_equity
-    years = max(len(daily) / TRADING_DAYS_PER_YEAR, 1e-9)
+    # Annualization base for annual_return/MAR: the CALENDAR span of the
+    # log (business days first->last session), never less than the active
+    # day count (weekend sessions) or one day. Counting only days-with-
+    # trades would inflate a once-a-week strategy's annual return ~5x.
+    # Sharpe/Sortino keep the documented active-day daily series.
+    if daily:
+        span_busdays = int(np.busday_count(daily[0][0], daily[-1][0] + dt.timedelta(days=1)))
+        years = max(span_busdays, len(daily), 1) / TRADING_DAYS_PER_YEAR
+    else:
+        years = 1e-9
     annual_return = (float(pnls.sum()) / starting_equity) / years
 
     streak = longest = 0

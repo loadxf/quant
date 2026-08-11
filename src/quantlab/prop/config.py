@@ -93,7 +93,9 @@ class ConsistencySpec(_RuleBase):
     """
 
     type: Literal["consistency"] = "consistency"
-    max_best_day_pct: float = 50.0
+    # gt=0: frac 0 divides by zero mid-evaluation; negative silently blocks
+    # every pass. le=100: >100% of profit is not a consistency rule.
+    max_best_day_pct: float = Field(50.0, gt=0, le=100)
     basis: Literal["profit_target", "total_profit"] = "total_profit"
     effect: Literal["raise_target", "gate_payout"] = "raise_target"
 
@@ -114,7 +116,9 @@ class ContractLimitSpec(_RuleBase):
     """Advisory position-size check on the source log (not enforced in MC)."""
 
     type: Literal["contract_limit"] = "contract_limit"
-    max_contracts: float = 0
+    # Required and positive: a 0-contract default would fire the advisory
+    # on every run and zero out Apex-style half-size scaling.
+    max_contracts: float = Field(gt=0)
     micros_multiplier: float = 10.0  # micros allowed at Nx the mini limit
 
 
@@ -173,6 +177,20 @@ RuleSpec = Annotated[
 class DayBoundarySpec(_RuleBase):
     tz: str = "America/Chicago"
     cutoff_hour: int = 17
+
+    @model_validator(mode="after")
+    def _tz_exists(self) -> DayBoundarySpec:
+        # A typo'd zone would otherwise crash mid-evaluation (session_date
+        # constructs ZoneInfo per call) with no config context.
+        from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+        try:
+            ZoneInfo(self.tz)
+        except (KeyError, ValueError, ZoneInfoNotFoundError):
+            raise ConfigError(f"day_boundary.tz {self.tz!r} is not a known IANA zone") from None
+        if not 0 <= self.cutoff_hour <= 23:
+            raise ConfigError(f"day_boundary.cutoff_hour must be 0-23 (got {self.cutoff_hour})")
+        return self
 
     def to_boundary(self):  # -> quantlab.schema.trade.DayBoundary
         """Single conversion point so every engine groups sessions identically."""
@@ -235,6 +253,9 @@ class FeeSchedule(_RuleBase):
             raise ConfigError(
                 f"FeeSchedule.payout_haircut must be in [0, 1) (got {self.payout_haircut})"
             )
+        for name in ("monthly", "one_time", "reset", "activation", "extra_monthly", "per_payout"):
+            if getattr(self, name) < 0:
+                raise ConfigError(f"FeeSchedule.{name} must be >= 0 (got {getattr(self, name)})")
         return self
 
 
@@ -253,6 +274,16 @@ class PayoutPolicy(_RuleBase):
     buffer_above_initial: float | None = None  # TPT: withdraw only above initial + DD
     reactivations: Reactivations = Field(default_factory=Reactivations)
 
+    @model_validator(mode="after")
+    def _split_fraction(self) -> PayoutPolicy:
+        # The classic percent-vs-fraction typo (profit_split: 90) would
+        # silently inflate every payout and EV figure 90x.
+        if not 0.0 < self.profit_split <= 1.0:
+            raise ConfigError(
+                f"payout.profit_split must be a FRACTION in (0, 1] (got {self.profit_split})"
+            )
+        return self
+
 
 class FirmConfig(_RuleBase):
     name: str
@@ -270,6 +301,8 @@ class FirmConfig(_RuleBase):
 
     @model_validator(mode="after")
     def _check(self) -> FirmConfig:
+        if self.account_size <= 0:
+            raise ConfigError(f"account_size must be positive (got {self.account_size})")
         for phase in self.phases:
             if phase.profit_target is None:
                 raise ConfigError(f"evaluation phase {phase.name!r} needs a profit_target")

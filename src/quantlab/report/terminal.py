@@ -256,6 +256,8 @@ def render_reality(rc: Any, console: Console) -> None:
     )
     if decay.wfe is not None:
         decay_table.add_row("Walk-forward efficiency", f"{decay.wfe:.2f} (>0.5 acceptable)")
+    elif getattr(decay, "wfe_reason", None):
+        decay_table.add_row("Walk-forward efficiency", f"not computed: {decay.wfe_reason}")
     decay_table.add_row("DECAYED", "[red]YES[/red]" if decay.decayed else "[green]no[/green]")
     console.print(decay_table)
 

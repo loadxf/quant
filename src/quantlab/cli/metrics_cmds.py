@@ -89,10 +89,10 @@ def register_metrics_commands(app: typer.Typer) -> None:
         # layer silently disappears in pipelines.
         warnings = log_caveats(log)
         if as_json:
-            from quantlab.report.jsonout import sanitize
+            from quantlab.report.jsonout import METRICS_SCHEMA_VERSION, sanitize
 
             payload = dataclasses.asdict(result)
-            payload["schema_version"] = 1
+            payload["schema_version"] = METRICS_SCHEMA_VERSION
             payload["warnings"] = warnings
             typer.echo(json.dumps(sanitize(payload), indent=2, default=str))
         else:
