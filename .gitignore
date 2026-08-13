@@ -21,6 +21,7 @@ credentials
 
 # Outputs
 *.parquet
+*.equity.csv
 report*.html
 !tests/**/*.parquet
 

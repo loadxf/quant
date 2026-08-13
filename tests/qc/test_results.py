@@ -64,6 +64,23 @@ class TestParseClosedTrades:
         assert len(skipped) == 1
         assert "closedTrades[3]" in skipped[0]
 
+    def test_current_cloud_download_plural_symbols_is_parsed(self) -> None:
+        backtest = load_result_file(FIXTURE)
+        raw = backtest["totalPerformance"]["closedTrades"][0]
+        raw["symbols"] = [raw.pop("symbol")]
+        log, skipped = parse_closed_trades(backtest)
+        assert log.trades[0].symbol == "ES"
+        assert skipped == []
+
+    def test_multi_symbol_trade_is_skipped(self) -> None:
+        backtest = load_result_file(FIXTURE)
+        raw = backtest["totalPerformance"]["closedTrades"][0]
+        raw.pop("symbol")
+        raw["symbols"] = [{"value": "ES"}, {"value": "NQ"}]
+        log, skipped = parse_closed_trades(backtest)
+        assert len(log) == 2
+        assert "multi-symbol trades are unsupported" in skipped[0]
+
     def test_empty_trades_raises(self) -> None:
         with pytest.raises(QuantLabError, match="closedTrades"):
             parse_closed_trades({"totalPerformance": {"closedTrades": []}})

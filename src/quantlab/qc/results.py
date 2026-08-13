@@ -2,7 +2,8 @@
 
 Field names verified against QC docs and LEAN source (July 2026):
 `backtest.totalPerformance.closedTrades[]` carries per-trade
-symbol, entryTime, entryPrice, exitTime, exitPrice, quantity,
+symbols (or symbol in older serializers), entryTime, entryPrice,
+exitTime, exitPrice, quantity,
 direction (0=Long/1=Short), profitLoss, totalFees, mae, mfe.
 LEAN's `Trade.ProfitLoss` is documented as "The GROSS profit/loss of the
 trade" with fees accumulated separately in TotalFees — the canonical
@@ -67,6 +68,21 @@ def _symbol_text(raw: Any) -> str:
     return str(raw).strip()
 
 
+def _closed_trade_symbol(raw: dict[str, Any]) -> str:
+    """Normalize LEAN's current ``symbols[]`` and legacy ``symbol`` fields."""
+    singular = _field(raw, "symbol", None)
+    if singular is not None:
+        return _symbol_text(singular)
+    symbols = _field(raw, "symbols", None)
+    if not isinstance(symbols, list) or not symbols:
+        raise ValueError("closed trade has no symbol")
+    if len(symbols) != 1:
+        raise ValueError(
+            f"closed trade has {len(symbols)} symbols; multi-symbol trades are unsupported"
+        )
+    return _symbol_text(symbols[0])
+
+
 def parse_closed_trades(backtest: object) -> tuple[TradeLog, list[str]]:
     """Returns (log, skipped_reasons). One malformed trade must not abort a
     500-trade download."""
@@ -110,7 +126,7 @@ def parse_closed_trades(backtest: object) -> tuple[TradeLog, list[str]]:
                 Trade(
                     entry_time=_parse_time(_field(raw, "entryTime")),
                     exit_time=_parse_time(_field(raw, "exitTime")),
-                    symbol=_symbol_text(_field(raw, "symbol", None)),
+                    symbol=_closed_trade_symbol(raw),
                     side=Side.LONG if direction == 0 else Side.SHORT,
                     quantity=quantity,
                     # LEAN profitLoss is GROSS; canonical pnl is NET of fees.
