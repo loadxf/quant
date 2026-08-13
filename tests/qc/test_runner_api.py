@@ -609,7 +609,7 @@ class TestStrategiesParse:
             def get_open_orders(self, symbol):
                 return self.open_orders
 
-            def cancel_order(self, order_id, tag=""):
+            def cancel_order(self, order_id, order_tag=None):
                 self.canceled.append(order_id)
 
         class Strategy:
@@ -693,7 +693,7 @@ class TestStrategiesParse:
             def get_open_orders(self, symbol):
                 return self.open_orders
 
-            def cancel_order(self, order_id, tag=""):
+            def cancel_order(self, order_id, order_tag=None):
                 self.canceled.append(order_id)
 
         class Strategy:

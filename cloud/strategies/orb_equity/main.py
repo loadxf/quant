@@ -84,7 +84,7 @@ class OpeningRangeBreakoutEquity(QCAlgorithm):  # noqa: F405
         open_orders = list(self.transactions.get_open_orders(self._spy))
         for order in open_orders:
             if order.id != flatten_id:
-                self.transactions.cancel_order(order.id, tag="cancel before flatten")
+                self.transactions.cancel_order(order.id, order_tag="cancel before flatten")
         if any(order.id != flatten_id for order in open_orders):
             return
         quantity = self.portfolio[self._spy].quantity
