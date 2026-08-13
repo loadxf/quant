@@ -434,3 +434,89 @@ No paid acquisition. No QC output until the corrected notebook/stats are used.
 locked_test records). Whole-engine equivalence is claimed nowhere; the golden
 suites cover phase outcomes, payouts on both paths, sizing modes, and EOD
 adjudication — that list, not more.
+
+---
+
+## 2026-08-13 — Round 4 (Fable): data-integrity layer rebuilt after Gate-I denial
+
+Sol denied Gate I on the acquisition layer. All four claims verified before
+repair; all four were real, including two I reproduced exactly (the
+delete-then-rewrite silent mutation with a clean verify(), and a "$750 Topstep
+DLL" + doubled promo caps applied to an Apex Intraday account).
+
+### Corrections to the record
+
+- **Round-3 falsehood corrected:** "the Python bindings expose no usable DBN
+  encoder" was FALSE. `databento_dbn.Metadata.encode()` + `bytes(TradeMsg)` /
+  `bytes(MBP1Msg)` encode valid DBN; reproduced Sol's experiment (decode showed
+  raw_symbol='ES.v.0', the raw contract lost). The loader test suite now
+  contains SIX non-skipped locally-encoded DBN round-trips (trades + MBP-1).
+- **Symbology contract corrected:** continuous resolves to INSTRUMENT_ID only;
+  raw symbols require a second step (instrument_id → raw_symbol). The invalid
+  `continuous→raw_symbol` pair is gone from the cost script, the manifest
+  fixtures, and the mapping tests.
+
+### Blocker 1 — loader/symbology rebuilt
+
+- Two-step symbology everywhere: cost script performs step 1 then step 2 and
+  stores both mappings; `qlir.mapping.parse_two_step` composes them and FAILS
+  CLOSED on a missing raw mapping or on step-one output that is not an
+  instrument id (i.e., someone used the invalid direct contract).
+- Schema-aware loading (`trades` / `tbbo` / `mbp-1`): the canonical frame now
+  carries `action`; tbbo/mbp-1 preserve `bid_px/ask_px/bid_sz/ask_sz`;
+  `signed_flow`/`aggressor_sign` REFUSE frames containing book actions
+  (`trades_only()` filter) — an ADD on the bid side can never be counted as a
+  buy; `best_bid_ask()` raises on trades-only frames ("cannot price Layer B").
+- DBN decode requires the id→raw map from the acquisition's second step; fails
+  closed on missing/incomplete maps and on metadata-vs-caller schema mismatch.
+
+### Blocker 2 — integrity guarantees now hold
+
+- **Store:** the MANIFEST is the identity record. Sol's reproduction (write A,
+  delete file, write B) now RAISES; restoring the original bytes is legal;
+  untracked files at a target are adopted only if byte-identical; installs and
+  manifest rewrites are atomic (temp + os.replace, fsync); tests cover every
+  branch including no-temp-leftovers.
+- **Ledger:** `acquisition.jsonl` is hash-chained (GENESIS-rooted,
+  record_hash = sha256(prev_hash + canonical(record))), written by O_APPEND
+  single-line writes under an exclusive lock file. Tamper, reorder, or deletion
+  of any prior line fails every subsequent read; a pure-append byte test pins
+  that prior bytes never change; lock contention times out loudly.
+- **The 2025+ lock is date-derived:** any range touching 2025-01-01+ is refused
+  regardless of label (Sol's 2025–2027-as-"development" bypass is now a test);
+  labels must match the date-derived split; dev/val-spanning ranges are refused.
+
+### Blocker 3 — Topstep options hardened
+
+All purchase options are Topstep-only (`_require_topstep`; the Apex
+reproduction is now a refusal test). The purchase DLL has NO amount parameter —
+fixed $1,000/$2,000/$3,000 by size (a "$750 Topstep DLL" is inexpressible; a
+TypeError test pins the signature). The adjustable platform limit is a separate
+`--pdll` sensitivity, labeled NOT-the-purchase-DLL, mutually exclusive with
+`--dll`, and NEVER promotionally eligible. YAML notes no longer contradict the
+CLI (promo caps documented as labeled non-baseline scenarios).
+
+### Gate II instrument repairs
+
+- `qlir/windows.py`: canonical HALF-OPEN (start, end] window primitives with
+  fixture tests — at minute resolution a "60-second" window is exactly one bar,
+  the boundary bar counts on exactly one side, pre+forward windows are disjoint,
+  and `logret_std` anchors the first in-window return at the last price at-or-
+  before the window start. The QC notebook carries a verbatim copy (marked).
+- Stats script: signed returns now get the same day-clustered bootstrap CI as
+  |r| (bare event means removed).
+
+### Evidence
+
+```
+root suite   926 passed          ruff/format/mypy clean
+qlir suite   83 passed, 0 skipped (6 live DBN encode/decode round-trips)
+llm_edge     212 passed in 25.99 s under WSL2
+```
+
+`docs/edge-conversation.md` remains untracked; authorship provenance stays an
+inference, as Sol noted — nothing here changes that.
+
+### Standing constraints
+
+No amend, no push, no purchase, no QC output. 2025+ locked by DATE in code.

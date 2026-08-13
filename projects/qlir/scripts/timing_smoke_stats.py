@@ -119,8 +119,11 @@ def class_table(df: pd.DataFrame, label: str, rng: np.random.Generator) -> None:
             mean, lo, hi = boot_ci(daily_mean(sub, f"absr_{s}").to_numpy(), rng)
             rows.append((f"|r| {s}s bp", fmt(mean, lo, hi)))
         for s in HORIZONS:
-            signed = float(sub[f"ret_fwd_{s}s"].mean() * 1e4)
-            rows.append((f"signed r {s}s bp", f"{signed:+9.3f}"))
+            # Signed returns get the SAME day-clustered interval as |r| —
+            # bare event means were a round-4 defect.
+            signed_daily = daily_mean(sub.assign(_s=sub[f"ret_fwd_{s}s"] * 1e4), "_s").to_numpy()
+            mean, lo, hi = boot_ci(signed_daily, rng)
+            rows.append((f"signed r {s}s bp", fmt(mean, lo, hi)))
         for metric, col in (("volume chg log", "volume_change"), ("vol chg log", "vol_change")):
             mean, lo, hi = boot_ci(daily_mean(sub.dropna(subset=[col]), col).to_numpy(), rng)
             rows.append((metric, fmt(mean, lo, hi)))

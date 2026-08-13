@@ -232,17 +232,21 @@ def simulate_cmd(
     dll: bool = typer.Option(
         False,
         "--dll",
-        help="Add the opt-in Daily Loss Limit (lockout; official amount by "
-        "account size unless --dll-amount).",
+        help="Topstep only: add the PURCHASE Daily Loss Limit at the official "
+        "fixed amount ($1,000/$2,000/$3,000 by size; lockout).",
     ),
-    dll_amount: float | None = typer.Option(
-        None, "--dll-amount", min=0.0, help="Override the DLL dollar amount (requires --dll)."
+    pdll: float | None = typer.Option(
+        None,
+        "--pdll",
+        min=0.0,
+        help="Topstep only: adjustable PERSONAL daily loss limit sensitivity "
+        "(NOT the purchase DLL; never promotionally eligible).",
     ),
     promo_caps: bool = typer.Option(
         False,
         "--promo-caps",
-        help="Apply the June-2026 promotional DOUBLED payout caps (requires --dll; "
-        "the no-DLL non-promotional baseline stays primary).",
+        help="Topstep only: June-2026 promotional DOUBLED payout caps (requires "
+        "--dll; the no-DLL non-promotional baseline stays primary).",
     ),
     accounts: str | None = typer.Option(
         None,
@@ -256,12 +260,18 @@ def simulate_cmd(
 
     log = read_trade_log(trades)
     firm = with_fee_overrides(load_firm(firm_name), extra_monthly, per_payout_fee, payout_haircut)
-    firm = apply_topstep_options(firm, dll=dll, dll_amount=dll_amount, promo_caps=promo_caps)
-    if dll or promo_caps:
+    firm = apply_topstep_options(firm, dll=dll, pdll_amount=pdll, promo_caps=promo_caps)
+    if dll or pdll is not None or promo_caps:
+        parts = []
+        if dll:
+            parts.append("purchase DLL (official fixed amount, lockout)")
+        if pdll is not None:
+            parts.append(f"PDLL sensitivity ${pdll:g} (NOT the purchase DLL)")
+        if promo_caps:
+            parts.append("promotional DOUBLED payout caps")
         console.print(
-            "[yellow]NON-BASELINE configuration:[/yellow] "
-            + ("opt-in DLL (lockout) active" if dll else "")
-            + ("; promotional DOUBLED payout caps applied" if promo_caps else "")
+            "[yellow]NON-BASELINE Topstep configuration:[/yellow] "
+            + "; ".join(parts)
             + " — the no-DLL, non-promotional run remains the primary result."
         )
     cfg = MCConfig(

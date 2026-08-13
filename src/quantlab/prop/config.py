@@ -481,34 +481,33 @@ class FirmConfig(_RuleBase):
         return self
 
 
-# Optional Daily Loss Limit values, verified against help.topstep.com
-# article 10490293 (fetched 2026-08-13): chosen at checkout, fixed
-# thereafter, LOCKOUT-only (flatten + no new trades until 5 PM CT;
-# never an account failure).
+# Purchase Daily Loss Limit values, verified against help.topstep.com
+# article 10490293 (fetched 2026-08-13): chosen at checkout, FIXED (no
+# changes later), LOCKOUT-only (flatten + no new trades until 5 PM CT;
+# never an account failure). The adjustable "personal" daily loss limit
+# (PDLL) on TopstepX is a DIFFERENT product: a platform risk setting
+# that confers NO promotional eligibility.
 TOPSTEP_DLL_AMOUNTS: dict[float, float] = {50_000: 1_000, 100_000: 2_000, 150_000: 3_000}
 
 
-def with_optional_dll(firm: FirmConfig, amount: float | None = None) -> FirmConfig:
-    """Copy of `firm` with the opt-in Daily Loss Limit added to every
-    phase (lockout effect — a soft breach, not a failure).
+def _require_topstep(firm: FirmConfig, option: str) -> None:
+    """Topstep purchase options must never mutate other firms' presets
+    (round 4: a '$750 Topstep DLL' was applied to an Apex account)."""
+    if firm.firm != "Topstep":
+        raise ConfigError(
+            f"{option} is a Topstep purchase option and applies only to Topstep "
+            f"presets (got firm {firm.firm or firm.name!r})"
+        )
 
-    `amount` defaults to the official Topstep value for the account size;
-    an unknown size requires an explicit amount.
-    """
-    if amount is None:
-        amount = TOPSTEP_DLL_AMOUNTS.get(firm.account_size)
-        if amount is None:
-            raise ConfigError(
-                f"no official DLL amount for account size {firm.account_size:g} — "
-                "pass an explicit --dll-amount"
-            )
+
+def _with_lockout_dll(firm: FirmConfig, amount: float) -> FirmConfig:
     if not math.isfinite(amount) or amount <= 0:
-        raise ConfigError(f"DLL amount must be finite and positive (got {amount})")
+        raise ConfigError(f"daily-loss amount must be finite and positive (got {amount})")
     for phase in [*firm.phases, firm.funded]:
         if any(isinstance(rule, DailyLossLimitSpec) for rule in phase.rules):
             raise ConfigError(
                 f"phase {phase.name!r} already defines a daily_loss_limit — "
-                "remove --dll or edit the firm YAML"
+                "remove the option or edit the firm YAML"
             )
     dll = DailyLossLimitSpec(amount=amount, effect="lockout")
     new_phases = [phase.model_copy(update={"rules": [*phase.rules, dll]}) for phase in firm.phases]
@@ -516,10 +515,39 @@ def with_optional_dll(firm: FirmConfig, amount: float | None = None) -> FirmConf
     return firm.model_copy(update={"phases": new_phases, "funded": new_funded})
 
 
+def with_optional_dll(firm: FirmConfig) -> FirmConfig:
+    """Copy of `firm` with the PURCHASE Daily Loss Limit added to every
+    phase (lockout — a soft breach, not a failure).
+
+    The amount is the OFFICIAL fixed value for the account size — the
+    purchase DLL is not adjustable, so there is deliberately no amount
+    parameter. For an adjustable platform limit use `with_personal_dll`,
+    which is labeled separately and confers no promotional eligibility.
+    """
+    _require_topstep(firm, "the purchase DLL")
+    amount = TOPSTEP_DLL_AMOUNTS.get(firm.account_size)
+    if amount is None:
+        raise ConfigError(
+            f"no official purchase-DLL amount for account size "
+            f"{firm.account_size:g} — Topstep publishes 50K/100K/150K only"
+        )
+    return _with_lockout_dll(firm, amount)
+
+
+def with_personal_dll(firm: FirmConfig, amount: float) -> FirmConfig:
+    """Copy of `firm` with an adjustable PERSONAL daily loss limit (the
+    TopstepX platform risk setting) — a SENSITIVITY scenario, not the
+    purchase DLL: results must be labeled PDLL and are never eligible
+    for promotional payout caps."""
+    _require_topstep(firm, "the personal daily loss limit (PDLL)")
+    return _with_lockout_dll(firm, amount)
+
+
 def with_promo_payout_caps(firm: FirmConfig) -> FirmConfig:
     """Copy of `firm` with DOUBLED payout caps on both paths — the
-    June-2026 limited promotion for accounts purchased WITH the optional
+    June-2026 limited promotion for accounts purchased WITH the purchase
     DLL. Never the primary result: the baseline is non-promotional."""
+    _require_topstep(firm, "the promotional payout-cap doubling")
     payout = firm.payout
     updates: dict[str, object] = {}
     if payout.payout_cap_ladder:
@@ -536,24 +564,36 @@ def with_promo_payout_caps(firm: FirmConfig) -> FirmConfig:
 def apply_topstep_options(
     firm: FirmConfig,
     dll: bool = False,
-    dll_amount: float | None = None,
+    pdll_amount: float | None = None,
     promo_caps: bool = False,
 ) -> FirmConfig:
-    """Compose the opt-in DLL and the promotional doubled caps.
+    """Compose the Topstep purchase options (all Topstep-only).
 
-    The promotion applies only to accounts purchased WITH the DLL, so
-    promo_caps without dll is a configuration error. The no-DLL,
-    non-promotional configuration remains the primary baseline.
+    - `dll`: the purchase DLL at the OFFICIAL fixed amount (no override).
+    - `pdll_amount`: the adjustable personal limit — a separately labeled
+      sensitivity scenario; mutually exclusive with `dll` (the engine
+      models one daily-loss line) and NEVER promotionally eligible.
+    - `promo_caps`: doubled payout caps; requires the purchase DLL.
+    The no-DLL, non-promotional configuration remains the baseline.
     """
-    if dll_amount is not None and not dll:
-        raise ConfigError("--dll-amount requires --dll")
+    if not (dll or pdll_amount is not None or promo_caps):
+        return firm
+    _require_topstep(firm, "Topstep purchase options")
+    if dll and pdll_amount is not None:
+        raise ConfigError(
+            "--dll and --pdll are mutually exclusive — the engine models one "
+            "daily-loss line; pick the purchase DLL or the PDLL sensitivity"
+        )
     if promo_caps and not dll:
         raise ConfigError(
             "promotional doubled caps apply only to accounts purchased with the "
-            "optional DLL — add --dll (and keep the no-DLL baseline primary)"
+            "fixed purchase DLL — a PDLL setting confers no promotional "
+            "eligibility (keep the no-DLL baseline primary)"
         )
     if dll:
-        firm = with_optional_dll(firm, dll_amount)
+        firm = with_optional_dll(firm)
+    elif pdll_amount is not None:
+        firm = with_personal_dll(firm, pdll_amount)
     if promo_caps:
         firm = with_promo_payout_caps(firm)
     return firm

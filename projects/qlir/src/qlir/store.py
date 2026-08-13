@@ -1,15 +1,29 @@
 """Immutable raw-file store with a sha256 manifest.
 
-Raw DBN files are written exactly once. Re-writing identical bytes is a
-no-op; re-writing different bytes RAISES — corrections happen by adding
-a new dataset version, never by mutating raw history. Every file's hash
-lives in ``manifests/files.sha256`` (sha256sum format: ``<hex>  <relpath>``,
-sorted, unique) so any later tamper or bit-rot is detectable.
+The MANIFEST is the identity record, not the file: once a logical path
+(dataset/schema/symbol/date) has a recorded hash, only byte-identical
+content may ever occupy it again — even if the file itself was deleted
+(round 4, blocker 2: delete-then-rewrite must not silently mutate raw
+history). Restoring a lost file with its original bytes is legal;
+anything else raises. Corrections happen by adding a new dataset
+version directory, never by mutating raw history.
+
+Writes are ATOMIC: payloads land in a temp file in the target directory
+and are installed with os.replace; the manifest is rewritten the same
+way, so an interrupted write can never leave a half-written file or a
+truncated manifest.
+
+``manifests/files.sha256`` uses sha256sum format (``<hex>  <relpath>``,
+sorted, unique) so any later tamper or bit-rot is detectable by
+``verify()``.
 """
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
+import os
+import tempfile
 from pathlib import Path
 
 from qlir import QlirError
@@ -23,6 +37,21 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1 << 20), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def _atomic_write_bytes(path: Path, payload: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.tmp-")
+    try:
+        with os.fdopen(fd, "wb") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_name, path)
+    except BaseException:
+        with contextlib.suppress(OSError):
+            os.unlink(tmp_name)
+        raise
 
 
 class RawStore:
@@ -57,34 +86,53 @@ class RawStore:
         return entries
 
     def _write_manifest(self, entries: dict[str, str]) -> None:
-        self.manifest_path.parent.mkdir(parents=True, exist_ok=True)
         lines = [f"{digest}  {relpath}" for relpath, digest in sorted(entries.items())]
-        self.manifest_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        _atomic_write_bytes(self.manifest_path, ("\n".join(lines) + "\n").encode("utf-8"))
 
     # -- writes -----------------------------------------------------------
     def write_raw(self, dataset: str, schema: str, symbol: str, date: str, payload: bytes) -> Path:
         """Write one immutable raw file and record its hash.
 
-        Identical re-write: no-op. Different bytes for an existing path:
-        QlirError — raw history is immutable.
+        Identity law: the MANIFEST hash for a logical path is permanent.
+        - New identity: install atomically, record the hash.
+        - Existing identity + identical bytes: idempotent (also restores
+          a deleted file from the original bytes).
+        - Existing identity + different bytes: QlirError, even when the
+          file on disk is missing — raw history never mutates.
+        - Untracked file already at the target: adopted only if the
+          payload is byte-identical; otherwise refused.
         """
         if not payload:
             raise QlirError("refusing to write an empty raw file")
         path = self.path_for(dataset, schema, symbol, date)
+        relpath = path.relative_to(self.root).as_posix()
         new_digest = hashlib.sha256(payload).hexdigest()
+        entries = self._read_manifest()
+        recorded = entries.get(relpath)
+        if recorded is not None:
+            if recorded != new_digest:
+                raise QlirError(
+                    f"IMMUTABLE raw identity {relpath} is recorded with hash "
+                    f"{recorded[:12]}…; refusing different bytes ({new_digest[:12]}…) "
+                    "even though the file "
+                    + ("exists." if path.exists() else "was deleted.")
+                    + " Corrections require a new dataset version directory."
+                )
+            if path.exists() and sha256_file(path) == new_digest:
+                return path  # fully idempotent
+            _atomic_write_bytes(path, payload)  # legal restore of original bytes
+            return path
         if path.exists():
             existing = sha256_file(path)
             if existing != new_digest:
                 raise QlirError(
-                    f"IMMUTABLE raw file {path} already exists with hash {existing[:12]}…; "
-                    f"refusing to overwrite with different bytes ({new_digest[:12]}…). "
-                    "Corrections require a new dataset version directory."
+                    f"untracked file already at {relpath} with hash {existing[:12]}… "
+                    f"differs from the payload ({new_digest[:12]}…) — refusing to "
+                    "overwrite or adopt it; investigate its provenance"
                 )
-            return path  # identical bytes — idempotent
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_bytes(payload)
-        entries = self._read_manifest()
-        relpath = path.relative_to(self.root).as_posix()
+            # Byte-identical untracked file: adopt it into the manifest.
+        else:
+            _atomic_write_bytes(path, payload)
         entries[relpath] = new_digest
         self._write_manifest(entries)
         return path

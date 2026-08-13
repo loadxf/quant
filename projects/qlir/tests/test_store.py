@@ -31,6 +31,44 @@ class TestImmutability:
         with pytest.raises(QlirError, match="IMMUTABLE"):
             store.write_raw("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", b"different")
 
+    def test_delete_then_different_write_refused(self, store) -> None:
+        """Round-4 blocker 2: the MANIFEST identity survives file
+        deletion — delete-then-rewrite must not silently mutate raw
+        history with a clean verify()."""
+        path = store.write_raw("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", PAYLOAD)
+        path.unlink()
+        with pytest.raises(QlirError, match="was deleted"):
+            store.write_raw("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", b"payload-B")
+        # The identity is intact and verify still reports the loss.
+        problems = store.verify()
+        assert len(problems) == 1 and problems[0].startswith("MISSING")
+
+    def test_delete_then_identical_write_restores(self, store) -> None:
+        path = store.write_raw("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", PAYLOAD)
+        path.unlink()
+        restored = store.write_raw("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", PAYLOAD)
+        assert restored.read_bytes() == PAYLOAD
+        assert store.verify() == []
+
+    def test_untracked_file_with_different_bytes_refused(self, store) -> None:
+        target = store.path_for("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(b"pre-existing-unknown")
+        with pytest.raises(QlirError, match="untracked file"):
+            store.write_raw("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", PAYLOAD)
+
+    def test_untracked_identical_file_adopted(self, store) -> None:
+        target = store.path_for("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(PAYLOAD)
+        store.write_raw("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", PAYLOAD)
+        assert store.verify() == []
+
+    def test_atomic_install_leaves_no_temp_files(self, store) -> None:
+        path = store.write_raw("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", PAYLOAD)
+        leftovers = [p for p in path.parent.iterdir() if ".tmp-" in p.name]
+        assert leftovers == []
+
     def test_empty_payload_refused(self, store) -> None:
         with pytest.raises(QlirError, match="empty"):
             store.write_raw("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", b"")

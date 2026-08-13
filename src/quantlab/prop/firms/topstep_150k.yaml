@@ -79,6 +79,10 @@ payout:
   consistency: {min_days: 3, max_best_day_pct: 40, payout_cap_ladder: [6000]}
 notes: |
   Both XFA payout paths are modeled; the Standard path is the default
-  (switch with payout.path: consistency or --payout-path). The June-2026
-  DLL promotion (doubled payout caps) is deliberately NOT modeled. Live
-  Funded Account call-up beyond the XFA is discretionary and out of scope.
+  (switch with payout.path: consistency or --payout-path). The purchase
+  DLL (official fixed amount) and the June-2026 promotional doubled
+  payout caps are available as labeled NON-BASELINE scenarios via
+  `quant prop simulate --dll [--promo-caps]`; strategies must not depend
+  on temporary promotions, and the no-DLL non-promotional configuration
+  is the primary result. Live Funded Account call-up beyond the XFA is
+  discretionary and out of scope.

@@ -71,11 +71,39 @@ if not probe.empty:
 NY_TO_CT = -1  # hours; NY 09:30 == CT 08:30 year-round (both shift DST together)
 
 
-# %% CELL 3 — extraction
-def last_price_at(closes: pd.Series, when: pd.Timestamp):
-    """Close of the last bar with EndTime <= when (None if absent)."""
-    idx = closes.index.searchsorted(when, side="right") - 1
-    return float(closes.iloc[idx]) if idx >= 0 else None
+# %% CELL 3 — window primitives.
+# VERBATIM COPY of projects/qlir/src/qlir/windows.py (unit-tested there);
+# any change must be mirrored. All windows are HALF-OPEN (start, end]:
+# the boundary bar counts on exactly one side, and at minute resolution
+# a "60-second" window is exactly one bar, never two.
+def half_open_slice(series: pd.Series, start: pd.Timestamp, end: pd.Timestamp) -> pd.Series:
+    index = series.index
+    lo = index.searchsorted(start, side="right")
+    hi = index.searchsorted(end, side="right")
+    return series.iloc[lo:hi]
+
+
+def window_sum(series: pd.Series, start: pd.Timestamp, end: pd.Timestamp) -> float:
+    return float(half_open_slice(series, start, end).sum())
+
+
+def last_at_or_before(series: pd.Series, when: pd.Timestamp):
+    position = series.index.searchsorted(when, side="right") - 1
+    return float(series.iloc[position]) if position >= 0 else None
+
+
+def logret_std(closes: pd.Series, start: pd.Timestamp, end: pd.Timestamp) -> float:
+    window = half_open_slice(closes, start, end)
+    base = last_at_or_before(closes, start)
+    if base is None or len(window) < 1:
+        return float("nan")
+    prices = np.concatenate([[base], window.to_numpy(dtype="float64")])
+    if len(prices) < 3:
+        return float("nan")
+    return float(np.std(np.diff(np.log(prices)), ddof=1))
+
+
+# %% CELL 4 — extraction
 
 
 def extract_year(year: int) -> pd.DataFrame:
@@ -102,13 +130,13 @@ def extract_year(year: int) -> pd.DataFrame:
                 for b_ct in BOUNDARIES:
                     b_ny = dt.datetime.combine(session, b_ct) - dt.timedelta(hours=NY_TO_CT)
                     b = pd.Timestamp(b_ny)
-                    p0 = last_price_at(closes, b)
-                    p_pre = last_price_at(closes, b - pd.Timedelta(seconds=PRE_S))
+                    p0 = last_at_or_before(closes, b)
+                    p_pre = last_at_or_before(closes, b - pd.Timedelta(seconds=PRE_S))
                     if p0 is None or p_pre is None or p0 <= 0 or p_pre <= 0:
                         continue
-                    pre_win = closes.loc[b - pd.Timedelta(minutes=5) : b]
-                    post_win = closes.loc[b : b + pd.Timedelta(minutes=5)]
-                    if len(pre_win) < 2 or len(post_win) < 2:
+                    prevol = logret_std(closes, b - pd.Timedelta(minutes=5), b)
+                    postvol = logret_std(closes, b, b + pd.Timedelta(minutes=5))
+                    if not (np.isfinite(prevol) and np.isfinite(postvol)):
                         continue
                     row = {
                         "date": session.isoformat(),
@@ -124,22 +152,21 @@ def extract_year(year: int) -> pd.DataFrame:
                         "resolution_used": res_used,
                         "price_b": p0,
                         "ret_pre_60s": np.log(p0 / p_pre),
-                        "prevol_5m": float(np.log(pre_win).diff().std()),
-                        "postvol_5m": float(np.log(post_win).diff().std()),
-                        "vol_pre_60s": float(
-                            volumes.loc[b - pd.Timedelta(seconds=PRE_S) : b].sum()
-                        ),
+                        "prevol_5m": prevol,
+                        "postvol_5m": postvol,
+                        # Half-open (b-60s, b]: the boundary bar counts here
+                        # and NEVER in the forward windows below.
+                        "vol_pre_60s": window_sum(volumes, b - pd.Timedelta(seconds=PRE_S), b),
                     }
                     ok = True
                     for s in FORWARD_S:
-                        pf = last_price_at(closes, b + pd.Timedelta(seconds=s))
+                        pf = last_at_or_before(closes, b + pd.Timedelta(seconds=s))
                         if pf is None or pf <= 0:
                             ok = False
                             break
                         row[f"ret_fwd_{s}s"] = np.log(pf / p0)
-                        row[f"vol_fwd_{s}s"] = float(
-                            volumes.loc[b : b + pd.Timedelta(seconds=s)].sum()
-                        )
+                        # Half-open (b, b+s]: excludes the boundary bar.
+                        row[f"vol_fwd_{s}s"] = window_sum(volumes, b, b + pd.Timedelta(seconds=s))
                     if ok:
                         rows.append(row)
         print(f"{year}-{month:02d}: cumulative rows {len(rows)}")

@@ -31,7 +31,10 @@ from typing import Any
 
 DATASET = "GLBX.MDP3"
 STYPE_IN = "continuous"
-STYPE_OUT = "raw_symbol"
+# Databento's supported symbology matrix: CONTINUOUS resolves to
+# INSTRUMENT_ID only (round 4, blocker 1). Dated raw contracts come from
+# a SECOND resolution step, instrument_id -> raw_symbol.
+STYPE_OUT = "instrument_id"
 
 # Package -> list of (symbols, schema) legs. Sol/Fable round 2, section 5.2.
 PACKAGES: dict[str, list[tuple[list[str], str]]] = {
@@ -132,29 +135,59 @@ def main() -> int:
         results["dataset_condition_by_date"] = cond
         results["dataset_condition_summary"] = cond
 
+    # Two-step symbology (the only supported route for continuous symbols):
+    # step 1: continuous -> instrument_id; step 2: instrument_id -> raw_symbol.
     all_symbols = sorted({s for legs in PACKAGES.values() for syms, _ in legs for s in syms})
-    resolution = safe(
-        "symbology.resolve",
+    step_one = safe(
+        "symbology.resolve step 1 (continuous -> instrument_id)",
         client.symbology.resolve,
         dataset=DATASET,
         symbols=all_symbols,
-        stype_in=STYPE_IN,
-        stype_out=STYPE_OUT,
+        stype_in="continuous",
+        stype_out="instrument_id",
         start_date="2021-01-01",
         end_date="2024-12-31",
     )
-    if isinstance(resolution, dict) and "error" not in resolution:
-        mappings = resolution.get("result", resolution)
+    if isinstance(step_one, dict) and "error" not in step_one:
+        mappings = step_one.get("result", step_one)
         counts = {
             sym: (len(mappings.get(sym, [])) if isinstance(mappings, dict) else None)
             for sym in all_symbols
         }
-        results["symbology"] = {"mapping_interval_counts": counts}
         unresolved = [s for s, n in counts.items() if not n]
-        results["symbology"]["unresolved"] = unresolved
-        print(f"symbology: mapping intervals per symbol {counts}; unresolved: {unresolved}")
+        instrument_ids = sorted(
+            {
+                str(interval.get("s"))
+                for intervals in (mappings.values() if isinstance(mappings, dict) else [])
+                for interval in intervals
+                if isinstance(interval, dict) and interval.get("s")
+            }
+        )
+        step_two = safe(
+            "symbology.resolve step 2 (instrument_id -> raw_symbol)",
+            client.symbology.resolve,
+            dataset=DATASET,
+            symbols=instrument_ids,
+            stype_in="instrument_id",
+            stype_out="raw_symbol",
+            start_date="2021-01-01",
+            end_date="2024-12-31",
+        )
+        results["symbology"] = {
+            "continuous_to_instrument_id": mappings,
+            "instrument_id_count": len(instrument_ids),
+            "mapping_interval_counts": counts,
+            "unresolved": unresolved,
+            "instrument_id_to_raw": (
+                step_two.get("result", step_two) if isinstance(step_two, dict) else step_two
+            ),
+        }
+        print(
+            f"symbology: intervals per symbol {counts}; unresolved: {unresolved}; "
+            f"{len(instrument_ids)} instrument ids sent to step two"
+        )
     else:
-        results["symbology"] = {"error": resolution}
+        results["symbology"] = {"error": step_one}
 
     def fmt_money(value: float | None) -> str:
         return "n/a" if value is None else f"{value:,.2f}"
