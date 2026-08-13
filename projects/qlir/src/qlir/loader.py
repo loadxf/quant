@@ -24,14 +24,23 @@ tbbo / mbp-1 additionally carry the top-of-book:
     bid_px, ask_px  float64  (NaN = empty book side)
     bid_sz, ask_sz  int64
 
-Ordering: (ts_event, sequence, ts_recv) — Sol round 2 §4.2. Signed flow
-uses ONLY action='T' rows; treating book updates as trades is the
-round-4 failure mode this module exists to prevent.
+Ordering: (ts_event, sequence, ts_recv) — Sol round 2 §4.2. Precise
+behavior contract (round-5 wording correction): `signed_flow` and
+`unknown_side_fraction` FILTER to action='T' rows via `trades_only()`
+and accept mixed frames; `aggressor_sign` RAISES on frames containing
+book actions. Treating book updates as trades is the failure mode this
+module exists to prevent — by filtering in the flow aggregates and by
+refusal in the per-row sign primitive.
 
 Sources: `.parquet` (decoded-record fixtures) and `.dbn`/`.dbn.zst` via
-databento. DBN decoding REQUIRES an instrument_id -> raw_symbol map
-(from the acquisition's second symbology step); without one it fails
-closed rather than silently mislabeling the contract.
+databento. DBN decoding REQUIRES a VALIDATED SINGLE-DATE
+instrument_id -> raw_symbol map (produced by
+`ContractMap.flat_map_for_date` from the date-aware two-step
+composition — ids can remap across dates, so a flat map is only valid
+for one date); without one it fails closed rather than mislabel the
+contract. `allow_unresolved=True` exists solely for the acquisition
+probe pass that derives the file's event date before binding; it labels
+raw_symbol '<unresolved>' and must never feed research code.
 """
 
 from __future__ import annotations
@@ -161,7 +170,12 @@ def validate_events(df: pd.DataFrame, schema: str, source: str = "<frame>") -> p
 _DBN_SCHEMA_NAMES = {"trades": "trades", "tbbo": "tbbo", "mbp-1": "mbp-1"}
 
 
-def _load_dbn(path: Path, schema: str, id_to_raw: dict[int, str] | None) -> pd.DataFrame:
+def _load_dbn(
+    path: Path,
+    schema: str,
+    id_to_raw: dict[int, str] | None,
+    allow_unresolved: bool = False,
+) -> pd.DataFrame:
     try:
         from databento import DBNStore
     except ImportError:
@@ -190,11 +204,14 @@ def _load_dbn(path: Path, schema: str, id_to_raw: dict[int, str] | None) -> pd.D
     # from the acquisition's second symbology step. Fail closed rather
     # than mislabel (round 4: "losing the actual raw-contract mapping").
     if id_to_raw is None:
-        raise QlirError(
-            f"{path}: DBN decoding needs the instrument_id -> raw_symbol map "
-            "from the acquisition manifest (second resolution step); refusing "
-            "to guess the dated contract"
-        )
+        if not allow_unresolved:
+            raise QlirError(
+                f"{path}: DBN decoding needs a validated single-date "
+                "instrument_id -> raw_symbol map (ContractMap.flat_map_for_date); "
+                "refusing to guess the dated contract"
+            )
+        frame["raw_symbol"] = "<unresolved>"
+        return validate_events(frame, schema, source=str(path))
     ids = frame["instrument_id"].astype("int64")
     unmapped = sorted(set(ids.unique()) - set(id_to_raw))
     if unmapped:
@@ -204,7 +221,10 @@ def _load_dbn(path: Path, schema: str, id_to_raw: dict[int, str] | None) -> pd.D
 
 
 def load_events(
-    path: str | Path, schema: str, id_to_raw: dict[int, str] | None = None
+    path: str | Path,
+    schema: str,
+    id_to_raw: dict[int, str] | None = None,
+    allow_unresolved: bool = False,
 ) -> pd.DataFrame:
     """Load one canonical event file (.parquet fixture or .dbn[.zst])."""
     path = Path(path)
@@ -216,5 +236,5 @@ def load_events(
     if suffixes.endswith(".parquet"):
         return validate_events(pd.read_parquet(path), schema, source=str(path))
     if suffixes.endswith((".dbn", ".dbn.zst")):
-        return _load_dbn(path, schema, id_to_raw)
+        return _load_dbn(path, schema, id_to_raw, allow_unresolved=allow_unresolved)
     raise QlirError(f"unsupported event-file type: {path.name}")

@@ -40,9 +40,12 @@ class TestPurchaseDll:
 
     def test_no_arbitrary_amount_parameter_exists(self) -> None:
         """The purchase DLL is fixed at checkout — a '$750 Topstep DLL'
-        must be inexpressible through this function."""
+        must be inexpressible: positionally (keyword-only signature) and
+        via the provenance keyword (validated values)."""
         with pytest.raises(TypeError):
             with_optional_dll(load_firm("topstep_50k"), 750.0)  # type: ignore[call-arg]
+        with pytest.raises(ConfigError, match="provenance"):
+            with_optional_dll(load_firm("topstep_50k"), provenance=750.0)  # type: ignore[arg-type]
 
     def test_unknown_size_is_a_hard_error(self) -> None:
         firm = load_firm("topstep_50k").model_copy(update={"account_size": 77_000.0})
@@ -98,6 +101,7 @@ class TestPersonalDll:
         dll = next(rule for rule in firm.phases[0].rules if isinstance(rule, DailyLossLimitSpec))
         assert dll.amount == 750.0
         assert dll.effect == "lockout"
+        assert firm.dll_provenance == "pdll"
 
     def test_pdll_never_promotionally_eligible(self) -> None:
         with pytest.raises(ConfigError, match="PDLL setting confers no promotional"):
@@ -108,13 +112,41 @@ class TestPersonalDll:
             apply_topstep_options(load_firm("topstep_50k"), dll=True, pdll_amount=500.0)
 
 
-class TestPromoCaps:
-    def test_doubles_both_ladders(self) -> None:
-        firm = with_promo_payout_caps(load_firm("topstep_50k"))
-        assert firm.payout.payout_cap_ladder == [4000.0]
-        assert firm.payout.consistency is not None
-        assert firm.payout.consistency.payout_cap_ladder == [6000.0]
+class TestPromoProvenance:
+    """Round-5 defect 4: the promotional invariant must hold through the
+    PUBLIC API — with_promo_payout_caps CONSUMES recorded purchase-DLL
+    provenance instead of trusting its caller."""
 
+    def test_sols_pdll_composition_now_raises(self) -> None:
+        """The exact round-5 reproduction: with_personal_dll ->
+        with_promo_payout_caps must raise, not yield [4000]."""
+        firm = with_personal_dll(load_firm("topstep_50k"), 750.0)
+        with pytest.raises(ConfigError, match="does not qualify"):
+            with_promo_payout_caps(firm)
+
+    def test_baseline_firm_refused(self) -> None:
+        with pytest.raises(ConfigError, match="'no DLL'"):
+            with_promo_payout_caps(load_firm("topstep_50k"))
+
+    def test_xfa_activation_dll_not_promotionally_eligible(self) -> None:
+        """A DLL added at XFA activation carries the rule mechanics but
+        NOT promotional eligibility — only a new-Combine-purchase DLL
+        qualifies."""
+        firm = with_optional_dll(load_firm("topstep_50k"), provenance="xfa_activation")
+        assert firm.dll_provenance == "xfa_activation"
+        with pytest.raises(ConfigError, match="does not qualify"):
+            with_promo_payout_caps(firm)
+
+    def test_combine_purchase_provenance_recorded_and_qualifies(self) -> None:
+        firm = with_optional_dll(load_firm("topstep_50k"))
+        assert firm.dll_provenance == "combine_purchase"
+        promo = with_promo_payout_caps(firm)
+        assert promo.payout.payout_cap_ladder == [4000.0]
+        assert promo.payout.consistency is not None
+        assert promo.payout.consistency.payout_cap_ladder == [6000.0]
+
+
+class TestPromoCaps:
     def test_promo_requires_purchase_dll(self) -> None:
         with pytest.raises(ConfigError, match="promotional"):
             apply_topstep_options(load_firm("topstep_50k"), dll=False, promo_caps=True)
@@ -123,6 +155,7 @@ class TestPromoCaps:
         firm = apply_topstep_options(load_firm("topstep_100k"), dll=True, promo_caps=True)
         dll = next(rule for rule in firm.phases[0].rules if isinstance(rule, DailyLossLimitSpec))
         assert dll.amount == 2000.0
+        assert firm.dll_provenance == "combine_purchase"
         assert firm.payout.payout_cap_ladder == [6000.0]
         assert firm.payout.consistency is not None
         assert firm.payout.consistency.payout_cap_ladder == [8000.0]

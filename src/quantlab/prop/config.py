@@ -435,6 +435,13 @@ class FirmConfig(_RuleBase):
     # round-turn fees instead of the generic retail contract defaults —
     # and fail loudly for symbols the profile does not price.
     fee_profile: str = ""
+    # Provenance of any daily-loss line added by the Topstep option
+    # helpers (round 5, defect 4): promotional doubled caps require the
+    # DLL to have been selected WITH A NEW COMBINE PURCHASE — a later
+    # PDLL, or a DLL added at XFA activation, does not qualify. Only
+    # with_optional_dll(provenance="combine_purchase") sets the
+    # qualifying value; with_promo_payout_caps CONSUMES it.
+    dll_provenance: Literal["", "combine_purchase", "xfa_activation", "pdll"] = ""
     verified_as_of: str = ""
     sources: list[str] = Field(default_factory=list)
     notes: str = ""
@@ -515,23 +522,36 @@ def _with_lockout_dll(firm: FirmConfig, amount: float) -> FirmConfig:
     return firm.model_copy(update={"phases": new_phases, "funded": new_funded})
 
 
-def with_optional_dll(firm: FirmConfig) -> FirmConfig:
+def with_optional_dll(
+    firm: FirmConfig,
+    *,
+    provenance: Literal["combine_purchase", "xfa_activation"] = "combine_purchase",
+) -> FirmConfig:
     """Copy of `firm` with the PURCHASE Daily Loss Limit added to every
     phase (lockout — a soft breach, not a failure).
 
     The amount is the OFFICIAL fixed value for the account size — the
     purchase DLL is not adjustable, so there is deliberately no amount
-    parameter. For an adjustable platform limit use `with_personal_dll`,
-    which is labeled separately and confers no promotional eligibility.
+    parameter. `provenance` records WHEN the DLL was selected: only
+    "combine_purchase" (a new Combine bought with the DLL) qualifies for
+    the promotional doubled caps; "xfa_activation" carries the same rule
+    mechanics but no promotional eligibility. For an adjustable platform
+    limit use `with_personal_dll` (never promotionally eligible).
     """
     _require_topstep(firm, "the purchase DLL")
+    if provenance not in ("combine_purchase", "xfa_activation"):
+        raise ConfigError(
+            f"purchase-DLL provenance must be 'combine_purchase' or "
+            f"'xfa_activation' (got {provenance!r})"
+        )
     amount = TOPSTEP_DLL_AMOUNTS.get(firm.account_size)
     if amount is None:
         raise ConfigError(
             f"no official purchase-DLL amount for account size "
             f"{firm.account_size:g} — Topstep publishes 50K/100K/150K only"
         )
-    return _with_lockout_dll(firm, amount)
+    firm = _with_lockout_dll(firm, amount)
+    return firm.model_copy(update={"dll_provenance": provenance})
 
 
 def with_personal_dll(firm: FirmConfig, amount: float) -> FirmConfig:
@@ -540,14 +560,25 @@ def with_personal_dll(firm: FirmConfig, amount: float) -> FirmConfig:
     purchase DLL: results must be labeled PDLL and are never eligible
     for promotional payout caps."""
     _require_topstep(firm, "the personal daily loss limit (PDLL)")
-    return _with_lockout_dll(firm, amount)
+    firm = _with_lockout_dll(firm, amount)
+    return firm.model_copy(update={"dll_provenance": "pdll"})
 
 
 def with_promo_payout_caps(firm: FirmConfig) -> FirmConfig:
     """Copy of `firm` with DOUBLED payout caps on both paths — the
-    June-2026 limited promotion for accounts purchased WITH the purchase
-    DLL. Never the primary result: the baseline is non-promotional."""
+    June-2026 limited promotion, available ONLY when the DLL was
+    selected with a new Combine purchase. This helper CONSUMES the
+    recorded provenance (round 5, defect 4): calling it on a baseline
+    firm, a PDLL firm, or an XFA-activation DLL raises — the promotional
+    invariant holds through the public API, not just the CLI wrapper."""
     _require_topstep(firm, "the promotional payout-cap doubling")
+    if firm.dll_provenance != "combine_purchase":
+        got = firm.dll_provenance or "no DLL"
+        raise ConfigError(
+            "promotional doubled caps require the purchase DLL selected with a "
+            f"NEW COMBINE PURCHASE (dll_provenance='combine_purchase'; got {got!r}) "
+            "— a PDLL or an XFA-activation DLL does not qualify"
+        )
     payout = firm.payout
     updates: dict[str, object] = {}
     if payout.payout_cap_ladder:

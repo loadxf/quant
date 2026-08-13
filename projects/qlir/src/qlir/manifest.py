@@ -1,40 +1,60 @@
-"""Hash-chained, append-only acquisition ledger (acquisition.jsonl).
+"""Hash-chained, anchored, append-only acquisition ledger (round 5).
 
-Round-4 redesign (Sol blockers): the ledger is a JSONL file written by
-O_APPEND single-line writes under an exclusive lock file — existing
-bytes are never rewritten, so it is genuinely append-only and safe
-against concurrent writers and interrupted replacement. Every line is
+Structure: `acquisition.jsonl` — one JSON line per record:
 
     {"prev_hash": <hex>, "record_hash": <hex>, "record": {...}}
 
-where record_hash = sha256(prev_hash + canonical_json(record)) and the
-first line chains from GENESIS. Any edit, reorder, or deletion of a
-prior line breaks the chain and every subsequent read fails closed.
+with record_hash = sha256(prev_hash + canonical_json(record)), chained
+from GENESIS, written by O_APPEND single-line writes under an exclusive
+lock. A sibling ANCHOR file (`acquisition.jsonl.anchor`) stores the
+expected record count and terminal hash and is updated atomically
+inside the same locked transaction — so removing the tail line(s), or
+the whole ledger, no longer reads back clean (round 5, defect 3: an
+unanchored chain cannot detect tail truncation).
 
-The LOCKED PERIOD is enforced from the parsed UTC dates, not the
-caller-supplied split label: any record whose range touches 2025-01-01
-or later is refused outright, and the split label must agree with the
-dates (development: entirely before 2024-01-01; validation: entirely
-inside 2024; ranges crossing 2024-01-01 must be split per period).
+GUARANTEE, STATED EXACTLY: the ledger+anchor pair is tamper-EVIDENT
+against any edit, reorder, interior deletion, tail truncation, or
+whole-file deletion that does not rewrite BOTH files consistently. It
+is NOT proof against a fully local adversary who rewrites ledger and
+anchor together — that requires mirroring the anchor off-host, which is
+an operational step, not a property this code can provide. Records are
+REVALIDATED on every read: a ledger can never attest to an unsupported
+symbology pairing or an untyped resolved_contracts structure.
+
+Locked-period rule: enforced from PARSED UTC DATES, never the split
+label — any range touching 2025-01-01+ is refused; labels must match
+the date-derived classification; dev/val-spanning ranges are refused.
 """
 
 from __future__ import annotations
 
-import contextlib
 import datetime as dt
 import hashlib
 import json
 import os
-import time
 from pathlib import Path
 from typing import Any
 
 from qlir import QlirError
+from qlir.locks import ExclusiveLock
+from qlir.mapping import ContractMap
 
 GENESIS = "0" * 64
 LOCKED_START_UTC = dt.datetime(2025, 1, 1, tzinfo=dt.UTC)
 VALIDATION_START_UTC = dt.datetime(2024, 1, 1, tzinfo=dt.UTC)
-LOCK_TIMEOUT_S = 10.0
+ANCHOR_SUFFIX = ".anchor"
+
+# The supported symbology conversions this protocol may record. The
+# invalid direct continuous->raw_symbol pairing is refused here so the
+# ledger can never attest to it (round 5, defect 3).
+SUPPORTED_STYPE_PAIRS: frozenset[tuple[str, str]] = frozenset(
+    {
+        ("continuous", "instrument_id"),
+        ("parent", "instrument_id"),
+        ("raw_symbol", "instrument_id"),
+        ("instrument_id", "raw_symbol"),
+    }
+)
 
 REQUIRED_FIELDS: tuple[str, ...] = (
     "dataset",
@@ -101,6 +121,16 @@ def validate_record(record: dict[str, Any]) -> None:
         raise QlirError(f"acquisition record missing required fields: {missing}")
     if not isinstance(record["requested_symbols"], list) or not record["requested_symbols"]:
         raise QlirError("requested_symbols must be a non-empty list")
+    pair = (str(record["stype_in"]), str(record["stype_out"]))
+    if pair not in SUPPORTED_STYPE_PAIRS:
+        raise QlirError(
+            f"unsupported symbology pair stype_in={pair[0]!r} -> stype_out={pair[1]!r}; "
+            f"supported: {sorted(SUPPORTED_STYPE_PAIRS)} — the ledger must never "
+            "attest to the invalid direct continuous->raw_symbol contract"
+        )
+    # resolved_contracts must round-trip through the TYPED ContractMap
+    # structure — "garbage" or a serialized surrogate shape is refused.
+    ContractMap.from_record(record["resolved_contracts"])
     start = _parse_utc(record["start_utc"], "start_utc")
     end = _parse_utc(record["end_utc"], "end_utc")
     derived = split_for_range(start, end)  # raises on any locked-period touch
@@ -111,36 +141,29 @@ def validate_record(record: dict[str, Any]) -> None:
         )
 
 
-class _LedgerLock:
-    """Exclusive advisory lock via O_CREAT|O_EXCL lock file."""
+def _anchor_path(path: Path) -> Path:
+    return path.with_suffix(path.suffix + ANCHOR_SUFFIX)
 
-    def __init__(self, ledger_path: Path, timeout_s: float = LOCK_TIMEOUT_S) -> None:
-        self.lock_path = ledger_path.with_suffix(ledger_path.suffix + ".lock")
-        self.timeout_s = timeout_s
-        self._fd: int | None = None
 
-    def __enter__(self) -> _LedgerLock:
-        self.lock_path.parent.mkdir(parents=True, exist_ok=True)
-        deadline = time.monotonic() + self.timeout_s
-        while True:
-            try:
-                self._fd = os.open(self.lock_path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-                return self
-            except FileExistsError:
-                if time.monotonic() >= deadline:
-                    raise QlirError(
-                        f"acquisition ledger is locked by another writer "
-                        f"({self.lock_path}); remove the stale lock only if you "
-                        "are certain no writer is active"
-                    ) from None
-                time.sleep(0.05)
+def _read_anchor(path: Path) -> dict[str, Any] | None:
+    anchor_path = _anchor_path(path)
+    if not anchor_path.exists():
+        return None
+    try:
+        anchor = json.loads(anchor_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise QlirError(f"anchor file {anchor_path} is not valid JSON: {exc}") from exc
+    if not isinstance(anchor, dict) or {"count", "terminal_hash"} - set(anchor):
+        raise QlirError(f"anchor file {anchor_path} lacks count/terminal_hash")
+    return anchor
 
-    def __exit__(self, *exc_info: object) -> None:
-        if self._fd is not None:
-            os.close(self._fd)
-            self._fd = None
-        with contextlib.suppress(OSError):
-            os.unlink(self.lock_path)
+
+def _write_anchor(path: Path, count: int, terminal_hash: str) -> None:
+    anchor_path = _anchor_path(path)
+    payload = json.dumps({"count": count, "terminal_hash": terminal_hash}) + "\n"
+    tmp = anchor_path.with_suffix(anchor_path.suffix + ".tmp")
+    tmp.write_text(payload, encoding="utf-8")
+    os.replace(tmp, anchor_path)
 
 
 def _read_links(path: Path) -> list[dict[str, Any]]:
@@ -161,9 +184,28 @@ def _read_links(path: Path) -> list[dict[str, Any]]:
 
 
 def verify_ledger(path: Path) -> list[dict[str, Any]]:
-    """Verify the full hash chain; return the wrapped links. Any tamper,
-    reorder, or deletion of a prior line fails closed."""
-    links = _read_links(Path(path))
+    """Verify chain integrity AND the anchor AND record validity.
+
+    Fails closed on: broken links, modified records, tail truncation
+    (anchor count/terminal mismatch), a deleted ledger with a surviving
+    anchor, a populated ledger with no anchor, and any record that no
+    longer passes validate_record (read-time revalidation)."""
+    path = Path(path)
+    links = _read_links(path)
+    anchor = _read_anchor(path)
+    if anchor is None:
+        if links:
+            raise QlirError(
+                f"ledger {path} has {len(links)} record(s) but no anchor — "
+                "the anchor was deleted or never written; refusing to trust "
+                "the tail"
+            )
+        return []
+    if len(links) != int(anchor["count"]):
+        raise QlirError(
+            f"ledger tail mismatch: anchor expects {anchor['count']} record(s), "
+            f"found {len(links)} — tail truncation or ledger deletion"
+        )
     prev = GENESIS
     for i, link in enumerate(links):
         if link["prev_hash"] != prev:
@@ -176,22 +218,27 @@ def verify_ledger(path: Path) -> list[dict[str, Any]]:
             raise QlirError(
                 f"ledger record {i} hash mismatch — the record was modified after it was chained"
             )
+        validate_record(link["record"])  # read-time revalidation
         prev = link["record_hash"]
+    terminal = links[-1]["record_hash"] if links else GENESIS
+    if terminal != anchor["terminal_hash"]:
+        raise QlirError("ledger terminal hash does not match the anchor — tail truncation")
     return links
 
 
 def load_ledger(path: Path) -> list[dict[str, Any]]:
-    """Chain-verified records (unwrapped)."""
+    """Chain-and-anchor-verified, revalidated records (unwrapped)."""
     return [link["record"] for link in verify_ledger(path)]
 
 
 def append_acquisition(path: Path, record: dict[str, Any]) -> list[dict[str, Any]]:
-    """Validate and append one record under an exclusive lock via a pure
-    O_APPEND write — prior bytes are never rewritten."""
+    """Validate and append one record under the exclusive lock: verify
+    the existing chain+anchor, O_APPEND the new line, update the anchor
+    atomically inside the same transaction."""
     validate_record(record)
     path = Path(path)
-    with _LedgerLock(path):
-        links = verify_ledger(path)  # refuses to extend a corrupt chain
+    with ExclusiveLock(path):
+        links = verify_ledger(path)  # refuses corrupt or truncated state
         prev = links[-1]["record_hash"] if links else GENESIS
         link = {
             "prev_hash": prev,
@@ -206,4 +253,5 @@ def append_acquisition(path: Path, record: dict[str, Any]) -> list[dict[str, Any
             os.fsync(fd)
         finally:
             os.close(fd)
+        _write_anchor(path, len(links) + 1, link["record_hash"])
     return [*(link_["record"] for link_ in links), record]

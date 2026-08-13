@@ -37,17 +37,50 @@ import pandas as pd
 
 N_BOOT = 2000
 SEED = 20260813
-# ±10-minute windows around scheduled-release slots (CT), applied to
-# EVERY class identically. 09:00 CT = 10:00 ET data cluster; 13:00 CT =
-# 14:00 ET FOMC statements.
-RELEASE_WINDOWS_CT = (("08:50", "09:10"), ("12:50", "13:10"))
 HORIZONS = (60, 120, 300)
+EXCLUDE_MINUTES = 10  # ±minutes around each DATED calendar event
+DEFAULT_CALENDAR = Path(__file__).resolve().parent.parent / "calendars" / "macro_events_v1.csv"
 
 
-def release_excluded(boundary_ct: pd.Series) -> pd.Series:
-    mask = pd.Series(False, index=boundary_ct.index)
-    for start, end in RELEASE_WINDOWS_CT:
-        mask |= (boundary_ct >= start) & (boundary_ct <= end)
+def load_calendar(path: Path) -> tuple[pd.DataFrame, list[str]]:
+    """Dated macro-event calendar (round 5: a blanket time-of-day
+    exclusion removed 09:00/13:00 CT on EVERY session — including
+    non-event days — and unequal quarter/placebo counts; exclusions must
+    be date-and-time events with a recorded source/version)."""
+    if not path.exists():
+        raise SystemExit(
+            f"BLOCKED: macro-event calendar not found at {path} — Gate II "
+            "statistics may not run without a dated, versioned exclusion "
+            "calendar."
+        )
+    header: list[str] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if line.startswith("#"):
+            header.append(line.lstrip("# "))
+        else:
+            break
+    calendar = pd.read_csv(path, comment="#")
+    required = {"date", "time_ct", "event", "source"}
+    if required - set(calendar.columns):
+        raise SystemExit(
+            f"BLOCKED: calendar lacks columns {sorted(required - set(calendar.columns))}"
+        )
+    return calendar, header
+
+
+def release_excluded(df: pd.DataFrame, calendar: pd.DataFrame) -> pd.Series:
+    """±EXCLUDE_MINUTES around each DATED event, on that DATE only,
+    applied identically to every boundary class."""
+    mask = pd.Series(False, index=df.index)
+    boundary_minutes = df["boundary_ct"].str.slice(0, 2).astype(int) * 60 + df[
+        "boundary_ct"
+    ].str.slice(3, 5).astype(int)
+    for _, event in calendar.iterrows():
+        event_time = str(event["time_ct"])
+        event_minutes = int(event_time[:2]) * 60 + int(event_time[3:5])
+        on_date = df["date"] == str(event["date"])
+        near = (boundary_minutes - event_minutes).abs() <= EXCLUDE_MINUTES
+        mask |= on_date & near
     return mask
 
 
@@ -233,10 +266,20 @@ def main(paths: list[str]) -> int:
             f"WARNING: {share:.0%} of events extracted at MINUTE fallback resolution — "
             "sub-minute offsets are coarse there; interpret accordingly."
         )
-    excluded = release_excluded(df["boundary_ct"])
+    calendar, cal_header = load_calendar(DEFAULT_CALENDAR)
+    print(f"macro-event calendar: {DEFAULT_CALENDAR.name} — {len(calendar)} dated event(s)")
+    for line in cal_header:
+        print(f"  calendar: {line}")
+    if "NOT YET POPULATED" in " ".join(cal_header):
+        print(
+            "WARNING: the calendar declares incomplete coverage — Gate II "
+            "results computed with it are PROVISIONAL and must not be "
+            "interpreted until the calendar is completed and re-approved."
+        )
+    excluded = release_excluded(df, calendar)
     print(
-        f"release-window exclusion (symmetric, ±10 min around 09:00/13:00 CT): "
-        f"dropped {int(excluded.sum())} events "
+        f"dated release-window exclusion (±{EXCLUDE_MINUTES} min, event dates only, "
+        f"all classes): dropped {int(excluded.sum())} events "
         f"({int((excluded & df['is_quarter']).sum())} quarter, "
         f"{int((excluded & ~df['is_quarter']).sum())} placebo)"
     )

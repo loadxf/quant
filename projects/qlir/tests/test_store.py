@@ -69,6 +69,68 @@ class TestImmutability:
         leftovers = [p for p in path.parent.iterdir() if ".tmp-" in p.name]
         assert leftovers == []
 
+
+class TestConcurrentWriters:
+    """Round-5 defect 2: the read-check-install-record sequence must be
+    ONE transaction. Sol's reproduction had two racing writers of
+    different payloads both succeed with a clean verify()."""
+
+    def test_same_path_different_digest_exactly_one_succeeds(self, store) -> None:
+        import threading
+
+        barrier = threading.Barrier(2)
+        results: dict[str, str] = {}
+
+        def writer(name: str, payload: bytes) -> None:
+            barrier.wait()
+            try:
+                store.write_raw("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", payload)
+                results[name] = "ok"
+            except QlirError as exc:
+                results[name] = f"refused: {exc}"
+
+        threads = [
+            threading.Thread(target=writer, args=("A", b"payload-A")),
+            threading.Thread(target=writer, args=("B", b"payload-B")),
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=30)
+        outcomes = sorted(results.values())
+        assert sum(value == "ok" for value in results.values()) == 1, outcomes
+        assert any("IMMUTABLE" in value for value in results.values()), outcomes
+        # The surviving state is consistent: manifest matches the file.
+        assert store.verify() == []
+        winner_payload = store.path_for("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01").read_bytes()
+        assert winner_payload in (b"payload-A", b"payload-B")
+
+    def test_concurrent_distinct_paths_both_recorded(self, store) -> None:
+        import threading
+
+        barrier = threading.Barrier(2)
+        errors: list[str] = []
+
+        def writer(symbol: str, payload: bytes) -> None:
+            barrier.wait()
+            try:
+                store.write_raw("GLBX.MDP3", "trades", symbol, "2022-03-01", payload)
+            except QlirError as exc:  # pragma: no cover - failure is the assertion
+                errors.append(str(exc))
+
+        threads = [
+            threading.Thread(target=writer, args=("ES.v.0", b"payload-ES")),
+            threading.Thread(target=writer, args=("NQ.v.0", b"payload-NQ")),
+        ]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join(timeout=30)
+        assert errors == []
+        entries = store._read_manifest()
+        assert len(entries) == 2  # neither manifest entry was lost
+        assert store.verify() == []
+
     def test_empty_payload_refused(self, store) -> None:
         with pytest.raises(QlirError, match="empty"):
             store.write_raw("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", b"")

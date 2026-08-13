@@ -8,10 +8,15 @@ history). Restoring a lost file with its original bytes is legal;
 anything else raises. Corrections happen by adding a new dataset
 version directory, never by mutating raw history.
 
-Writes are ATOMIC: payloads land in a temp file in the target directory
-and are installed with os.replace; the manifest is rewritten the same
-way, so an interrupted write can never leave a half-written file or a
-truncated manifest.
+Writes are ATOMIC and TRANSACTIONAL: the whole read-check-install-record
+sequence runs under one interprocess exclusive lock (round 5, defect 2 —
+atomic file replacement alone does not make the multi-file sequence
+atomic; two racing writers could both see an absent identity and both
+"succeed"). Under a same-path/different-digest race exactly one writer
+succeeds; distinct-path writers serialize and both entries survive.
+Payloads land in a temp file installed with os.replace, so an
+interrupted write can never leave a half-written file or truncated
+manifest. The lock is single-host advisory — the acquisition reality.
 
 ``manifests/files.sha256`` uses sha256sum format (``<hex>  <relpath>``,
 sorted, unique) so any later tamper or bit-rot is detectable by
@@ -27,6 +32,7 @@ import tempfile
 from pathlib import Path
 
 from qlir import QlirError
+from qlir.locks import ExclusiveLock
 
 MANIFEST_NAME = "files.sha256"
 
@@ -107,35 +113,38 @@ class RawStore:
         path = self.path_for(dataset, schema, symbol, date)
         relpath = path.relative_to(self.root).as_posix()
         new_digest = hashlib.sha256(payload).hexdigest()
-        entries = self._read_manifest()
-        recorded = entries.get(relpath)
-        if recorded is not None:
-            if recorded != new_digest:
-                raise QlirError(
-                    f"IMMUTABLE raw identity {relpath} is recorded with hash "
-                    f"{recorded[:12]}…; refusing different bytes ({new_digest[:12]}…) "
-                    "even though the file "
-                    + ("exists." if path.exists() else "was deleted.")
-                    + " Corrections require a new dataset version directory."
-                )
-            if path.exists() and sha256_file(path) == new_digest:
-                return path  # fully idempotent
-            _atomic_write_bytes(path, payload)  # legal restore of original bytes
+        # ONE lock spans manifest read, path inspection, install, and
+        # manifest update — the transaction, not just the file writes.
+        with ExclusiveLock(self.manifest_path):
+            entries = self._read_manifest()
+            recorded = entries.get(relpath)
+            if recorded is not None:
+                if recorded != new_digest:
+                    raise QlirError(
+                        f"IMMUTABLE raw identity {relpath} is recorded with hash "
+                        f"{recorded[:12]}…; refusing different bytes ({new_digest[:12]}…) "
+                        "even though the file "
+                        + ("exists." if path.exists() else "was deleted.")
+                        + " Corrections require a new dataset version directory."
+                    )
+                if path.exists() and sha256_file(path) == new_digest:
+                    return path  # fully idempotent
+                _atomic_write_bytes(path, payload)  # legal restore of original bytes
+                return path
+            if path.exists():
+                existing = sha256_file(path)
+                if existing != new_digest:
+                    raise QlirError(
+                        f"untracked file already at {relpath} with hash {existing[:12]}… "
+                        f"differs from the payload ({new_digest[:12]}…) — refusing to "
+                        "overwrite or adopt it; investigate its provenance"
+                    )
+                # Byte-identical untracked file: adopt it into the manifest.
+            else:
+                _atomic_write_bytes(path, payload)
+            entries[relpath] = new_digest
+            self._write_manifest(entries)
             return path
-        if path.exists():
-            existing = sha256_file(path)
-            if existing != new_digest:
-                raise QlirError(
-                    f"untracked file already at {relpath} with hash {existing[:12]}… "
-                    f"differs from the payload ({new_digest[:12]}…) — refusing to "
-                    "overwrite or adopt it; investigate its provenance"
-                )
-            # Byte-identical untracked file: adopt it into the manifest.
-        else:
-            _atomic_write_bytes(path, payload)
-        entries[relpath] = new_digest
-        self._write_manifest(entries)
-        return path
 
     # -- verification -----------------------------------------------------
     def verify(self) -> list[str]:

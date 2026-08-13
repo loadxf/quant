@@ -78,11 +78,34 @@ Hash-chained JSONL — one line per batch request:
 }}
 ```
 
-Appends are O_APPEND single-line writes under an exclusive lock; any
-edit, reorder, or deletion of a prior line breaks the chain and reads
-fail closed. The **locked period is date-derived**: any range touching
-2025-01-01+ is refused regardless of the split label, and labels must
-match the date-derived classification.
+Appends are O_APPEND single-line writes under an exclusive lock; a
+sibling ANCHOR file (`acquisition.jsonl.anchor`, count + terminal hash,
+updated in the same locked transaction) makes tail truncation and
+whole-file deletion detectable; records are REVALIDATED on every read
+(supported stype pairs only — the invalid continuous→raw_symbol pairing
+can never be attested — and `resolved_contracts` must round-trip the
+typed ContractMap structure). Stated exactly: the pair is tamper-EVIDENT
+unless BOTH files are rewritten consistently; against a fully local
+adversary, mirror the anchor off-host (operational step). The **locked
+period is date-derived**: any range touching 2025-01-01+ is refused
+regardless of the split label, and labels must match the date-derived
+classification.
+
+## Acquisition pipeline (`qlir.acquire`)
+
+```
+step_one = symbology.resolve(continuous -> instrument_id)
+step_two = symbology.resolve(instrument_id -> raw_symbol)   # ALSO interval-valued
+contract_map = compose_contract_map(step_one, step_two)     # date-aware, fail-closed
+frame = load_acquired_file(path, schema, contract_map)      # per-date raw binding
+append_acquisition(ledger, build_acquisition_record(..., contract_map=...))
+```
+
+Raw identity is a function of (instrument_id, event_date) — some
+publishers remap ids daily. The Gate II stats script excludes release
+windows from a DATED, versioned macro-event calendar
+(`calendars/macro_events_v1.csv`, currently FOMC-only and marked
+incomplete — Gate II results are provisional until it is completed).
 
 ## Rules of engagement
 

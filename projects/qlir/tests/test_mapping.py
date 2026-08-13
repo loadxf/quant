@@ -1,93 +1,170 @@
-"""Two-step mapping validation (round 4): continuous -> instrument_id
-intervals composed with the instrument_id -> raw_symbol step, change
-instants, window crossing, and the roll-transition-session stratum."""
+"""Date-aware two-step mapping (round 5): the EXACT documented
+interval-valued step-two response, daily-remap handling, coverage and
+ambiguity enforcement, and the typed ledger round-trip."""
 
 from __future__ import annotations
 
+import datetime as dt
 from typing import ClassVar
 
 import pandas as pd
 import pytest
 from qlir import QlirError
 from qlir.mapping import (
+    ContractMap,
     change_instants,
-    parse_two_step,
     roll_transition_sessions,
     window_crosses_mapping,
 )
 
-# Step one (the ONLY supported continuous resolution): s = instrument id.
-CONTINUOUS_TO_ID = [
-    {"d0": "2022-01-01", "d1": "2022-03-14", "s": "4916"},
-    {"d0": "2022-03-14", "d1": "2022-06-13", "s": "5203"},
-    {"d0": "2022-06-13", "d1": "2022-09-19", "s": "5477"},
-]
-# Step two: instrument_id -> dated raw contract.
-ID_TO_RAW = {"4916": "ESH2", "5203": "ESM2", "5477": "ESU2"}
+# The exact documented response shapes: EVERY resolution is a list of
+# dated {d0, d1, s} intervals — step two included.
+STEP_ONE = {
+    "ES.v.0": [
+        {"d0": "2022-01-01", "d1": "2022-03-14", "s": "4916"},
+        {"d0": "2022-03-14", "d1": "2022-06-13", "s": "5203"},
+    ]
+}
+STEP_TWO = {
+    "4916": [{"d0": "2022-01-01", "d1": "2022-03-14", "s": "ESH2"}],
+    "5203": [{"d0": "2022-03-14", "d1": "2022-06-13", "s": "ESM2"}],
+}
 
 
-def intervals():
-    return parse_two_step("ES.v.0", CONTINUOUS_TO_ID, ID_TO_RAW)
+def composed() -> ContractMap:
+    return ContractMap.compose_many(STEP_ONE, STEP_TWO)
 
 
-class TestTwoStepParse:
-    def test_composes_id_and_raw(self) -> None:
-        parsed = intervals()
-        assert [interval.instrument_id for interval in parsed] == [4916, 5203, 5477]
-        assert [interval.raw_symbol for interval in parsed] == ["ESH2", "ESM2", "ESU2"]
+class TestSolReproduction:
+    def test_exact_round5_shapes_yield_esh2_not_a_serialized_list(self) -> None:
+        """Sol's reproduction: the round-4 parser returned
+        "[{'d0': …, 's': 'ESH2'}]" as the raw symbol. The composed map
+        must return ESH2."""
+        step_one = [{"d0": "2022-01-01", "d1": "2022-03-14", "s": "4916"}]
+        step_two = {"4916": [{"d0": "2022-01-01", "d1": "2022-03-14", "s": "ESH2"}]}
+        contract_map = ContractMap.compose("ES.v.0", step_one, step_two)
+        raw = contract_map.raw_for(4916, dt.date(2022, 2, 1))
+        assert raw == "ESH2"
+        assert not raw.startswith("[")
 
-    def test_int_keys_accepted_in_step_two(self) -> None:
-        parsed = parse_two_step(
-            "ES.v.0", CONTINUOUS_TO_ID, {4916: "ESH2", 5203: "ESM2", 5477: "ESU2"}
-        )
-        assert parsed[0].raw_symbol == "ESH2"
+    def test_flat_step_two_shape_is_refused(self) -> None:
+        """The round-4 flat dict[id, str] shape does not exist in the
+        API — offering it must raise, not silently stringify."""
+        with pytest.raises(QlirError, match="LIST of"):
+            ContractMap.compose(
+                "ES.v.0",
+                [{"d0": "2022-01-01", "d1": "2022-03-14", "s": "4916"}],
+                {"4916": "ESH2"},  # type: ignore[dict-item]
+            )
 
-    def test_missing_raw_mapping_fails_closed(self) -> None:
-        """Losing the raw-contract mapping is the round-4 failure mode."""
-        incomplete = {"4916": "ESH2", "5203": "ESM2"}
+
+class TestDateAwareResolution:
+    def test_raw_identity_is_a_function_of_id_and_date(self) -> None:
+        contract_map = composed()
+        assert contract_map.raw_for(4916, dt.date(2022, 2, 1)) == "ESH2"
+        assert contract_map.raw_for(5203, dt.date(2022, 4, 1)) == "ESM2"
+
+    def test_daily_remap_of_one_id(self) -> None:
+        """Some publishers remap instrument ids daily: the SAME id can
+        carry different raw symbols on different dates."""
+        step_one = [{"d0": "2022-01-01", "d1": "2022-01-03", "s": "777"}]
+        step_two = {
+            "777": [
+                {"d0": "2022-01-01", "d1": "2022-01-02", "s": "ESH2"},
+                {"d0": "2022-01-02", "d1": "2022-01-03", "s": "ESM2"},
+            ]
+        }
+        contract_map = ContractMap.compose("ES.v.0", step_one, step_two)
+        assert contract_map.raw_for(777, dt.date(2022, 1, 1)) == "ESH2"
+        assert contract_map.raw_for(777, dt.date(2022, 1, 2)) == "ESM2"
+
+    def test_outside_coverage_fails_closed(self) -> None:
+        with pytest.raises(QlirError, match="outside the composed mapping"):
+            composed().raw_for(4916, dt.date(2023, 1, 1))
+
+    def test_unknown_id_fails_closed(self) -> None:
         with pytest.raises(QlirError, match="no raw_symbol"):
-            parse_two_step("ES.v.0", CONTINUOUS_TO_ID, incomplete)
+            composed().raw_for(999, dt.date(2022, 2, 1))
+
+    def test_flat_map_for_date(self) -> None:
+        flat = composed().flat_map_for_date(dt.date(2022, 2, 1))
+        assert flat == {4916: "ESH2"}
+
+    def test_flat_map_empty_date_fails(self) -> None:
+        with pytest.raises(QlirError, match="no instruments active"):
+            composed().flat_map_for_date(dt.date(2023, 1, 1))
+
+
+class TestCoverageAndAmbiguity:
+    def test_step_two_gap_refused(self) -> None:
+        step_two = {
+            "4916": [{"d0": "2022-01-01", "d1": "2022-02-01", "s": "ESH2"}],  # gap after Feb 1
+            "5203": STEP_TWO["5203"],
+        }
+        with pytest.raises(QlirError, match="coverage GAP"):
+            ContractMap.compose_many(STEP_ONE, step_two)
+
+    def test_missing_step_two_entry_refused(self) -> None:
+        with pytest.raises(QlirError, match="no step-two entry"):
+            ContractMap.compose_many(STEP_ONE, {"4916": STEP_TWO["4916"]})
 
     def test_non_id_step_one_output_rejected(self) -> None:
-        """A raw symbol in step one means the invalid continuous->raw
-        contract was used — refuse it."""
-        bad = [{"d0": "2022-01-01", "d1": "2022-03-14", "s": "ESH2"}]
+        bad = {"ES.v.0": [{"d0": "2022-01-01", "d1": "2022-03-14", "s": "ESH2"}]}
         with pytest.raises(QlirError, match="not an instrument id"):
-            parse_two_step("ES.v.0", bad, ID_TO_RAW)
+            ContractMap.compose_many(bad, STEP_TWO)
 
-    def test_malformed_interval_rejected(self) -> None:
-        with pytest.raises(QlirError, match="malformed"):
-            parse_two_step("ES.v.0", [{"d0": "2022-01-01"}], ID_TO_RAW)
-
-    def test_inverted_interval_rejected(self) -> None:
-        with pytest.raises(QlirError, match="d1 <= d0"):
-            parse_two_step(
-                "ES.v.0", [{"d0": "2022-03-14", "d1": "2022-01-01", "s": "4916"}], ID_TO_RAW
-            )
-
-    def test_overlap_rejected(self) -> None:
+    def test_ambiguous_overlapping_raw_refused(self) -> None:
+        step_two = {
+            "4916": [
+                {"d0": "2022-01-01", "d1": "2022-03-14", "s": "ESH2"},
+                {"d0": "2022-02-01", "d1": "2022-03-14", "s": "ESM2"},
+            ],
+            "5203": STEP_TWO["5203"],
+        }
         with pytest.raises(QlirError, match="overlapping"):
-            parse_two_step(
-                "ES.v.0",
-                [
-                    {"d0": "2022-01-01", "d1": "2022-03-15", "s": "4916"},
-                    {"d0": "2022-03-14", "d1": "2022-06-13", "s": "5203"},
-                ],
-                ID_TO_RAW,
-            )
+            ContractMap.compose_many(STEP_ONE, step_two)
+
+    def test_serialized_structure_as_symbol_refused(self) -> None:
+        step_two = {
+            "4916": [{"d0": "2022-01-01", "d1": "2022-03-14", "s": "[{'d0': 'x', 's': 'ESH2'}]"}],
+            "5203": STEP_TWO["5203"],
+        }
+        with pytest.raises(QlirError, match="serialized structure"):
+            ContractMap.compose_many(STEP_ONE, step_two)
+
+
+class TestLedgerRoundTrip:
+    def test_to_record_from_record(self) -> None:
+        record = composed().to_record()
+        assert record["ES.v.0"][0] == {
+            "instrument_id": 4916,
+            "raw_symbol": "ESH2",
+            "d0": "2022-01-01",
+            "d1": "2022-03-14",
+        }
+        rebuilt = ContractMap.from_record(record)
+        assert rebuilt.raw_for(5203, dt.date(2022, 5, 1)) == "ESM2"
+
+    @pytest.mark.parametrize("garbage", ["garbage", {}, {"ES.v.0": []}, {"ES.v.0": ["x"]}])
+    def test_untyped_structures_refused(self, garbage: object) -> None:
+        with pytest.raises(QlirError):
+            ContractMap.from_record(garbage)
 
 
 class TestChangeInstants:
-    def test_interior_boundaries_only(self) -> None:
-        instants = change_instants(intervals())
-        assert instants == [
-            pd.Timestamp("2022-03-14", tz="UTC"),
-            pd.Timestamp("2022-06-13", tz="UTC"),
-        ]
+    def test_id_changes_and_remaps_both_count(self) -> None:
+        step_one = [{"d0": "2022-01-01", "d1": "2022-01-03", "s": "777"}]
+        step_two = {
+            "777": [
+                {"d0": "2022-01-01", "d1": "2022-01-02", "s": "ESH2"},
+                {"d0": "2022-01-02", "d1": "2022-01-03", "s": "ESM2"},
+            ]
+        }
+        contract_map = ContractMap.compose("ES.v.0", step_one, step_two)
+        assert change_instants(contract_map.intervals) == [pd.Timestamp("2022-01-02", tz="UTC")]
 
-    def test_single_interval_has_no_changes(self) -> None:
-        parsed = parse_two_step("ES.v.0", CONTINUOUS_TO_ID[:1], ID_TO_RAW)
-        assert change_instants(parsed) == []
+    def test_interior_boundaries_only(self) -> None:
+        assert change_instants(composed().intervals) == [pd.Timestamp("2022-03-14", tz="UTC")]
 
 
 class TestWindowCrossing:
@@ -107,8 +184,6 @@ class TestWindowCrossing:
         )
 
     def test_window_ending_exactly_at_change_is_invalid(self) -> None:
-        """Conservative closed-end convention: an end exactly at the
-        instant counts as crossing."""
         assert window_crosses_mapping(
             *self.window("2022-03-13 23:58", "2022-03-14 00:00"), self.INSTANTS
         )
@@ -126,4 +201,4 @@ class TestWindowCrossing:
 
 class TestRollStratum:
     def test_sessions_containing_changes(self) -> None:
-        assert roll_transition_sessions(intervals()) == {"2022-03-14", "2022-06-13"}
+        assert roll_transition_sessions(composed().intervals) == {"2022-03-14"}

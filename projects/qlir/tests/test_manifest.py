@@ -1,6 +1,7 @@
-"""Hash-chained append-only acquisition ledger (round-4 redesign):
-date-derived locked-period enforcement, chain integrity, true O_APPEND
-writes, and writer locking."""
+"""Hash-chained, ANCHORED, append-only acquisition ledger (round 5):
+date-derived locked-period enforcement, supported-stype validation,
+typed resolved_contracts, chain integrity, TAIL-truncation detection,
+read-time revalidation, true O_APPEND writes, and writer locking."""
 
 from __future__ import annotations
 
@@ -10,6 +11,7 @@ import pytest
 from qlir import QlirError
 from qlir.manifest import (
     GENESIS,
+    _anchor_path,
     _link_hash,
     append_acquisition,
     load_ledger,
@@ -27,7 +29,14 @@ def valid_record(**overrides):
         "stype_in": "continuous",
         "stype_out": "instrument_id",  # continuous resolves to id ONLY
         "resolved_contracts": {
-            "ES.v.0": [{"instrument_id": 4916, "raw_symbol": "ESH2", "d0": "2022-01-01"}]
+            "ES.v.0": [
+                {
+                    "instrument_id": 4916,
+                    "raw_symbol": "ESH2",
+                    "d0": "2022-01-01",
+                    "d1": "2022-03-14",
+                }
+            ]
         },
         "start_utc": "2022-01-01T00:00:00Z",
         "end_utc": "2023-01-01T00:00:00Z",
@@ -42,6 +51,84 @@ def valid_record(**overrides):
     }
     record.update(overrides)
     return record
+
+
+class TestSymbologyValidation:
+    """Round-5 defect 3: the ledger must never attest to the invalid
+    direct pairing or an untyped resolved_contracts."""
+
+    def test_sols_reproduction_now_refused(self) -> None:
+        """stype continuous->raw_symbol + resolved_contracts='garbage'
+        was ACCEPTED in round 4; both must now raise."""
+        record = valid_record(stype_out="raw_symbol", resolved_contracts="garbage")
+        with pytest.raises(QlirError, match="unsupported symbology pair"):
+            validate_record(record)
+
+    def test_untyped_resolved_contracts_refused(self) -> None:
+        with pytest.raises(QlirError, match="resolved_contracts"):
+            validate_record(valid_record(resolved_contracts="garbage"))
+
+    def test_serialized_surrogate_raw_symbol_refused(self) -> None:
+        bad = {
+            "ES.v.0": [
+                {
+                    "instrument_id": 4916,
+                    "raw_symbol": "[{'d0': '2022-01-01', 's': 'ESH2'}]",
+                    "d0": "2022-01-01",
+                    "d1": "2022-03-14",
+                }
+            ]
+        }
+        with pytest.raises(QlirError, match="serialized structure"):
+            validate_record(valid_record(resolved_contracts=bad))
+
+    def test_supported_pairs_accepted(self) -> None:
+        validate_record(valid_record(stype_in="instrument_id", stype_out="raw_symbol"))
+
+
+class TestTailCompleteness:
+    """Round-5 defect 3: an unanchored chain cannot detect tail
+    truncation — the anchor makes it detectable."""
+
+    def test_tail_line_removal_detected(self) -> None:
+        """Sol's reproduction: append two, remove the last line —
+        load_ledger returned one record cleanly. Now it must raise."""
+        import tempfile
+        from pathlib import Path
+
+        tmp = Path(tempfile.mkdtemp())
+        path = tmp / "acquisition.jsonl"
+        append_acquisition(path, valid_record())
+        append_acquisition(path, valid_record(schema="tbbo"))
+        lines = path.read_text(encoding="utf-8").splitlines()
+        path.write_text(lines[0] + "\n", encoding="utf-8")
+        with pytest.raises(QlirError, match="tail"):
+            load_ledger(path)
+
+    def test_whole_ledger_deletion_detected(self, tmp_path) -> None:
+        path = tmp_path / "acquisition.jsonl"
+        append_acquisition(path, valid_record())
+        path.unlink()
+        with pytest.raises(QlirError, match="tail truncation or ledger deletion"):
+            load_ledger(path)
+
+    def test_anchor_deletion_detected(self, tmp_path) -> None:
+        path = tmp_path / "acquisition.jsonl"
+        append_acquisition(path, valid_record())
+        _anchor_path(path).unlink()
+        with pytest.raises(QlirError, match="no anchor"):
+            load_ledger(path)
+
+    def test_read_time_revalidation_catches_now_invalid_records(self, tmp_path) -> None:
+        """A chained record that no longer passes validate_record fails
+        the READ — the chain alone is not sufficient attestation."""
+        path = tmp_path / "acquisition.jsonl"
+        append_acquisition(path, valid_record())
+        raw = path.read_text(encoding="utf-8")
+        tampered = raw.replace('"instrument_id"', '"unknown_field"')
+        path.write_text(tampered, encoding="utf-8")
+        with pytest.raises(QlirError):
+            load_ledger(path)
 
 
 class TestDateDerivedLock:
@@ -163,13 +250,15 @@ class TestHashChain:
         with pytest.raises(QlirError, match="hash mismatch"):
             load_ledger(path)
 
-    def test_deleted_line_breaks_chain(self, tmp_path) -> None:
+    def test_deleted_first_line_detected(self, tmp_path) -> None:
+        """Dropping the first of two lines trips the anchor count before
+        the chain walk; a re-headed equal-count forgery trips the chain."""
         path = tmp_path / "acquisition.jsonl"
         append_acquisition(path, valid_record())
         append_acquisition(path, valid_record(schema="tbbo"))
         lines = path.read_text(encoding="utf-8").splitlines()
         path.write_text(lines[1] + "\n", encoding="utf-8")  # drop the first
-        with pytest.raises(QlirError, match="chain broken"):
+        with pytest.raises(QlirError, match=r"tail mismatch|chain broken"):
             load_ledger(path)
 
     def test_append_refuses_corrupt_chain(self, tmp_path) -> None:
@@ -191,13 +280,13 @@ class TestHashChain:
 
 class TestWriterLock:
     def test_concurrent_writer_lock_times_out(self, tmp_path) -> None:
-        from qlir.manifest import _LedgerLock
+        from qlir.locks import ExclusiveLock
 
         path = tmp_path / "acquisition.jsonl"
         with (
-            _LedgerLock(path),
+            ExclusiveLock(path),
             pytest.raises(QlirError, match="locked by another writer"),
-            _LedgerLock(path, timeout_s=0.2),
+            ExclusiveLock(path, timeout_s=0.2),
         ):
             pass  # pragma: no cover
 

@@ -520,3 +520,92 @@ inference, as Sol noted — nothing here changes that.
 ### Standing constraints
 
 No amend, no push, no purchase, no QC output. 2025+ locked by DATE in code.
+
+---
+
+## 2026-08-13 — Round 5 (Fable): symbology made date-aware end-to-end; store made transactional; ledger anchored; promo invariant closed
+
+Sol denied Gate I again with four defects. All four reproduced verbatim before
+repair — including my round-4 parser returning
+`"[{'d0': '2022-01-01', 'd1': '2022-03-14', 's': 'ESH2'}]"` as a raw symbol
+when fed the DOCUMENTED interval-valued step-two response, and two racing
+store writers both "succeeding" with a clean verify().
+
+### Defect 1 — date-aware two-step composition + real acquisition path
+
+- The flat `dict[id, str]` step-two shape (which does not exist in the API) is
+  now REFUSED; `ContractMap.compose` accepts the exact interval-valued
+  response, requires COMPLETE unambiguous coverage of every step-one interval,
+  handles daily id remaps (same id → different raw on different dates), and
+  resolves `raw_for(instrument_id, event_date)`. Serialized-structure symbols
+  are detected and refused at parse.
+- New `qlir/acquire.py` is the integration path Sol demanded:
+  `compose_contract_map` (exact envelopes incl. "result" wrapper;
+  partial/not_found leftovers refused) → `load_acquired_file` (per-date file
+  check, validated single-date flat map, defense-in-depth re-resolution of
+  every record through the date-aware lookup) → `build_acquisition_record`
+  (typed resolved_contracts) → `append_acquisition`. End-to-end tests run
+  Sol's exact shapes through composition into locally ENCODED DBN files on
+  both sides of a roll and into the anchored ledger.
+- Loader: `allow_unresolved` exists solely for the acquisition probe pass and
+  labels `<unresolved>`; research paths fail closed without a validated map.
+
+### Defect 2 — transactional store
+
+`write_raw` now runs its ENTIRE read-check-install-record sequence under one
+interprocess lock (shared `qlir/locks.py`). Deterministic race tests: two
+barrier-synchronized writers, same path, different payloads → exactly one
+success, one IMMUTABLE refusal, consistent manifest; distinct paths → both
+entries preserved. Sol's reproduction (both writers succeed, verify() clean)
+is now impossible by construction and pinned by test.
+
+### Defect 3 — ledger validation + tail completeness
+
+- `validate_record` now enforces the SUPPORTED stype pairs (Sol's
+  `continuous→raw_symbol` + `resolved_contracts="garbage"` reproduction is a
+  named refusal test) and round-trips `resolved_contracts` through the typed
+  ContractMap structure.
+- New ANCHOR file (count + terminal hash, written atomically inside the append
+  transaction): tail-line removal, whole-ledger deletion, and anchor deletion
+  all fail reads; records are REVALIDATED at read time.
+- Guarantee narrowed EXPLICITLY in the module docstring: tamper-evident unless
+  BOTH files are rewritten consistently; a fully local adversary requires an
+  off-host anchor mirror (operational, not code).
+
+### Defect 4 — promotional invariant through the public API
+
+`FirmConfig.dll_provenance` records HOW a daily-loss line arrived
+(`combine_purchase` / `xfa_activation` / `pdll`); `with_promo_payout_caps`
+CONSUMES it and refuses everything except `combine_purchase` — Sol's
+`with_personal_dll → with_promo_payout_caps` composition now raises, as does
+an XFA-activation DLL (rule mechanics without promotional eligibility) and the
+bare baseline. The provenance keyword is keyword-only and value-validated so
+an arbitrary "$750 purchase DLL" stays inexpressible.
+
+### Instrument corrections
+
+- The blanket 09:00/13:00-CT daily exclusion (a systematic time-of-day cut
+  that also removed only quarter-hour observations) is replaced by a DATED,
+  versioned macro-event calendar (`calendars/macro_events_v1.csv`: FOMC
+  statement dates 2021–2024, 13:00 CT, source federalreserve.gov, compiled
+  2026-08-13). The stats script refuses to run without a calendar, prints its
+  version/coverage, applies ±10 min on event DATES only across all classes,
+  and stamps results PROVISIONAL while the calendar declares itself
+  incomplete (10:00-ET data releases not yet populated — human/source task
+  before Gate II interpretation).
+- Round-4 wording corrected: `signed_flow`/`unknown_side_fraction` FILTER to
+  trade actions via `trades_only()`; `aggressor_sign` is the primitive that
+  RAISES on book actions. Docstring now states the contract precisely.
+
+### Evidence
+
+```
+root suite   929 passed          ruff/format/mypy clean
+qlir suite   112 passed, 0 skipped
+llm_edge     212 passed under WSL2
+```
+
+### Standing constraints
+
+No amend, no push, no purchase, no QC output. The four adversarial
+reproductions Sol supplied are all named tests now.
