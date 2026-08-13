@@ -1,0 +1,25 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "qlir-lab"
+version = "0.1.0"
+description = "Q-LIR data integrity layer: DBN raw store, acquisition manifest, mapping validation"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.1",
+    "pyarrow>=15",
+]
+
+[project.optional-dependencies]
+dbn = ["databento>=0.83"]
+dev = ["pytest>=8"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/qlir"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

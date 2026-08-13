@@ -12,6 +12,13 @@ may legally be held overnight to the next morning; any position spanning
 15:10 of its own session — including one entered in the prohibited
 15:10-17:00 window — violates.
 
+Shortened sessions: date-aware early closes come from
+SessionCloseSpec.early_closes (the earlier close wins). Symbol-specific
+product closes are NOT modeled. PENDING ORDERS are UNOBSERVABLE from a
+closed-trade log — Topstep also requires working orders canceled by the
+deadline, and this rule cannot verify that; the evaluator states so in
+its advisories.
+
 Ordering convention: equity-based breaches (which occur at unknowable
 intraday times) resolve first for a given trade; the session-close check
 runs only if the trade survived them, and BEFORE any pass check — a
@@ -38,9 +45,10 @@ class SessionCloseRule:
         self.name = "session_close"
 
     def deadline(self, trade: Trade) -> dt.datetime:
-        """The hard-close instant of the trade's ENTRY session."""
+        """The hard-close instant of the trade's ENTRY session (honoring
+        any date-specific early close)."""
         session = self.boundary.session_date(trade.entry_time)
-        return dt.datetime.combine(session, self.close_time, tzinfo=self.tzinfo)
+        return dt.datetime.combine(session, self.spec.close_time_for(session), tzinfo=self.tzinfo)
 
     def violation(
         self,

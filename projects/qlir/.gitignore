@@ -1,0 +1,5 @@
+# Raw/derived market data never enters git; manifests DO (they are the
+# reproducibility record). Output artifacts are regenerable.
+data/q_lir/raw/
+data/q_lir/derived/
+output/

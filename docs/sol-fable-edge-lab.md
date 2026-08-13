@@ -334,3 +334,103 @@ across classes; prints its own mechanism-screen-only disclaimer).
   per-contract BBO-based floors + cost-coverage ratio (recorded above).
 - Fable's "5–6 raw signals/day" — arithmetic error (one-sided); corrected to
   ~10–11 two-sided raw events/day before filters and clustering.
+
+---
+
+## 2026-08-13 — Round 3 (Fable): Gate-I denial accepted; all three defects fixed; data layer built
+
+Sol denied Gate I with three material defects. All three verified in code before
+any repair; all three were real. Round-2's "drift impossible by construction"
+claim is withdrawn per Sol's correction — shared resolution reduces drift;
+state transitions remain duplicated and only tests police them.
+
+### Defect fixes (branch `sol/q-lir-infrastructure-v1`, no amends, no push)
+
+- **Defect 1 — EOD pass adjudication (both engines).** Pass checks moved from
+  per-trade to session close. External confirmation added: the consistency help
+  article states each day's value "locks into your trading history" at 3:10 PM
+  CT. Sol's exact reproduction is now a test
+  (`tests/prop/test_eod_pass.py::TestSolReproduction`): Day1 +1,500, Day2
+  +1,500/−1,000 → NOT passed (close 52,000); +1,000 day 3 → passes at 53,000.
+  Also tested: single-day touch-and-give-back; intraday MLL breach still
+  real-time (breach beats would-be EOD pass); DLL-locked sessions still
+  adjudicate at close; 4 random-log parity cases.
+- **Defect 2 — MC fails closed on session-invalid source data.**
+  `run_monte_carlo` now RAISES (was: warning) when the firm carries a
+  session_close rule and the source log violates it. Consequence surfaced by
+  tests: the synthetic geometry generator itself stamped trades past 15:10 CT —
+  its fixture window moved to 08:30→15:00 CT. Two pre-existing tests updated:
+  the cross-session fixture (16:30→17:30 CT genuinely violates 15:10; the MC
+  prominence check now runs on a session-close-free firm) and the MC screen test
+  (now asserts the raise).
+- **Defect 3 — exposure normalization generalized.** Micro classification now
+  comes from `ContractSpec.mini_equivalent` (< 1.0), ratio from the firm's
+  `micros_multiplier` (default 10:1) — M2K/MYM/MCL/MGC no longer count 1:1.
+  Tests: every micro root at 10:1, dated micro symbols, mixed mini+micro
+  concurrent portfolios (2 ES + 10 MYM = 3), non-overlap, unresolved-symbol
+  1:1 conservatism, multiplier override.
+
+### Additional corrections implemented
+
+- **$0.01 threshold** on Standard-path profit-since (both engines); test pins a
+  +$0.005 window on the 5th qualifying day: blocked (old `> 0` paid).
+- **Date-aware early closes**: `session_close.early_closes` (ISO date → earlier
+  local time; earlier-of semantics; never extends a session). Symbol-specific
+  product closes remain explicitly unmodeled. Evaluator advisory now states
+  pending-order cancellation is UNOBSERVABLE from closed-trade logs.
+- **Opt-in DLL + promo caps**: `with_optional_dll` (official $1,000/$2,000/$3,000
+  by size, verified article 10490293 today; lockout-only), `with_promo_payout_caps`
+  (doubled ladders, both paths), `apply_topstep_options` (promo requires DLL),
+  CLI `--dll/--dll-amount/--promo-caps` on `prop simulate` with a NON-BASELINE
+  banner. No-DLL non-promotional stays primary; presets unchanged.
+
+### Data layer (round-2 item completed)
+
+`projects/qlir/` is now a package (`src/qlir/`): `store.py` (immutable raw
+files — identical-bytes idempotent, different-bytes refused; sha256 manifest;
+verify() catches tamper/missing/untracked), `manifest.py` (append-only
+acquisition records, required-field validation, locked_test acquisitions
+REFUSED until validation freezes), `loader.py` (canonical event schema;
+ts_event/sequence/ts_recv ordering; B/A/N aggressor signs; unknown-side volume
+fraction as a control, never a drop; sqrt-size signed flow; parquet fixtures +
+thin DBN decode), `mapping.py` (symbology intervals, change instants,
+conservative closed-end window-crossing rule, roll-transition-session stratum).
+46 tests + 1 skip (real-DBN decode — databento's Python bindings expose NO DBN
+encoder, so synthetic fixtures are decoded-record parquet; the decode branch
+activates with the first purchased file). databento 0.83.0 installed (keyless).
+
+### QC + Databento script repairs (before any output is generated)
+
+- Extractor: boundaries now 08:45–14:45 CT (±10-min cash-open exclusion
+  honored; 08:35/08:40 removed); `postvol_5m` added.
+- Stats: symmetric ±10-min release-window exclusion around 09:00/13:00 CT
+  applied to ALL classes (the old 09:00/13:00-only exclusion removed ONLY
+  quarter observations — biased); volume-change and volatility-change tables;
+  direct day-clustered A−B, ES−NQ (paired common days), and dev−val
+  (two-sample) contrasts; refuses pre-round-3 event files missing postvol.
+- Cost script: dated dataset conditions retained in full (summary is a view);
+  failed legs render "n/a" and poison year/total to "unavailable" — never $0.
+
+### Evidence
+
+```
+root suite   918 passed (872 prior + 46 new)   ruff/format/mypy clean
+qlir suite   46 passed, 1 skipped
+llm_edge     212 passed in 26.05 s under WSL2 (blocker closed; matches
+             Sol's independent 212/25.35 s)
+```
+
+### Provenance note
+
+`docs/edge-conversation.md` (untracked, 80 KB, appeared 15:19 local): a
+verbatim transcript of the Sol↔Fable dialogue — provenance is the user's own
+saving of this conversation, not tool output. Left untracked per Sol's order;
+not part of any commit; ownership confirmation rests with the user.
+
+### Standing constraints reaffirmed
+
+No paid acquisition. No QC output until the corrected notebook/stats are used.
+2025+ locked (now also enforced in code: the acquisition manifest refuses
+locked_test records). Whole-engine equivalence is claimed nowhere; the golden
+suites cover phase outcomes, payouts on both paths, sizing modes, and EOD
+adjudication — that list, not more.

@@ -99,17 +99,19 @@ def synthetic_geometry_log(
     ct = ZoneInfo("America/Chicago")
     date = dt.date(2026, 1, 5)
     trades: list[Trade] = []
-    # Pack the whole day inside the 9:00 -> 16:59 CT window: a trade whose
-    # exit crosses the 17:00 session boundary would silently migrate into
-    # the NEXT session (Friday overflow lands on Saturday), corrupting the
-    # exact day structure this generator exists to control.
-    step = dt.timedelta(seconds=(7 * 3600 + 59 * 60) / trades_per_day)
+    # Pack the whole day inside the 8:30 -> 15:00 CT window: exits must
+    # stay before Topstep's 15:10 hard close (the Monte Carlo fails
+    # closed on session-invalid logs), and well before the 17:00 session
+    # boundary (a crossing trade would silently migrate into the NEXT
+    # session, corrupting the exact day structure this generator exists
+    # to control). Last exit: 8:30 + (n-1)*step + step/2 < 15:00.
+    step = dt.timedelta(seconds=(6 * 3600 + 30 * 60) / (trades_per_day + 0.5))
     for day in range(days):
         while date.weekday() >= 5:
             date += dt.timedelta(days=1)
         for k in range(trades_per_day):
             pnl = float(pnls[day * trades_per_day + k])
-            entry = dt.datetime.combine(date, dt.time(9, 0), tzinfo=ct) + k * step
+            entry = dt.datetime.combine(date, dt.time(8, 30), tzinfo=ct) + k * step
             trades.append(
                 Trade(
                     entry_time=entry,

@@ -44,14 +44,17 @@ for name, ticker in FUTS.items():
 print("continuous symbols:", CONT)
 
 START_YEAR, END_YEAR = 2021, 2024  # 2025+ LOCKED — do not extend
-# Boundaries 08:35..14:45 America/Chicago inclusive, every 5 minutes.
-# (Cash open 08:30 and the 20 minutes before the 15:10 hard close are
-# excluded by construction; finer exclusions happen locally.)
+# Boundaries 08:45..14:45 America/Chicago inclusive, every 5 minutes.
+# Frozen exclusions built in: the ±10-minute cash-open window (08:30
+# open -> first eligible boundary 08:45; 08:40 sits exactly at +10 min
+# and is excluded) and the final 20+ minutes before the 15:10 hard
+# close (last boundary 14:45). Scheduled-release windows are excluded
+# SYMMETRICALLY (quarter and placebo alike) in the local stats script.
 BOUNDARIES = [
     dt.time(h, m)
     for h in range(8, 15)
     for m in range(0, 60, 5)
-    if (h, m) >= (8, 35) and (h, m) <= (14, 45)
+    if (h, m) >= (8, 45) and (h, m) <= (14, 45)
 ]
 FORWARD_S = [60, 120, 300]
 PRE_S = 60
@@ -104,7 +107,8 @@ def extract_year(year: int) -> pd.DataFrame:
                     if p0 is None or p_pre is None or p0 <= 0 or p_pre <= 0:
                         continue
                     pre_win = closes.loc[b - pd.Timedelta(minutes=5) : b]
-                    if len(pre_win) < 2:
+                    post_win = closes.loc[b : b + pd.Timedelta(minutes=5)]
+                    if len(pre_win) < 2 or len(post_win) < 2:
                         continue
                     row = {
                         "date": session.isoformat(),
@@ -121,6 +125,7 @@ def extract_year(year: int) -> pd.DataFrame:
                         "price_b": p0,
                         "ret_pre_60s": np.log(p0 / p_pre),
                         "prevol_5m": float(np.log(pre_win).diff().std()),
+                        "postvol_5m": float(np.log(post_win).diff().std()),
                         "vol_pre_60s": float(
                             volumes.loc[b - pd.Timedelta(seconds=PRE_S) : b].sum()
                         ),

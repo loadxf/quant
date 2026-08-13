@@ -126,14 +126,38 @@ class SessionCloseSpec(_RuleBase):
 
     Enforced by the deterministic evaluator (which sees timestamps). The
     day-granular Monte Carlo cannot see clock times; run_monte_carlo
-    instead counts source-log violations and warns loudly. A product
-    with an earlier exchange close needs an earlier `hard_close` — no
-    per-product exchange calendar is modeled.
+    FAILS CLOSED on source logs containing violations — simulating them
+    would overstate what the account allows. Pending-order cancellation
+    by the deadline is unobservable from a closed-trade log (stated in
+    the evaluator's advisories). No per-product exchange calendar is
+    modeled — see `early_closes` for date-aware shortened sessions.
     """
 
     type: Literal["session_close"] = "session_close"
     tz: str = "America/Chicago"
     hard_close: str = "15:10:00"  # HH:MM[:SS] local wall time
+    # Date-aware overrides for shortened sessions (exchange holidays):
+    # ISO session date -> earlier local close, e.g. {"2026-11-27": "12:15:00"}.
+    # The EARLIER of hard_close and the override applies. Symbol-specific
+    # product closes are NOT modeled — configure the earliest applicable
+    # close for the traded products, or split logs per product.
+    early_closes: dict[str, str] = Field(default_factory=dict)
+
+    @staticmethod
+    def _parse_time(value: str, field_name: str) -> dt_time:
+        parts = value.split(":")
+        if len(parts) not in (2, 3):
+            raise ConfigError(f"session_close.{field_name} must be HH:MM[:SS] (got {value!r})")
+        try:
+            hh, mm = int(parts[0]), int(parts[1])
+            ss = int(parts[2]) if len(parts) == 3 else 0
+        except ValueError:
+            raise ConfigError(
+                f"session_close.{field_name} must be numeric HH:MM[:SS] (got {value!r})"
+            ) from None
+        if not (0 <= hh <= 23 and 0 <= mm <= 59 and 0 <= ss <= 59):
+            raise ConfigError(f"session_close.{field_name} out of range (got {value!r})")
+        return dt_time(hh, mm, ss)
 
     @model_validator(mode="after")
     def _valid(self) -> SessionCloseSpec:
@@ -141,25 +165,31 @@ class SessionCloseSpec(_RuleBase):
             ZoneInfo(self.tz)
         except (KeyError, ValueError, TypeError, ZoneInfoNotFoundError):
             raise ConfigError(f"session_close.tz {self.tz!r} is not a known IANA zone") from None
-        parts = self.hard_close.split(":")
-        if len(parts) not in (2, 3):
-            raise ConfigError(
-                f"session_close.hard_close must be HH:MM[:SS] (got {self.hard_close!r})"
-            )
-        try:
-            hh, mm = int(parts[0]), int(parts[1])
-            ss = int(parts[2]) if len(parts) == 3 else 0
-        except ValueError:
-            raise ConfigError(
-                f"session_close.hard_close must be numeric HH:MM[:SS] (got {self.hard_close!r})"
-            ) from None
-        if not (0 <= hh <= 23 and 0 <= mm <= 59 and 0 <= ss <= 59):
-            raise ConfigError(f"session_close.hard_close out of range (got {self.hard_close!r})")
+        self._parse_time(self.hard_close, "hard_close")
+        import datetime as _dt
+
+        for date_str, time_str in self.early_closes.items():
+            try:
+                _dt.date.fromisoformat(date_str)
+            except ValueError:
+                raise ConfigError(
+                    f"session_close.early_closes key {date_str!r} is not an ISO date"
+                ) from None
+            self._parse_time(time_str, f"early_closes[{date_str}]")
         return self
 
     def close_time(self) -> dt_time:
-        parts = self.hard_close.split(":")
-        return dt_time(int(parts[0]), int(parts[1]), int(parts[2]) if len(parts) == 3 else 0)
+        return self._parse_time(self.hard_close, "hard_close")
+
+    def close_time_for(self, session_date: object) -> dt_time:
+        """Effective close for a session date: the earlier of hard_close
+        and any date-specific early close."""
+        base = self.close_time()
+        override = self.early_closes.get(str(session_date))
+        if override is None:
+            return base
+        early = self._parse_time(override, f"early_closes[{session_date}]")
+        return min(base, early)
 
 
 class TimeLimitSpec(_RuleBase):
@@ -449,6 +479,84 @@ class FirmConfig(_RuleBase):
                     rule_name = rule_type.model_fields["type"].default
                     raise ConfigError(f"phase {phase.name!r} has duplicate {rule_name} rules")
         return self
+
+
+# Optional Daily Loss Limit values, verified against help.topstep.com
+# article 10490293 (fetched 2026-08-13): chosen at checkout, fixed
+# thereafter, LOCKOUT-only (flatten + no new trades until 5 PM CT;
+# never an account failure).
+TOPSTEP_DLL_AMOUNTS: dict[float, float] = {50_000: 1_000, 100_000: 2_000, 150_000: 3_000}
+
+
+def with_optional_dll(firm: FirmConfig, amount: float | None = None) -> FirmConfig:
+    """Copy of `firm` with the opt-in Daily Loss Limit added to every
+    phase (lockout effect — a soft breach, not a failure).
+
+    `amount` defaults to the official Topstep value for the account size;
+    an unknown size requires an explicit amount.
+    """
+    if amount is None:
+        amount = TOPSTEP_DLL_AMOUNTS.get(firm.account_size)
+        if amount is None:
+            raise ConfigError(
+                f"no official DLL amount for account size {firm.account_size:g} — "
+                "pass an explicit --dll-amount"
+            )
+    if not math.isfinite(amount) or amount <= 0:
+        raise ConfigError(f"DLL amount must be finite and positive (got {amount})")
+    for phase in [*firm.phases, firm.funded]:
+        if any(isinstance(rule, DailyLossLimitSpec) for rule in phase.rules):
+            raise ConfigError(
+                f"phase {phase.name!r} already defines a daily_loss_limit — "
+                "remove --dll or edit the firm YAML"
+            )
+    dll = DailyLossLimitSpec(amount=amount, effect="lockout")
+    new_phases = [phase.model_copy(update={"rules": [*phase.rules, dll]}) for phase in firm.phases]
+    new_funded = firm.funded.model_copy(update={"rules": [*firm.funded.rules, dll]})
+    return firm.model_copy(update={"phases": new_phases, "funded": new_funded})
+
+
+def with_promo_payout_caps(firm: FirmConfig) -> FirmConfig:
+    """Copy of `firm` with DOUBLED payout caps on both paths — the
+    June-2026 limited promotion for accounts purchased WITH the optional
+    DLL. Never the primary result: the baseline is non-promotional."""
+    payout = firm.payout
+    updates: dict[str, object] = {}
+    if payout.payout_cap_ladder:
+        updates["payout_cap_ladder"] = [2 * cap for cap in payout.payout_cap_ladder]
+    if payout.consistency is not None and payout.consistency.payout_cap_ladder:
+        updates["consistency"] = payout.consistency.model_copy(
+            update={"payout_cap_ladder": [2 * cap for cap in payout.consistency.payout_cap_ladder]}
+        )
+    if not updates:
+        raise ConfigError("promotional caps need a payout_cap_ladder to double")
+    return firm.model_copy(update={"payout": payout.model_copy(update=updates)})
+
+
+def apply_topstep_options(
+    firm: FirmConfig,
+    dll: bool = False,
+    dll_amount: float | None = None,
+    promo_caps: bool = False,
+) -> FirmConfig:
+    """Compose the opt-in DLL and the promotional doubled caps.
+
+    The promotion applies only to accounts purchased WITH the DLL, so
+    promo_caps without dll is a configuration error. The no-DLL,
+    non-promotional configuration remains the primary baseline.
+    """
+    if dll_amount is not None and not dll:
+        raise ConfigError("--dll-amount requires --dll")
+    if promo_caps and not dll:
+        raise ConfigError(
+            "promotional doubled caps apply only to accounts purchased with the "
+            "optional DLL — add --dll (and keep the no-DLL baseline primary)"
+        )
+    if dll:
+        firm = with_optional_dll(firm, dll_amount)
+    if promo_caps:
+        firm = with_promo_payout_caps(firm)
+    return firm
 
 
 def with_fee_overrides(

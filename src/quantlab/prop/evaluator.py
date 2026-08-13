@@ -279,6 +279,11 @@ def _evaluate_days(
             min_days = MinTradingDaysGate(spec)
         elif isinstance(spec, SessionCloseSpec):
             session_rules.append(SessionCloseRule(spec, firm.day_boundary.to_boundary()))
+            advisories.append(
+                "session_close verifies POSITIONS only: pending-order cancellation "
+                f"by the {spec.hard_close} {spec.tz} deadline is unobservable in a "
+                "closed-trade log"
+            )
         elif isinstance(spec, TimeLimitSpec):
             time_limit = TimeLimitGate(spec)
         elif isinstance(spec, ContractLimitSpec):
@@ -484,31 +489,16 @@ def _evaluate_days(
                     day_resolved = True
                     break
 
-            if not locked and not is_funded and target is not None:
-                best_day_running = max(best_day_completed, day_cum)
-                effective_target = target
-                blocked = False
-                for gate in raise_gates:
-                    effective_target = max(
-                        effective_target, gate.required_total(target, best_day_running)
-                    )
-                    blocked = blocked or gate.pass_blocked(balance - initial, best_day_running)
-                if (
-                    not blocked
-                    and balance - initial >= effective_target
-                    and min_days.satisfied(days_consumed)
-                ):
-                    outcome = "passed"
-                    pass_date = date
-                    pass_day_index = day_index
-                    day_resolved = True
-                    break
-
             if locked:
                 break
 
         balance = day_open + day_cum
         best_day_completed = max(best_day_completed, day_cum)
+        # Pass adjudication happens on COMPLETED-SESSION state only (below,
+        # at day close): Topstep locks each day's value at 3:10 PM CT
+        # ("that day's value locks into your trading history"), so touching
+        # the target intraday and giving it back the same session is NOT a
+        # pass. An intraday breach still fails immediately (real-time MLL).
         if sizer is not None:
             # Advance the forecast with the day's UNSCALED per-unit PnL.
             sizer.update(float(sum(t.pnl for t in trades)))
@@ -520,6 +510,28 @@ def _evaluate_days(
             unlocked = True
         for tr_rule in trailing:
             tr_rule.day_close(balance)
+
+        # EOD pass adjudication (evaluation phases): target and the
+        # consistency raise are tested against the session-CLOSE balance
+        # and the LOCKED best day. A DLL-locked day still adjudicates —
+        # the lockout is a soft breach, the session still closes.
+        if not is_funded and target is not None and not day_resolved:
+            effective_target = target
+            blocked = False
+            for gate in raise_gates:
+                effective_target = max(
+                    effective_target, gate.required_total(target, best_day_completed)
+                )
+                blocked = blocked or gate.pass_blocked(balance - initial, best_day_completed)
+            if (
+                not blocked
+                and balance - initial >= effective_target
+                and min_days.satisfied(days_consumed)
+            ):
+                outcome = "passed"
+                pass_date = date
+                pass_day_index = day_index
+                day_resolved = True
 
         # Payout replay AFTER the EOD ratchet (matching the Monte Carlo:
         # the floor advances from the pre-withdrawal closing balance).
@@ -544,7 +556,9 @@ def _evaluate_days(
                     payout.period_td, 1
                 )
                 if payout.require_profit_since and payout_count > 0:
-                    eligible = eligible and profit_since > 0
+                    # At least $0.01 since the prior payout (Topstep
+                    # payout policy) — not merely floating-point > 0.
+                    eligible = eligible and profit_since >= 0.01
             for frac in payout.gate_pcts:
                 # Apex wording: a best day at "50% or more" blocks — strict.
                 eligible = eligible and profit_since > 0 and best_day_since < frac * profit_since

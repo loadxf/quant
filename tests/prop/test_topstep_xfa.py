@@ -132,6 +132,26 @@ class TestStandardPath:
         assert scalar.payout_count == 2
         assert scalar.total_withdrawn == pytest.approx(375.0 + 232.50)
 
+    def test_profit_since_threshold_is_one_cent(self) -> None:
+        """Round 3, item 4: subsequent Standard payouts need >= $0.01
+        since the prior payout. The 5th qualifying day of cycle 2 lands
+        with the window at +$0.005 — floating-point-positive but below
+        one cent — and must NOT pay; the next day pays."""
+        firm = load_firm("topstep_50k")
+        days = (
+            [[simple(150)]] * 5  # payout 1 -> balance 375, anchor 375
+            + [[simple(150)]] * 4  # window +600, 4 qualifying days
+            + [[simple(-749.995)]]  # window -149.995
+            + [[simple(150)]]  # 5th qualifying day, window +0.005: BLOCKED
+            + [[simple(150)]]  # window +150.005: pays
+        )
+        log = day_trades(days)
+        scalar, _ = both_engines(log, firm)
+        assert scalar.payout_count == 2
+        payouts = list(scalar.timeline["payout"])
+        assert payouts[10] == 0.0  # the +$0.005 window day
+        assert payouts[11] > 0.0
+
     def test_profit_since_gate_blocks_when_window_flat(self) -> None:
         """Five fresh qualifying days whose window nets NEGATIVE must not
         pay; the sixth day that turns the window positive pays."""

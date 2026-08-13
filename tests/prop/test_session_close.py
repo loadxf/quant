@@ -10,6 +10,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
+from quantlab.errors import QuantLabError
 from quantlab.prop.evaluator import evaluate
 from quantlab.prop.montecarlo import MCConfig, run_monte_carlo
 from quantlab.prop.registry import load_firm
@@ -168,9 +169,10 @@ class TestTopstepPresetsCarryTheRule:
 
 
 class TestMonteCarloScreen:
-    def test_mc_warns_on_source_log_violations(self) -> None:
-        """The day-granular MC cannot replay clock times; it must warn
-        when the source log violates the hard close."""
+    def test_mc_fails_closed_on_source_log_violations(self) -> None:
+        """The day-granular MC cannot replay clock times; simulating a
+        session-invalid log would overstate pass/payout probabilities,
+        so it must REFUSE — a warning is not sufficient (round 3)."""
         firm = load_firm("topstep_50k")
         trades = []
         for i in range(35):
@@ -193,13 +195,85 @@ class TestMonteCarloScreen:
             )
         )
         log = TradeLog(trades=trades, source="synthetic")
-        report = run_monte_carlo(log, firm, MCConfig(n_paths=50, seed=1))
-        assert any("session close" in w for w in report.warnings)
+        with pytest.raises(QuantLabError, match="session close"):
+            run_monte_carlo(log, firm, MCConfig(n_paths=50, seed=1))
 
-    def test_mc_silent_on_clean_log(self) -> None:
+    def test_mc_runs_on_clean_log(self) -> None:
         firm = load_firm("topstep_50k")
         from ..conftest import random_log
 
         log = random_log(n_days=40, mean=20.0, std=100.0, seed=5, with_excursions=True)
         report = run_monte_carlo(log, firm, MCConfig(n_paths=50, seed=1))
         assert not any("session close" in w for w in report.warnings)
+
+
+class TestEarlyCloses:
+    def test_date_specific_early_close(self) -> None:
+        """A holiday early close applies on its date only."""
+        spec = {**SESSION_CLOSE, "early_closes": {"2026-11-27": "12:15:00"}}
+        firm = make_firm(
+            [
+                {
+                    "type": "trailing_drawdown",
+                    "amount": 2000,
+                    "ratchet": "eod",
+                    "threshold_cap": 50000,
+                },
+                spec,
+            ],
+            target=3000,
+        )
+        holiday_trade = trade_at(
+            dt.datetime(2026, 11, 27, 10, 0, tzinfo=CT),
+            dt.datetime(2026, 11, 27, 12, 30, tzinfo=CT),
+        )
+        result = evaluate(one_trade_log(holiday_trade), firm)
+        assert result.outcome == "breached"
+        assert result.breach is not None and "12:15:00" in result.breach.detail
+        normal_trade = trade_at(
+            dt.datetime(2026, 11, 30, 10, 0, tzinfo=CT),
+            dt.datetime(2026, 11, 30, 12, 30, tzinfo=CT),
+        )
+        assert evaluate(one_trade_log(normal_trade), firm).outcome == "incomplete"
+
+    def test_early_close_never_extends_the_session(self) -> None:
+        """An 'early close' LATER than hard_close must not loosen it."""
+        spec = {**SESSION_CLOSE, "early_closes": {"2026-01-12": "16:00:00"}}
+        firm = make_firm(
+            [
+                {
+                    "type": "trailing_drawdown",
+                    "amount": 2000,
+                    "ratchet": "eod",
+                    "threshold_cap": 50000,
+                },
+                spec,
+            ],
+            target=3000,
+        )
+        trade = trade_at(
+            dt.datetime(2026, 1, 12, 14, 0, tzinfo=CT),
+            dt.datetime(2026, 1, 12, 15, 30, tzinfo=CT),
+        )
+        assert evaluate(one_trade_log(trade), firm).outcome == "breached"
+
+    def test_bad_early_close_config_rejected(self) -> None:
+        from quantlab.errors import ConfigError
+        from quantlab.prop.config import SessionCloseSpec
+
+        with pytest.raises(ConfigError, match="ISO date"):
+            SessionCloseSpec(early_closes={"Nov 27": "12:15:00"})
+        with pytest.raises(ConfigError, match="early_closes"):
+            SessionCloseSpec(early_closes={"2026-11-27": "25:00"})
+
+
+class TestPendingOrdersDisclosure:
+    def test_advisory_states_pending_orders_unobservable(self) -> None:
+        firm = load_firm("topstep_50k")
+        day = dt.date(2026, 1, 12)
+        trade = trade_at(
+            dt.datetime.combine(day, dt.time(9, 0), tzinfo=CT),
+            dt.datetime.combine(day, dt.time(10, 0), tzinfo=CT),
+        )
+        result = evaluate(one_trade_log(trade), firm)
+        assert any("pending-order" in a and "unobservable" in a for a in result.advisories)

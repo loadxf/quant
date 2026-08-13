@@ -1,0 +1,74 @@
+"""Immutability and hash-manifest guarantees of the raw store."""
+
+from __future__ import annotations
+
+import pytest
+from qlir import QlirError
+from qlir.store import RawStore, sha256_file
+
+
+@pytest.fixture
+def store(tmp_path):
+    return RawStore(tmp_path / "q_lir")
+
+
+PAYLOAD = b"synthetic-dbn-bytes-v1"
+
+
+class TestImmutability:
+    def test_write_then_verify_clean(self, store) -> None:
+        path = store.write_raw("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", PAYLOAD)
+        assert path.exists()
+        assert store.verify() == []
+
+    def test_identical_rewrite_is_idempotent(self, store) -> None:
+        store.write_raw("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", PAYLOAD)
+        store.write_raw("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", PAYLOAD)
+        assert store.verify() == []
+
+    def test_different_bytes_refused(self, store) -> None:
+        store.write_raw("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", PAYLOAD)
+        with pytest.raises(QlirError, match="IMMUTABLE"):
+            store.write_raw("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", b"different")
+
+    def test_empty_payload_refused(self, store) -> None:
+        with pytest.raises(QlirError, match="empty"):
+            store.write_raw("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", b"")
+
+    def test_unsafe_path_components_refused(self, store) -> None:
+        with pytest.raises(QlirError, match="unsafe"):
+            store.path_for("GLBX.MDP3", "trades", "../evil", "2022-03-01")
+
+
+class TestHashManifest:
+    def test_tampered_file_detected(self, store) -> None:
+        path = store.write_raw("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", PAYLOAD)
+        path.write_bytes(b"tampered")
+        problems = store.verify()
+        assert len(problems) == 1 and "HASH MISMATCH" in problems[0]
+
+    def test_missing_file_detected(self, store) -> None:
+        path = store.write_raw("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", PAYLOAD)
+        path.unlink()
+        problems = store.verify()
+        assert len(problems) == 1 and problems[0].startswith("MISSING")
+
+    def test_untracked_file_detected(self, store) -> None:
+        store.write_raw("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", PAYLOAD)
+        rogue = store.raw_dir / "GLBX.MDP3" / "trades" / "ES.v.0" / "2022-03-02.dbn.zst"
+        rogue.write_bytes(b"rogue")
+        problems = store.verify()
+        assert len(problems) == 1 and problems[0].startswith("UNTRACKED")
+
+    def test_manifest_sorted_and_unique(self, store) -> None:
+        store.write_raw("GLBX.MDP3", "trades", "NQ.v.0", "2022-03-02", PAYLOAD)
+        store.write_raw("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", PAYLOAD)
+        lines = store.manifest_path.read_text(encoding="utf-8").splitlines()
+        assert lines == sorted(lines)
+        assert len(lines) == len({line.split("  ", 1)[1] for line in lines})
+
+    def test_sha256_file_matches_payload(self, store) -> None:
+        import hashlib
+
+        path = store.write_raw("GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", PAYLOAD)
+        assert sha256_file(path) == hashlib.sha256(PAYLOAD).hexdigest()

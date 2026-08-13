@@ -6,7 +6,8 @@ DayProfile), with every rule check vectorized across paths. The
 semantics per trade are identical to the DeterministicEvaluator — normally
 high -> low -> close, but low -> close for MAE-only records; first-hit
 resolution is by highest level, lockout
-truncation at exactly -width, pass at trade close — which a golden
+truncation at exactly -width, pass adjudicated on the SESSION-CLOSE
+balance (Topstep locks each day's value at 3:10 PM CT) — which a golden
 equivalence test enforces.
 
 Calendar approximation: rule/payout windows quoted in calendar days
@@ -587,29 +588,6 @@ def _simulate_phase(
                     fail_rule[hit] = r
                     still &= ~hit
 
-            if not is_funded:
-                assert target is not None
-                day_close_so_far = close_rel[d, i] if w is None else w * close_rel[d, i]
-                best_running = np.maximum(best_day_completed, day_close_so_far)
-                eff_target = np.full(n_paths, float(target))
-                blocked = np.zeros(n_paths, dtype=bool)
-                for gate in rules.raises:
-                    raised = np.where(
-                        best_running > gate.frac * target, best_running / gate.frac, target
-                    )
-                    eff_target = np.maximum(eff_target, raised)
-                    if gate.strict:
-                        # "50% or more" wording: exact equality still blocks.
-                        blocked |= (best_running > 0) & (
-                            best_running >= gate.frac * (balance - initial)
-                        )
-                pass_hit = (
-                    still & ~blocked & (balance - initial >= eff_target) & (t + 1 >= rules.min_days)
-                )
-                if pass_hit.any():
-                    outcome[pass_hit] = OUTCOME_PASSED
-                    end_day[pass_hit] = t
-
         # --- day close -----------------------------------------------------
         alive = outcome == OUTCOME_ACTIVE
         day_pnl = balance - day_open
@@ -637,6 +615,34 @@ def _simulate_phase(
         )
         peak = np.maximum(peak, balance)
         max_dd = np.maximum(max_dd, peak - balance)
+        # EOD pass adjudication: Topstep locks each day's value at 3:10 PM
+        # CT, so the target and the consistency raise are tested on the
+        # session-CLOSE balance and the LOCKED best day — touching the
+        # target intraday and giving it back the same session is not a
+        # pass. DLL-locked paths (still ACTIVE) adjudicate too: the
+        # lockout is a soft breach, the session still closes.
+        if not is_funded:
+            assert target is not None
+            eff_target = np.full(n_paths, float(target))
+            blocked = np.zeros(n_paths, dtype=bool)
+            for gate in rules.raises:
+                raised = np.where(
+                    best_day_completed > gate.frac * target,
+                    best_day_completed / gate.frac,
+                    target,
+                )
+                eff_target = np.maximum(eff_target, raised)
+                if gate.strict:
+                    # "50% or more" wording: exact equality still blocks.
+                    blocked |= (best_day_completed > 0) & (
+                        best_day_completed >= gate.frac * (balance - initial)
+                    )
+            pass_hit = (
+                alive & ~blocked & (balance - initial >= eff_target) & (t + 1 >= rules.min_days)
+            )
+            if pass_hit.any():
+                outcome[pass_hit] = OUTCOME_PASSED
+                end_day[pass_hit] = t
         if payout is not None:
             qual_days = np.where(alive & (day_pnl >= payout.q_min_profit), qual_days + 1, qual_days)
             days_since_payout = np.where(alive, days_since_payout + 1, days_since_payout)
@@ -661,9 +667,10 @@ def _simulate_phase(
                     & (days_since_payout >= max(payout.period_td, 1))
                 )
                 if payout.require_profit_since:
-                    # Subsequent payouts need positive profit since the
-                    # prior one; the first payout is exempt.
-                    eligible &= (payout_count == 0) | (profit_since > 0)
+                    # Subsequent payouts need at least $0.01 of profit
+                    # since the prior one (Topstep payout policy); the
+                    # first payout is exempt.
+                    eligible &= (payout_count == 0) | (profit_since >= 0.01)
             for frac in payout.gate_pcts:
                 # Apex wording: a best day at "50% or more" blocks — strict.
                 eligible &= (profit_since > 0) & (best_day_since < frac * profit_since)
@@ -798,21 +805,24 @@ def run_monte_carlo(
             "are approximate; verify against mark-to-market equity data"
         )
     # session_close is a clock-time rule the day-granular engine cannot
-    # replay — screen the SOURCE log and warn loudly: resampled days that
-    # violated the hard close would have been force-flattened (or failed)
-    # in reality, so simulated results overstate what the account allows.
+    # replay. FAIL CLOSED on session-invalid source data: a violating day
+    # would have been force-flattened (or failed) in reality, so
+    # resampling it "as if allowed" silently overstates what the account
+    # permits — a warning is not sufficient (Sol/Fable round 3, defect 2).
     for phase_cfg in [*firm.phases, firm.funded]:
         for spec in phase_cfg.rules:
             if isinstance(spec, SessionCloseSpec):
                 violations = count_session_close_violations(log, spec, boundary)
                 if violations:
-                    warnings.append(
+                    raise QuantLabError(
                         f"{violations} trade(s) in the source log violate the "
                         f"{spec.hard_close} {spec.tz} session close "
-                        f"(phase {phase_cfg.name!r}): the Monte Carlo resamples those "
-                        "days as if allowed — run `quant prop evaluate` for the "
-                        "deterministic verdict and fix the strategy before trusting "
-                        "these results"
+                        f"(phase {phase_cfg.name!r}). The day-granular Monte Carlo "
+                        "cannot replay clock-time rules, so simulating this log "
+                        "would overstate pass/payout probabilities. Fix the "
+                        "strategy to be flat before the deadline (run `quant prop "
+                        "evaluate` for the per-trade verdict), or remove the "
+                        "session_close rule to simulate a non-Topstep account."
                     )
                 break
 

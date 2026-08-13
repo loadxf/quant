@@ -16,13 +16,20 @@ from quantlab.schema.trade import Trade, TradeLog
 
 
 def peak_contract_equivalents(trades: list[Trade], spec: ContractLimitSpec) -> float:
-    """Conservative peak concurrent gross exposure in mini equivalents."""
+    """Conservative peak concurrent gross exposure in mini equivalents.
+
+    Micro classification comes from ContractSpec.mini_equivalent (< 1.0
+    marks a micro: M2K, MYM, MCL, MGC, MES, MNQ, ...); the conversion
+    ratio is the firm's `micros_multiplier` (default 10, the official
+    general micro:mini ratio). Unresolved symbols count 1:1 — the
+    conservative choice for an advisory limit.
+    """
     events: list[tuple[dt.datetime, int, float]] = []
     for trade in trades:
         contract = resolve_contract(trade.symbol)
         divisor = (
             spec.micros_multiplier
-            if contract is not None and contract.root in {"MES", "MNQ"}
+            if contract is not None and contract.mini_equivalent < 1.0
             else 1.0
         )
         equivalent = trade.quantity / divisor

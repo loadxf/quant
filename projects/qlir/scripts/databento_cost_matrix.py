@@ -111,13 +111,25 @@ def main() -> int:
         end_date="2024-12-31",
     )
     if isinstance(cond, list):
+        # DATED conditions are the audit record — retained in full, with
+        # a state-count summary only as a convenience view (round 3 #9).
+        results["dataset_condition_by_date"] = cond
         by_state: dict[str, int] = {}
+        non_available: list[str] = []
         for day in cond:
             state = day.get("condition", "unknown") if isinstance(day, dict) else "unknown"
             by_state[state] = by_state.get(state, 0) + 1
+            if isinstance(day, dict) and state != "available":
+                non_available.append(f"{day.get('date', '?')}={state}")
         results["dataset_condition_summary"] = by_state
         print(f"dataset condition by day-state 2021-2024: {by_state}")
+        if non_available:
+            print(
+                f"  non-available dates ({len(non_available)}): {non_available[:20]}"
+                + (" …" if len(non_available) > 20 else "")
+            )
     else:
+        results["dataset_condition_by_date"] = cond
         results["dataset_condition_summary"] = cond
 
     all_symbols = sorted({s for legs in PACKAGES.values() for syms, _ in legs for s in syms})
@@ -144,15 +156,29 @@ def main() -> int:
     else:
         results["symbology"] = {"error": resolution}
 
-    header = f"{'package':<22} {'year':<10} {'cost $':>12} {'records':>16} {'GB':>10}"
+    def fmt_money(value: float | None) -> str:
+        return "n/a" if value is None else f"{value:,.2f}"
+
+    def fmt_count(value: float | None) -> str:
+        return "n/a" if value is None else f"{value:,.0f}"
+
+    def fmt_gb(value: float | None) -> str:
+        return "n/a" if value is None else f"{value / 1e9:,.2f}"
+
+    header = f"{'package':<22} {'year':<10} {'cost $':>14} {'records':>18} {'GB':>10}"
     print("\n" + header)
     print("-" * len(header))
     for package, legs in PACKAGES.items():
         pkg: dict[str, Any] = {"legs": [], "by_year": {}, "total": {}}
-        total_cost = total_records = total_bytes = 0.0
-        priced = True
+        total_cost: float | None = 0.0
+        total_records: float | None = 0.0
+        total_bytes: float | None = 0.0
         for year, start, end in YEARS:
-            y_cost = y_records = y_bytes = 0.0
+            # A failed leg makes the whole year UNAVAILABLE — never a $0
+            # that reads as "free" (round 3 #9).
+            y_cost: float | None = 0.0
+            y_records: float | None = 0.0
+            y_bytes: float | None = 0.0
             for symbols, schema in legs:
                 kwargs = dict(
                     dataset=DATASET,
@@ -169,43 +195,54 @@ def main() -> int:
                 size = safe(
                     f"{package}/{year}/{schema} size", client.metadata.get_billable_size, **kwargs
                 )
-                leg = {
-                    "year": year,
-                    "symbols": symbols,
-                    "schema": schema,
-                    "cost_usd": cost,
-                    "record_count": count,
-                    "billable_bytes": size,
-                }
-                pkg["legs"].append(leg)
-                if all(isinstance(v, (int, float)) for v in (cost, count, size)):
+                leg_ok = all(isinstance(v, (int, float)) for v in (cost, count, size))
+                pkg["legs"].append(
+                    {
+                        "year": year,
+                        "symbols": symbols,
+                        "schema": schema,
+                        "available": leg_ok,
+                        "cost_usd": cost if leg_ok else None,
+                        "record_count": count if leg_ok else None,
+                        "billable_bytes": size if leg_ok else None,
+                        "error": None if leg_ok else {"cost": cost, "count": count, "size": size},
+                    }
+                )
+                if leg_ok and y_cost is not None:
+                    assert y_records is not None and y_bytes is not None
                     y_cost += float(cost)
                     y_records += float(count)
                     y_bytes += float(size)
                 else:
-                    priced = False
+                    y_cost = y_records = y_bytes = None
             pkg["by_year"][year] = {
                 "cost_usd": y_cost,
                 "record_count": y_records,
                 "billable_bytes": y_bytes,
+                "available": y_cost is not None,
             }
-            total_cost += y_cost
-            total_records += y_records
-            total_bytes += y_bytes
+            if y_cost is None or total_cost is None:
+                total_cost = total_records = total_bytes = None
+            else:
+                assert total_records is not None and total_bytes is not None
+                assert y_records is not None and y_bytes is not None
+                total_cost += y_cost
+                total_records += y_records
+                total_bytes += y_bytes
             print(
-                f"{package:<22} {year:<10} {y_cost:>12,.2f} {y_records:>16,.0f} "
-                f"{y_bytes / 1e9:>10,.2f}"
+                f"{package:<22} {year:<10} {fmt_money(y_cost):>14} "
+                f"{fmt_count(y_records):>18} {fmt_gb(y_bytes):>10}"
             )
         pkg["total"] = {
             "cost_usd": total_cost,
             "record_count": total_records,
             "billable_bytes": total_bytes,
-            "fully_priced": priced,
+            "available": total_cost is not None,
         }
         results["packages"][package] = pkg
         print(
-            f"{package:<22} {'2021-2024':<10} {total_cost:>12,.2f} {total_records:>16,.0f} "
-            f"{total_bytes / 1e9:>10,.2f}\n"
+            f"{package:<22} {'2021-2024':<10} {fmt_money(total_cost):>14} "
+            f"{fmt_count(total_records):>18} {fmt_gb(total_bytes):>10}\n"
         )
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)

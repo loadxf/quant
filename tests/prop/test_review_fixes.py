@@ -80,7 +80,24 @@ class TestCrossSessionFidelity:
         firm = load_firm("topstep_50k")
         assert log.cross_session_trade_count(firm.day_boundary.to_boundary()) == 1
         assert any("daily reset" in note for note in evaluate(log, firm).advisories)
-        report = run_monte_carlo(log, firm, MCConfig(n_paths=5, seed=1))
+        # The 16:30->17:30 CT fixture also violates Topstep's 15:10 hard
+        # close, and the MC now FAILS CLOSED on session-invalid logs — so
+        # exercise the MC's cross-session warning on an equivalent firm
+        # without the session_close rule.
+        from .conftest import make_firm
+
+        no_close_firm = make_firm(
+            [
+                {
+                    "type": "trailing_drawdown",
+                    "amount": 2000,
+                    "ratchet": "eod",
+                    "threshold_cap": 50_000,
+                }
+            ],
+            target=3000,
+        )
+        report = run_monte_carlo(log, no_close_firm, MCConfig(n_paths=5, seed=1))
         assert any("daily reset" in note for note in report.warnings)
 
 

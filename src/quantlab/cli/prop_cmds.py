@@ -229,6 +229,21 @@ def simulate_cmd(
         "--payout-haircut",
         help="Counterparty assumption (0-1): payout fraction lost to denials/failure.",
     ),
+    dll: bool = typer.Option(
+        False,
+        "--dll",
+        help="Add the opt-in Daily Loss Limit (lockout; official amount by "
+        "account size unless --dll-amount).",
+    ),
+    dll_amount: float | None = typer.Option(
+        None, "--dll-amount", min=0.0, help="Override the DLL dollar amount (requires --dll)."
+    ),
+    promo_caps: bool = typer.Option(
+        False,
+        "--promo-caps",
+        help="Apply the June-2026 promotional DOUBLED payout caps (requires --dll; "
+        "the no-DLL non-promotional baseline stays primary).",
+    ),
     accounts: str | None = typer.Option(
         None,
         "--accounts",
@@ -237,10 +252,18 @@ def simulate_cmd(
     json_out: Path | None = typer.Option(None, "--json", help="Write JSON summary here."),
 ) -> None:
     """Monte Carlo the challenge + funded phases from a trade log."""
-    from quantlab.prop.config import with_fee_overrides
+    from quantlab.prop.config import apply_topstep_options, with_fee_overrides
 
     log = read_trade_log(trades)
     firm = with_fee_overrides(load_firm(firm_name), extra_monthly, per_payout_fee, payout_haircut)
+    firm = apply_topstep_options(firm, dll=dll, dll_amount=dll_amount, promo_caps=promo_caps)
+    if dll or promo_caps:
+        console.print(
+            "[yellow]NON-BASELINE configuration:[/yellow] "
+            + ("opt-in DLL (lockout) active" if dll else "")
+            + ("; promotional DOUBLED payout caps applied" if promo_caps else "")
+            + " — the no-DLL, non-promotional run remains the primary result."
+        )
     cfg = MCConfig(
         n_paths=paths,
         seed=seed,
