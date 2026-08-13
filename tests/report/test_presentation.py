@@ -66,7 +66,7 @@ def bundle(tmp_path_factory):
         "mc": mc,
         "rc": rc,
         "verdict": verdict,
-        "html": html_path.read_text(),
+        "html": html_path.read_text(encoding="utf-8"),
         "terminal": _render_text((render_report, mc), (render_reality, rc)),
         "json": combined_json(metrics, verdict, mc, reality=rc),
     }
@@ -210,8 +210,8 @@ class TestCliEndToEnd:
             ],
         )
         assert result.exit_code == 0, result.output
-        payload = json.loads(json_out.read_text())
-        html = html_out.read_text()
+        payload = json.loads(json_out.read_text(encoding="utf-8"))
+        html = html_out.read_text(encoding="utf-8")
         assert payload["schema_version"] == 4
         assert pct(payload["prop_simulation"]["economics"]["pass_prob"]) in html
         assert payload["reality_check"]["regime"] is not None
@@ -293,7 +293,7 @@ class TestReviewLoopFixes:
         build_html_report(log, metrics, verdict, html_path, mc=mc, firm=firm)
         payload = combined_json(metrics, verdict, mc, log=log, boundary=boundary)
         assert any("daily reset" in warning for warning in payload["metrics"]["warnings"])
-        assert "daily reset" in html_path.read_text()
+        assert "daily reset" in html_path.read_text(encoding="utf-8")
 
     def test_report_accepts_overhead_and_ohlcv_flags(self, tmp_path) -> None:
         # Was: quant report silently reverted to zero overhead while
@@ -343,7 +343,7 @@ class TestReviewLoopFixes:
             ],
         )
         assert result.exit_code == 0, result.output
-        payload = json.loads(json_out.read_text())
+        payload = json.loads(json_out.read_text(encoding="utf-8"))
         overhead = payload["prop_simulation"]["economics"]["overhead"]
         assert overhead["extra_monthly"] == 100.0 and overhead["per_payout"] == 30.0
 

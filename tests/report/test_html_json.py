@@ -24,7 +24,7 @@ class TestHtmlReport:
         out = tmp_path / "report.html"
         build_html_report(log, metrics, verdict, out, mc=mc, firm=firm)
 
-        html = out.read_text()
+        html = out.read_text(encoding="utf-8")
         assert html.startswith("<!doctype html>")
         assert html.count("window.PlotlyConfig") == 1  # plotly.js inlined exactly once
         assert "The Verdict" in html
@@ -56,7 +56,7 @@ class TestHtmlReport:
         verdict = compute_scorecard(log, metrics)
         out = tmp_path / "verdict.html"
         build_html_report(log, metrics, verdict, out)
-        html = out.read_text()
+        html = out.read_text(encoding="utf-8")
         assert "Prop-firm simulation" not in html
         assert "The Verdict" in html
         assert "every trade reports zero fees" in html

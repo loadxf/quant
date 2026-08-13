@@ -1,4 +1,7 @@
 # region imports
+import json
+from datetime import timedelta
+
 from AlgorithmImports import *  # noqa: F403
 
 # endregion
@@ -49,6 +52,7 @@ class OpeningRangeBreakoutEquity(QCAlgorithm):  # noqa: F405
             self.time_rules.before_market_close(self._spy, 5),
             self._flatten,
         )
+        self._quantlab_start_export()
 
     def _reset_day(self):
         self._range_high = None
@@ -266,3 +270,80 @@ class OpeningRangeBreakoutEquity(QCAlgorithm):  # noqa: F405
             # before the returned ticket is assigned, so reconcile once more
             # after assignment; the helper is idempotent for unfilled orders.
             self._sync_brackets()
+
+    # --- quantlab export: API-free results retrieval ---------------------
+    # Saves closed trades (with MAE/MFE) plus hourly equity marks to the
+    # Object Store in the same JSON shape as the REST backtests/read
+    # response. After the backtest, download the file in the web IDE
+    # (Organization > Object Store) and run
+    #   quant cloud results --from-json <downloaded file> -o trades.parquet
+    # No API access or lean CLI needed - works on every account tier. To
+    # instrument your own algorithm, copy these four methods plus the
+    # _quantlab_start_export() call at the end of initialize().
+
+    def _quantlab_start_export(self):
+        self._quantlab_equity_marks = []
+        self.schedule.on(
+            self.date_rules.every_day(),
+            self.time_rules.every(timedelta(minutes=60)),
+            self._quantlab_sample_equity,
+        )
+
+    def _quantlab_sample_equity(self):
+        self._quantlab_equity_marks.append(
+            [
+                self.utc_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                float(self.portfolio.total_portfolio_value),
+            ]
+        )
+
+    def on_end_of_algorithm(self):
+        self._quantlab_export()
+
+    def _quantlab_export(self):
+        trades = []
+        for closed in self.trade_builder.closed_trades:
+            symbol = getattr(closed, "symbol", None)
+            if symbol is None:  # newer LEAN builds group symbols in a list
+                grouped = list(getattr(closed, "symbols", None) or [])
+                symbol = grouped[0] if grouped else None
+            trades.append(
+                {
+                    "symbol": {"value": str(getattr(symbol, "value", symbol))},
+                    "entryTime": closed.entry_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "entryPrice": float(closed.entry_price),
+                    "exitTime": closed.exit_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    "exitPrice": float(closed.exit_price),
+                    "quantity": float(closed.quantity),
+                    "direction": 1 if "short" in str(closed.direction).lower() else 0,
+                    "profitLoss": float(closed.profit_loss),
+                    "totalFees": float(closed.total_fees),
+                    "mae": float(closed.mae),
+                    "mfe": float(closed.mfe),
+                }
+            )
+        payload = json.dumps(
+            {
+                "quantlabExport": 1,
+                "algorithmId": str(self.algorithm_id),
+                "totalPerformance": {"closedTrades": trades},
+                "equityMarks": self._quantlab_equity_marks,
+            }
+        )
+        key = "quantlab/results/" + str(self.algorithm_id) + ".json"
+        try:
+            # TradeBuilder times are fill.UtcTime, so the Z suffix above is
+            # exact; Object Store writes from backtests are the documented
+            # persistence pattern.
+            self.object_store.save(key, payload)
+        except Exception as error:  # quota/permissions must not fail the run
+            self.log(
+                "quantlab: Object Store save FAILED (" + str(error) + ") - "
+                "free Object Store quota and re-run to export trades"
+            )
+            return
+        self.log(
+            "quantlab: exported " + str(len(trades)) + " closed trades to "
+            "Object Store key " + key + " - download it and run: "
+            "quant cloud results --from-json <downloaded file> -o trades.parquet"
+        )

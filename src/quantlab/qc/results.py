@@ -117,6 +117,40 @@ def parse_closed_trades(backtest: object) -> tuple[TradeLog, list[str]]:
     return TradeLog(trades=trades, source="lean-cloud"), skipped
 
 
+def parse_equity_marks(backtest: object) -> EquityCurve | None:
+    """Equity marks embedded by the in-algorithm quantlab export block
+    (`"equityMarks": [[iso-utc, value], ...]`).
+
+    Returns None when the payload carries no marks at all (e.g. an API
+    download or a pre-marks export) so callers can distinguish "absent"
+    from "present but unreadable" (which raises)."""
+    if not isinstance(backtest, dict):
+        raise QuantLabError("Backtest result must be a JSON object")
+    marks = backtest.get("equityMarks")
+    if marks is None:
+        return None
+    if not isinstance(marks, list):
+        raise QuantLabError("equityMarks must be a JSON array")
+    points: list[tuple[dt.datetime, float]] = []
+    for raw in marks:
+        if not isinstance(raw, list | tuple) or len(raw) < 2:
+            continue
+        try:
+            when = _parse_time(raw[0])
+            value = float(raw[1])
+        except (TypeError, ValueError):
+            continue
+        if not math.isfinite(value):
+            continue
+        points.append((when, value))
+    if not points:
+        raise QuantLabError("equityMarks contained no readable points")
+    frame = pd.Series([v for _, v in points], index=pd.DatetimeIndex([t for t, _ in points]))
+    frame = frame.sort_index(kind="stable")
+    frame = frame[~frame.index.duplicated(keep="last")]
+    return EquityCurve.from_series(frame)
+
+
 def parse_equity_chart(chart: object) -> EquityCurve:
     if not isinstance(chart, dict):
         raise QuantLabError("Equity chart must be a JSON object")

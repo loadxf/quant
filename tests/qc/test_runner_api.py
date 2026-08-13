@@ -173,7 +173,7 @@ class TestStrategiesParse:
     @staticmethod
     def _strategy_source(project: str) -> str:
         root = Path(__file__).resolve().parents[2] / "cloud" / "strategies" / project
-        return (root / "main.py").read_text()
+        return (root / "main.py").read_text(encoding="utf-8")
 
     @classmethod
     def _strategy_method(cls, project: str, method: str):

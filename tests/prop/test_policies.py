@@ -214,7 +214,7 @@ class TestCli:
             ],
         )
         assert result.exit_code == 0, result.output
-        payload = jsonlib.loads(out.read_text())
+        payload = jsonlib.loads(out.read_text(encoding="utf-8"))
         assert len(payload["cells"]) == 4
         assert "Funded-phase policy grid" in result.output
 

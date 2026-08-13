@@ -8,9 +8,10 @@ Two independent halves:
 - **Pure-Python core** — prop-firm Monte Carlo simulator, strategy metrics,
   A–F "Verdict" scorecard, overfit checks, self-contained HTML reports.
   Works anywhere from a trade-log CSV. No QuantConnect account, no Docker.
-- **QuantConnect Cloud integration** — push LEAN strategies, run cloud
-  backtests (Docker-free), pull closed trades (with MAE/MFE) straight into
-  the simulator. Needs a QC account.
+- **QuantConnect Cloud integration** — run LEAN strategies as cloud
+  backtests and pull closed trades (with MAE/MFE) straight into the
+  simulator. Works entirely from the QC web IDE — strategies self-export
+  their results, no API access needed — or API-driven from this CLI.
 
 **Contents**
 
@@ -56,6 +57,12 @@ quant --version           # sanity check
 quant --help              # top-level command tree
 ```
 
+On **Windows** the only line that differs is the venv activation —
+`.venv\Scripts\Activate.ps1` (PowerShell) or `.venv\Scripts\activate.bat`
+(cmd); in Git Bash use `source .venv/Scripts/activate`. Everything else,
+including every `quant` command in this README, is identical on all
+platforms — pure Python, no Docker.
+
 **No data yet?** The repo ships a deterministic ~6-month synthetic futures
 log with deliberately messy formatting (to exercise the parser), so every
 command below can be tried immediately:
@@ -66,17 +73,23 @@ quant ingest trades examples/trades_sample.csv -o trades.parquet
 
 (`python examples/generate_sample.py` regenerates it byte-identically.)
 
-**Only for the cloud flow** (optional): create an API token at
-quantconnect.com → account, then
+**Cloud backtests need no credentials by default**: the browser flow in
+the [`quant cloud` section](#quant-cloud--quantconnect-cloud-backtests)
+runs backtests in the QC web IDE, and the strategies self-export their
+results for download — no API token, no lean CLI, any account tier. Only
+the optional API-driven flow (`push`/`backtest`/API `results`) needs a
+token from quantconnect.com → account:
 
 ```bash
 export QC_USER_ID=123456 QC_API_TOKEN=your-token
 ```
 
+(PowerShell: `$env:QC_USER_ID = "123456"; $env:QC_API_TOKEN = "your-token"`.)
+
 Everything under [§3](#3-command-reference) except `quant cloud` works
-without this. The full QC walkthrough — account setup, the shipped
-example strategies, built-in-data and own-data flows, and writing your own
-strategy — is in the
+with no QC account at all. The full QC walkthrough — account setup, the
+shipped example strategies, built-in-data and own-data flows, and writing
+your own strategy — is in the
 [`quant cloud` section](#quant-cloud--quantconnect-cloud-backtests).
 
 ## 2. Five-minute quickstart
@@ -150,11 +163,13 @@ was used.
 ### `quant ingest ohlcv` — normalize market bars
 
 ```bash
-quant ingest ohlcv my_bars.csv --symbol demo --tz America/Chicago --upload
+quant ingest ohlcv my_bars.csv --symbol demo --tz America/Chicago
 ```
 
-Normalizes a user OHLCV bar CSV (any broker export) and optionally uploads
-it to the QC Object Store so a cloud strategy can backtest on it. `--symbol`
+Normalizes a user OHLCV bar CSV (any broker export) so a cloud strategy
+can backtest on it. Getting the normalized file into the QC Object Store
+takes either route: upload it by hand in the web IDE's Object Store panel
+(no API needed), or pass `--upload` to push it via the API. `--symbol`
 is required (it names the Object Store key, default `quantlab/<symbol>.csv`;
 override with `--key`); `--tz` localizes naive timestamps; `-o` sets the
 normalized CSV path. The normalized CSV is also what `quant stress --ohlcv`
@@ -394,35 +409,52 @@ the reality-check section, `--outer/--inner-paths` for the sampling band,
 
 ### `quant cloud` — QuantConnect Cloud backtests
 
-Cloud backtests run on QC's servers — no Docker anywhere. All three
-commands need the `QC_USER_ID`/`QC_API_TOKEN` environment variables;
-`push` and `backtest` additionally need the lean CLI
-(`pip install -e ".[qc]"`), while `results` talks to the REST API directly
-and works with the core install — you can download and analyze results on
-a machine that never installed lean.
+Cloud backtests run on QC's servers — no Docker anywhere. There are two
+ways to work with them, and the default needs **no API access at all**:
+
+- **Browser flow (default; every account tier).** Create a project in the
+  QC web IDE, paste in a strategy, run the backtest there. Every shipped
+  strategy carries a small **quantlab export block** that saves its closed
+  trades (with MAE/MFE) plus hourly equity marks to the Object Store as
+  JSON; download that file in the web IDE and feed it to
+  `quant cloud results --from-json` — no credentials, no lean CLI, no
+  REST calls from your machine. Use this whenever API access is
+  unavailable to you.
+- **API flow (optional).** Drive QC from this machine instead:
+  `push`/`backtest` need the lean CLI (`pip install -e ".[qc]"`) plus the
+  `QC_USER_ID`/`QC_API_TOKEN` environment variables; the API form of
+  `results` needs just the env vars.
 
 | Command | What it does |
 | --- | --- |
-| `quant cloud push <dir>` | Push a local LEAN project (see [`cloud/strategies/`](cloud/strategies)) to QC Cloud. |
-| `quant cloud backtest <project>` | Run a cloud backtest (`--push` to sync local changes first, `--name` to label it); prints the ids `results` needs. |
-| `quant cloud results` | Download full results via the REST API (the only route — no lean CLI command does this) → canonical `trades.parquet`, including MAE/MFE from `closedTrades` for intraday rule fidelity. `--save-json` keeps the raw response; `--chart` also fetches the Strategy-Equity series; `--chart --firm X` replays the TRUE mark-to-market equity against that firm's trailing/static/daily-loss rules — breaches fill-level fidelity can't see. |
+| `quant cloud results --from-json <file>` | **Browser flow.** Parse the export-block JSON downloaded from the web IDE's Object Store → canonical `trades.parquet`, including MAE/MFE for intraday rule fidelity. No credentials. `--chart` / `--firm X` use the embedded hourly `equityMarks` to replay mark-to-market equity against the firm's trailing/static/daily-loss rules (hour-resolution: breaches between marks can't be seen). |
+| `quant cloud results --project-id N --backtest-id ID` | **API flow.** Download full results via the REST API → the same `trades.parquet`. `--save-json` keeps the raw response; `--chart` fetches the full-resolution Strategy-Equity series for the firm replay. |
+| `quant cloud push <dir>` | **API flow.** Push a local LEAN project (see [`cloud/strategies/`](cloud/strategies)) to QC Cloud. |
+| `quant cloud backtest <project>` | **API flow.** Run a cloud backtest (`--push` to sync local changes first, `--name` to label it); prints the ids `results` needs. |
 
 #### One-time QuantConnect setup
 
-1. Create an account at [quantconnect.com](https://www.quantconnect.com)
-   (the free tier is enough to start: 200 cloud backtests/day on a single
-   node with a 20 s launch delay).
-2. Get your credentials from quantconnect.com → your profile → **Account**:
+For the **browser flow**, one step: create an account at
+[quantconnect.com](https://www.quantconnect.com) (the free tier is
+enough: 200 cloud backtests/day on a single node with a 20 s launch
+delay). Done — skip the rest of this section.
+
+For the optional **API flow**, additionally:
+
+1. Get your credentials from quantconnect.com → your profile → **Account**:
    your numeric **User ID** and your **API Token** live in the API access
    section (you can regenerate the token there).
-3. Export them (add to your shell profile to persist):
+2. Export them (add to your shell profile to persist):
 
    ```bash
    export QC_USER_ID=123456
    export QC_API_TOKEN=your-token
    ```
 
-4. `pip install -e ".[qc]"` if you'll push/backtest from this machine.
+   PowerShell: `$env:QC_USER_ID = "123456"` for the session, or
+   `setx QC_USER_ID 123456` to persist (new terminals only).
+
+3. `pip install -e ".[qc]"` if you'll push/backtest from this machine.
 
 That's it — **no `lean init`, no `lean login`, no Docker**. The lean CLI
 does not read these env vars itself; `quant cloud push`/`backtest` run a
@@ -444,10 +476,60 @@ LEAN project: a `main.py` algorithm plus a `config.json`
 | `orb_equity` | Opening-range breakout on SPY with fixed bracket orders, flat by the close — the low-RR/high-win-rate style from the QuantPad methodology videos. |
 | `custom_data_demo` | SMA cross on **your own bars** read from the QC Object Store (the officially documented cloud custom-data pattern). |
 
-#### Walkthrough A — backtest on QC's built-in data
+#### Walkthrough A — browser only, QC's built-in data (no API)
 
 QC's cloud data (ES/NQ/CL futures, full US equities, FX) is free for
 cloud backtesting — nothing to upload.
+
+1. In the [web IDE](https://www.quantconnect.com/terminal), create a new
+   Python project and replace its `main.py` with the contents of
+   [`cloud/strategies/sma_cross_futures/main.py`](cloud/strategies/sma_cross_futures/main.py)
+   — copy-paste is the whole deployment.
+2. Press **Backtest**. When it finishes, the Logs tab shows
+   `quantlab: exported N closed trades to Object Store key quantlab/results/<id>.json`.
+3. Open the **Object Store** panel (in the IDE, or Organization → Object
+   Store), navigate to `quantlab/results/`, and download that JSON file.
+4. Convert and analyze locally — no credentials involved:
+
+   ```bash
+   quant cloud results --from-json downloaded.json -o trades.parquet
+   quant report trades.parquet --firm apex40_50k_eod -o report.html
+   ```
+
+The export block serializes LEAN's own `TradeBuilder.closed_trades`, so
+the log carries per-trade MAE/MFE — full intraday rule fidelity — plus
+hourly `equityMarks`. Add `--firm apex40_50k_eod` to the `results` call to
+replay that equity against the firm's trailing/static/daily-loss rules
+(hour-resolution marks: breaches between marks can't be seen; the API
+chart series is finer).
+
+#### Walkthrough B — browser only, your own bars (Object Store)
+
+1. Normalize your bar CSV locally (any broker export):
+
+   ```bash
+   quant ingest ohlcv my_bars.csv --symbol demo --tz America/Chicago
+   ```
+
+2. Upload the normalized CSV through the web IDE's **Object Store** panel
+   under the key `quantlab/demo.csv`. Files are capped ~45 MB (free orgs
+   get 50 MB total, not expandable). (With API access,
+   `quant ingest ohlcv ... --upload` does this step for you.)
+3. Create a project from
+   [`cloud/strategies/custom_data_demo/main.py`](cloud/strategies/custom_data_demo/main.py);
+   if you used a different key, edit `OBJECT_STORE_KEY` at the top.
+4. Backtest in the browser, then download the export and analyze exactly
+   as in Walkthrough A.
+
+The normalized custom-data format the demo's reader expects is one CSV
+line per bar, UTC: `datetime,open,high,low,close,volume` with
+`%Y-%m-%dT%H:%M:%SZ` timestamps — exactly what `quant ingest ohlcv`
+writes.
+
+#### Walkthrough C — the API flow (optional)
+
+With `QC_USER_ID`/`QC_API_TOKEN` set and the lean CLI installed, the same
+loop runs end-to-end from this machine:
 
 ```bash
 # 1. Push + run in one step; --name labels the run in the QC web IDE
@@ -465,50 +547,36 @@ quant cloud results --project-id 12345678 --backtest-id abcdef... -o trades.parq
 quant report trades.parquet --firm apex40_50k_eod -o report.html
 ```
 
-`results` parses `totalPerformance.closedTrades`, which includes per-trade
-MAE/MFE — so cloud-backtest logs get full intraday rule fidelity
-automatically. Add `--chart --firm apex40_50k_eod` to also download the
-Strategy-Equity series and replay the TRUE mark-to-market curve against
-the firm's rules (the chart endpoint returns a loading state while QC
-assembles it; the client polls until ready).
-
-#### Walkthrough B — backtest on your own bars (Object Store)
-
-```bash
-# 1. Normalize and upload your bar CSV. The Object Store key defaults to
-#    quantlab/<symbol>.csv (override with --key). Files are capped ~45 MB
-#    (free orgs get 50 MB total, not expandable).
-quant ingest ohlcv my_bars.csv --symbol demo --tz America/Chicago --upload
-
-# 2. Point the strategy at the key: edit OBJECT_STORE_KEY at the top of
-#    cloud/strategies/custom_data_demo/main.py (default: quantlab/demo.csv).
-
-# 3. Run it and pull results exactly as in Walkthrough A
-quant cloud backtest cloud/strategies/custom_data_demo --push
-quant cloud results --project-id <id> --backtest-id <id> -o trades.parquet
-```
-
-The normalized custom-data format the demo's reader expects is one CSV
-line per bar, UTC: `datetime,open,high,low,close,volume` with
-`%Y-%m-%dT%H:%M:%SZ` timestamps — exactly what `quant ingest ohlcv`
-writes. Upload goes through `lean cloud object-store set` when the lean
-CLI is available; without it, set `QC_ORGANIZATION_ID` to enable the REST
-fallback (`POST /api/v2/object/set`).
+`results` parses `totalPerformance.closedTrades` — the same MAE/MFE
+fidelity as the browser flow. Add `--chart --firm apex40_50k_eod` to also
+download the full-resolution Strategy-Equity series and replay the TRUE
+mark-to-market curve against the firm's rules (the chart endpoint returns
+a loading state while QC assembles it; the client polls until ready). For
+your own bars, `quant ingest ohlcv ... --upload` uploads through
+`lean cloud object-store set` when the lean CLI is available; without it,
+set `QC_ORGANIZATION_ID` to enable the REST fallback
+(`POST /api/v2/object/set`).
 
 #### Writing your own strategy for this pipeline
 
 1. Copy any example directory (`main.py` + `config.json`) under
    `cloud/strategies/` and rename it; keep `"algorithm-language": "Python"`
    in `config.json`.
-2. Write a normal `QCAlgorithm` — **no special instrumentation is
-   needed**. The pipeline consumes QC's own `closedTrades` records, so any
-   strategy that places real orders produces a canonical trade log with
-   MAE/MFE automatically.
+2. Write a normal `QCAlgorithm`. The pipeline consumes QC's own
+   `closedTrades` records, so any strategy that places real orders
+   produces a canonical trade log with MAE/MFE automatically. For the
+   **browser flow**, also copy the **quantlab export block** — the four
+   methods at the bottom of any example, marked
+   `# --- quantlab export: API-free results retrieval` — plus the
+   `self._quantlab_start_export()` call at the end of `initialize()`;
+   that's what saves the downloadable results JSON. The API flow needs no
+   instrumentation at all.
 3. Set the algorithm timezone to match your market's session
    (`self.set_time_zone(TimeZones.CHICAGO)` for US futures) so trading
    days group the same way the firm presets' `day_boundary` expects
    (futures presets roll at 17:00 CT; FTMO at midnight Prague).
-4. `quant cloud backtest cloud/strategies/my_strategy --push`, then
+4. Run it — the browser **Backtest** button, or
+   `quant cloud backtest cloud/strategies/my_strategy --push` — then
    `results` → `report` as above.
 
 The example strategies encode two LEAN gotchas worth copying: session
@@ -523,7 +591,9 @@ QC cost notes (verified July 2026): the free tier allows 200 backtests/day
 (single node, 20 s launch delay) and 50 MB of Object Store that free orgs
 cannot expand; a realistic paid entry is ~$24/mo ($10 Researcher seat +
 $14 B2-8 node). The lean CLI itself requires membership in a paid-tier
-org. Everything outside `quant cloud` works with no QC account at all.
+org, and API access may likewise be unavailable to you — which is exactly
+why the browser flow is the default: it works entirely within the free
+tier. Everything outside `quant cloud` works with no QC account at all.
 
 ## 4. Firm presets and custom firm YAMLs
 
@@ -669,7 +739,7 @@ pip install -e ".[dev]"
 ruff check . && ruff format --check . && mypy && pytest
 ```
 
-- ~480 tests, including golden scalar↔vector equivalence, analytic
+- ~790 tests, including golden scalar↔vector equivalence, analytic
   anchors, formula pins against published worked examples, and a
   performance budget. CI runs the same gates on Python 3.11 and 3.12 —
   no Docker, no network.
