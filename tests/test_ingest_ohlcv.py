@@ -120,7 +120,7 @@ class TestLoadOhlcv:
         )
         frame, _ = load_ohlcv(csv)
         out = write_normalized(frame, tmp_path / "norm.csv")
-        text = out.read_text()
+        text = out.read_text(encoding="utf-8")
         assert text.splitlines()[0] == "datetime,open,high,low,close,volume"
         assert "2026-01-05T09:30:00Z" in text
 

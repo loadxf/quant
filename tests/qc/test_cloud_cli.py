@@ -53,5 +53,5 @@ def test_saved_cloud_result_is_strict_and_reloadable(monkeypatch, tmp_path):
     assert result.exit_code == 0, result.output
     loaded = load_result_file(saved)
     assert loaded["metric"] is None
-    assert not any(token in saved.read_text() for token in ("NaN", "Infinity"))
+    assert not any(token in saved.read_text(encoding="utf-8") for token in ("NaN", "Infinity"))
     assert math.isfinite(loaded["totalPerformance"]["closedTrades"][0]["profitLoss"])
