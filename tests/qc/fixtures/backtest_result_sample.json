@@ -1,5 +1,4 @@
 {
-  "backtest": {
     "backtestId": "8b7c1f2e3d4a5b6c7d8e9f0a1b2c3d4e",
     "projectId": 12345678,
     "name": "quantlab sample",
@@ -9,6 +8,22 @@
       "Total Orders": "6",
       "Net Profit": "1.245%",
       "Sharpe Ratio": "0.91"
+    },
+    "charts": {
+      "Strategy Equity": {
+        "name": "Strategy Equity",
+        "series": {
+          "Equity": {
+            "name": "Equity",
+            "unit": "$",
+            "values": [
+              [1767628800, 100000.0],
+              [1767715200, 100670.7],
+              [1767801600, 100110.1]
+            ]
+          }
+        }
+      }
     },
     "totalPerformance": {
       "tradeStatistics": {
@@ -63,5 +78,4 @@
         }
       ]
     }
-  }
 }

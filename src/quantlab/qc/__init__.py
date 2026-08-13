@@ -1,6 +1,7 @@
-"""QuantConnect Cloud integration (REST API v2 + lean CLI cloud commands).
+"""QuantConnect Cloud result import and optional automation helpers.
 
-Everything here degrades gracefully: without credentials or the lean CLI
-this package raises CloudUnavailableError with an actionable message —
-the prop-firm simulator and reporting run from trade logs regardless.
+The primary path imports ``Download Results`` JSON from the Cloud web IDE
+and needs no API credentials or lean CLI. REST, CLI, and Object Store upload
+helpers are optional automation paths and raise CloudUnavailableError with
+actionable guidance when their paid-tier prerequisites are unavailable.
 """

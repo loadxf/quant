@@ -12,10 +12,12 @@ MAE/MFE flow straight into the intraday rule fidelity.
 Malformed entries are dropped with a reason (mirroring the CSV
 ingester's contract) instead of aborting the whole download.
 
-The equity curve comes from the separate chart endpoint ("Strategy
-Equity"); series values arrive as [t, value] pairs or [t, o, h, l, c]
+The equity curve can come from either the ``charts`` object in the JSON
+downloaded from the Cloud backtest results page or the separate API chart
+endpoint. Series values arrive as [t, value] pairs or [t, o, h, l, c]
 candles (close used). Timestamps without timezone are treated as UTC —
-documented assumption.
+documented assumption. ``equityMarks`` remains supported for older files
+created by quantlab's retired Object Store export block.
 """
 
 from __future__ import annotations
@@ -33,6 +35,20 @@ from quantlab.schema.equity import EquityCurve
 from quantlab.schema.trade import Side, Trade, TradeLog
 
 UTC = dt.UTC
+_MISSING = object()
+
+
+def _field(mapping: dict[str, Any], name: str, default: Any = _MISSING) -> Any:
+    """Read a JSON field case-insensitively for UI/API serializer variants."""
+    if name in mapping:
+        return mapping[name]
+    wanted = name.casefold()
+    for key, value in mapping.items():
+        if isinstance(key, str) and key.casefold() == wanted:
+            return value
+    if default is not _MISSING:
+        return default
+    raise KeyError(name)
 
 
 def _parse_time(value: Any) -> dt.datetime:
@@ -45,7 +61,7 @@ def _parse_time(value: Any) -> dt.datetime:
 
 def _symbol_text(raw: Any) -> str:
     if isinstance(raw, dict):
-        raw = raw.get("value") or raw.get("Value") or raw.get("id")
+        raw = _field(raw, "value", None) or _field(raw, "id", None)
     if raw is None or not str(raw).strip():
         raise ValueError("closed trade has no symbol")
     return str(raw).strip()
@@ -56,12 +72,12 @@ def parse_closed_trades(backtest: object) -> tuple[TradeLog, list[str]]:
     500-trade download."""
     if not isinstance(backtest, dict):
         raise QuantLabError("Backtest result must be a JSON object")
-    performance = backtest.get("totalPerformance")
+    performance = _field(backtest, "totalPerformance", None)
     if performance is None:
         performance = {}
     if not isinstance(performance, dict):
         raise QuantLabError("Backtest totalPerformance must be a JSON object")
-    closed = performance.get("closedTrades")
+    closed = _field(performance, "closedTrades", None)
     if closed is None:
         closed = []
     if not isinstance(closed, list):
@@ -75,34 +91,32 @@ def parse_closed_trades(backtest: object) -> tuple[TradeLog, list[str]]:
     skipped: list[str] = []
     for position, raw in enumerate(closed):
         try:
-            quantity = abs(float(raw["quantity"]))
+            quantity = abs(float(_field(raw, "quantity")))
             if not math.isfinite(quantity) or quantity <= 0:
                 raise ValueError(f"quantity must be finite and positive (got {quantity})")
-            fees = abs(float(raw.get("totalFees", 0.0)))
-            gross = float(raw.get("profitLoss", 0.0))
+            fees = abs(float(_field(raw, "totalFees", 0.0)))
+            gross = float(_field(raw, "profitLoss", 0.0))
             if not math.isfinite(fees) or not math.isfinite(gross):
                 raise ValueError("profitLoss and totalFees must be finite")
-            raw_direction = float(raw["direction"])
+            raw_direction = float(_field(raw, "direction"))
             if not math.isfinite(raw_direction) or raw_direction not in (0.0, 1.0):
                 raise ValueError(f"unsupported direction {raw_direction!r}")
             direction = int(raw_direction)
-            mae = raw.get("mae")
-            mfe = raw.get("mfe")
+            mae = _field(raw, "mae", None)
+            mfe = _field(raw, "mfe", None)
+            entry_price = _field(raw, "entryPrice", None)
+            exit_price = _field(raw, "exitPrice", None)
             trades.append(
                 Trade(
-                    entry_time=_parse_time(raw["entryTime"]),
-                    exit_time=_parse_time(raw["exitTime"]),
-                    symbol=_symbol_text(raw.get("symbol")),
+                    entry_time=_parse_time(_field(raw, "entryTime")),
+                    exit_time=_parse_time(_field(raw, "exitTime")),
+                    symbol=_symbol_text(_field(raw, "symbol", None)),
                     side=Side.LONG if direction == 0 else Side.SHORT,
                     quantity=quantity,
                     # LEAN profitLoss is GROSS; canonical pnl is NET of fees.
                     pnl=gross - fees,
-                    entry_price=(
-                        float(raw["entryPrice"]) if raw.get("entryPrice") is not None else None
-                    ),
-                    exit_price=(
-                        float(raw["exitPrice"]) if raw.get("exitPrice") is not None else None
-                    ),
+                    entry_price=float(entry_price) if entry_price is not None else None,
+                    exit_price=float(exit_price) if exit_price is not None else None,
                     fees=fees,
                     mae=-abs(float(mae)) if mae is not None else None,
                     mfe=abs(float(mfe)) if mfe is not None else None,
@@ -118,7 +132,7 @@ def parse_closed_trades(backtest: object) -> tuple[TradeLog, list[str]]:
 
 
 def parse_equity_marks(backtest: object) -> EquityCurve | None:
-    """Equity marks embedded by the in-algorithm quantlab export block
+    """Legacy equity marks embedded by the old quantlab export block.
     (`"equityMarks": [[iso-utc, value], ...]`).
 
     Returns None when the payload carries no marks at all (e.g. an API
@@ -126,7 +140,7 @@ def parse_equity_marks(backtest: object) -> EquityCurve | None:
     from "present but unreadable" (which raises)."""
     if not isinstance(backtest, dict):
         raise QuantLabError("Backtest result must be a JSON object")
-    marks = backtest.get("equityMarks")
+    marks = _field(backtest, "equityMarks", None)
     if marks is None:
         return None
     if not isinstance(marks, list):
@@ -151,26 +165,68 @@ def parse_equity_marks(backtest: object) -> EquityCurve | None:
     return EquityCurve.from_series(frame)
 
 
+def parse_embedded_equity(backtest: object) -> EquityCurve | None:
+    """Read Strategy Equity embedded in a Cloud ``Download Results`` JSON.
+
+    QuantConnect currently serializes ``charts`` as a name-keyed object. A
+    list form is accepted as well so files remain importable if the UI uses
+    the same chart-array representation as other LEAN result serializers.
+    Legacy ``equityMarks`` are a final compatibility fallback.
+    """
+    if not isinstance(backtest, dict):
+        raise QuantLabError("Backtest result must be a JSON object")
+    charts = _field(backtest, "charts", None)
+    candidates: list[object] = []
+    if isinstance(charts, dict):
+        preferred = charts.get("Strategy Equity")
+        if preferred is not None:
+            candidates.append(preferred)
+        candidates.extend(
+            chart
+            for name, chart in charts.items()
+            if name != "Strategy Equity"
+            and isinstance(name, str)
+            and name.casefold() == "strategy equity"
+        )
+    elif isinstance(charts, list):
+        candidates.extend(
+            chart
+            for chart in charts
+            if isinstance(chart, dict)
+            and str(_field(chart, "name", "")).casefold() == "strategy equity"
+        )
+    elif charts is not None:
+        raise QuantLabError("Backtest charts must be a JSON object or array")
+    for chart in candidates:
+        if isinstance(chart, dict):
+            # Name-keyed chart objects may omit their redundant name field.
+            normalized = (
+                chart if _field(chart, "name", None) else {"name": "Strategy Equity", **chart}
+            )
+            return parse_equity_chart(normalized)
+    return parse_equity_marks(backtest)
+
+
 def parse_equity_chart(chart: object) -> EquityCurve:
     if not isinstance(chart, dict):
         raise QuantLabError("Equity chart must be a JSON object")
-    series_map = chart.get("series")
+    series_map = _field(chart, "series", None)
     if series_map is None:
         series_map = {}
     if not isinstance(series_map, dict):
         raise QuantLabError("Equity chart series must be a JSON object")
-    series = series_map.get("Equity") or next(iter(series_map.values()), None)
+    series = _field(series_map, "Equity", None) or next(iter(series_map.values()), None)
     if series is None:
-        raise QuantLabError(f"Chart {chart.get('name')!r} has no series")
+        raise QuantLabError(f"Chart {_field(chart, 'name', None)!r} has no series")
     if not isinstance(series, dict):
         raise QuantLabError("Equity chart series entry must be a JSON object")
-    values = series.get("values", [])
+    values = _field(series, "values", [])
     if not isinstance(values, list):
         raise QuantLabError("Equity chart series values must be a JSON array")
     points: list[tuple[dt.datetime, float]] = []
     for raw in values:
         if isinstance(raw, dict):  # {"x": ts, "y": v}
-            ts, value = raw.get("x"), raw.get("y")
+            ts, value = _field(raw, "x", None), _field(raw, "y", None)
         elif isinstance(raw, list | tuple) and len(raw) >= 2:
             ts = raw[0]
             value = raw[4] if len(raw) >= 5 else raw[1]  # candle -> close
@@ -201,7 +257,7 @@ def parse_equity_chart(chart: object) -> EquityCurve:
 
 
 def load_result_file(path: Path) -> dict[str, Any]:
-    """Read a saved backtests/read response (or its `backtest` object)."""
+    """Read a Cloud Download Results JSON or saved API response wrapper."""
 
     def reject_constant(value: str):
         raise ValueError(f"non-finite JSON constant {value}")
@@ -212,7 +268,7 @@ def load_result_file(path: Path) -> dict[str, Any]:
         raise QuantLabError(f"Could not read saved backtest result {path}: {exc}") from exc
     if not isinstance(raw, dict):
         raise QuantLabError("Saved backtest result must contain a JSON object")
-    backtest = raw.get("backtest", raw)
+    backtest = _field(raw, "backtest", raw)
     if not isinstance(backtest, dict):
         raise QuantLabError("Saved backtest field must contain a JSON object")
     return backtest

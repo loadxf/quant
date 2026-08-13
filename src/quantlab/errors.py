@@ -14,8 +14,8 @@ class ConfigError(QuantLabError):
 
 
 class CloudUnavailableError(QuantLabError):
-    """QuantConnect Cloud integration is unavailable (missing CLI or credentials).
+    """An optional QuantConnect API, CLI, or Object Store operation is unavailable.
 
-    Everything that consumes a trade log still works:
+    Browser-downloaded results and everything that consumes a trade log still work:
     `quant prop simulate trades.parquet --firm ...`
     """

@@ -16,8 +16,8 @@ from quantlab.qc.api import QCClient
 from quantlab.qc.results import (
     load_result_file,
     parse_closed_trades,
+    parse_embedded_equity,
     parse_equity_chart,
-    parse_equity_marks,
 )
 from quantlab.report.jsonout import sanitize
 from quantlab.schema.io import write_trade_log
@@ -28,20 +28,26 @@ console = Console()
 
 @cloud_app.command("push")
 def push_cmd(
-    project: Path = typer.Argument(..., help="LEAN project dir, e.g. cloud/strategies/orb_equity"),
+    project: Path = typer.Argument(
+        ...,
+        help="Local LEAN project dir. Optional paid automation; browser users do not need it.",
+    ),
 ) -> None:
-    """Push a local LEAN project to QuantConnect Cloud (Docker-free)."""
+    """Optional paid automation: push through lean CLI with API credentials."""
     runner.push_project(project)
     console.print(f"[green]pushed[/green] {project}")
 
 
 @cloud_app.command("backtest")
 def backtest_cmd(
-    project: str = typer.Argument(..., help="Cloud project name or local dir (with --push)."),
+    project: str = typer.Argument(
+        ...,
+        help="Cloud project name or local dir. Optional paid CLI/API automation.",
+    ),
     name: str | None = typer.Option(None, "--name", help="Backtest name."),
     push: bool = typer.Option(False, "--push", help="Push local changes first."),
 ) -> None:
-    """Run a cloud backtest; prints the ids needed by `quant cloud results`."""
+    """Optional paid automation: backtest through lean CLI with API credentials."""
     run = runner.run_cloud_backtest(Path(project), name=name, push=push)
     console.print(run.stdout)
     if run.project_id and run.backtest_id:
@@ -64,11 +70,11 @@ def results_cmd(
     backtest_id: str | None = typer.Option(None, "--backtest-id"),
     from_json: Path | None = typer.Option(
         None,
+        "--downloaded-results",
         "--from-json",
-        help="Parse a locally saved backtest result JSON instead of calling "
-        "the REST API: the file the in-algorithm quantlab export block "
-        "writes to the Object Store (download it in the web IDE), or an "
-        "earlier --save-json file. Needs no credentials or lean CLI.",
+        help="Import the JSON from QuantConnect Cloud: Backtest results > "
+        "Overview > Download Results. Needs no API credentials, Object Store, "
+        "or lean CLI. --from-json is retained as an alias.",
     ),
     output: Path = typer.Option(Path("trades.parquet"), "--output", "-o"),
     save_json: Path | None = typer.Option(
@@ -78,37 +84,40 @@ def results_cmd(
         False,
         "--chart",
         help="Also write the equity curve: the Strategy Equity chart series "
-        "(API) or the export block's equityMarks (--from-json).",
+        "embedded in Download Results (browser) or fetched from the API.",
     ),
     firm: str | None = typer.Option(
         None,
         "--firm",
-        help="Cross-check the TRUE mark-to-market equity against this firm's "
+        help="Cross-check the downloaded or fetched mark-to-market equity series "
+        "against this firm's "
         "trailing/static/daily-loss rules (fetches the equity curve "
         "automatically).",
     ),
 ) -> None:
     """Turn a QC backtest into the canonical trades.parquet.
 
-    Two sources: the REST API (--project-id/--backtest-id) or a local file
-    (--from-json) downloaded from the web IDE's Object Store — the API-free
-    route. Both carry MAE/MFE for intraday rule fidelity. (Verified: no
-    lean CLI command downloads result JSON.)
+    The primary browser source is the Download Results JSON from the Cloud web IDE
+    (``--downloaded-results``/``--from-json``). The legacy REST source uses
+    ``--project-id`` and ``--backtest-id``. Both carry closed trades with
+    MAE/MFE; the browser download also embeds the backtest charts.
     """
     offline = from_json is not None
     if offline and (project_id is not None or backtest_id is not None):
         raise QuantLabError(
-            "--from-json replaces --project-id/--backtest-id — pass one source, not both"
+            "--downloaded-results/--from-json replaces --project-id/--backtest-id "
+            "— pass one source, not both"
         )
     if not offline and (project_id is None or backtest_id is None):
         raise QuantLabError(
             "pass --project-id and --backtest-id (API download) or "
-            "--from-json FILE (no API; the file the export block saved "
-            "to the Object Store)"
+            "--downloaded-results FILE (no API; use Overview > Download Results "
+            "in the QuantConnect Cloud backtest page)"
         )
     if offline and save_json is not None:
         raise QuantLabError(
-            "--save-json only applies to API downloads — the --from-json file is already local"
+            "--save-json only applies to API downloads — the downloaded-results "
+            "file is already local"
         )
     # Resolve the firm BEFORE any network call: a typo'd preset name must
     # not burn the download and up to a minute of chart polling first.
@@ -181,18 +190,18 @@ def results_cmd(
     console.print(f"next: quant report {output} --firm topstep_50k -o report.html")
     if with_chart:
         if offline:
-            curve = parse_equity_marks(backtest)
+            curve = parse_embedded_equity(backtest)
             if curve is None:
                 raise QuantLabError(
                     "--chart/--firm need an equity curve, but this file has no "
-                    "'equityMarks' — it came from --save-json or an export "
-                    "block without equity sampling. Re-run the backtest with "
-                    "the current export block, or use the API download."
+                    "embedded Strategy Equity chart. In the Cloud backtest page, "
+                    "use Overview > Download Results (not Download Trades), or "
+                    "omit --chart/--firm."
                 )
             console.print(
-                "[dim]equity curve from the export block's hourly equityMarks — "
-                "coarser than the API chart series; breaches between marks "
-                "can't be seen[/dim]"
+                "[dim]equity curve from the Strategy Equity chart embedded in "
+                "QuantConnect's Download Results JSON; QC chart point quotas "
+                "can reduce time resolution[/dim]"
             )
         else:
             # Guaranteed by the source-validation branch above.

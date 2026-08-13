@@ -1,5 +1,5 @@
 {
     "algorithm-language": "Python",
     "parameters": {},
-    "description": "Use custom UTC OHLCV from the QC Cloud Object Store as an SMA signal and trade SPY as the liquid proxy. Upload data first: quant ingest ohlcv bars.csv --symbol demo --upload"
+    "description": "Paid QC organization required: use custom UTC OHLCV from Object Store as an SMA signal and trade SPY as the liquid proxy. Upload at Organization > Object Store or with quant ingest ohlcv --upload."
 }

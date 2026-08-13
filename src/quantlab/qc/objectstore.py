@@ -4,8 +4,8 @@ Primary route: `lean cloud object-store set KEY PATH` (the verified cloud
 upload command — plain `lean object-store set` only opens a local folder).
 Fallback: REST POST /api/v2/object/set (needs QC_ORGANIZATION_ID).
 
-Free-tier budget (verified): 50 MB / 1,000 files per organization; keep
-individual objects under 50 MB.
+Object Store requires a paid QuantConnect organization. Paid organizations
+currently include 50 MB / 1,000 files; keep individual objects under 50 MB.
 """
 
 from __future__ import annotations
@@ -44,7 +44,7 @@ def upload(path: Path, key: str) -> str:
     if size_mb > 45:
         raise CloudUnavailableError(
             f"{path.name} is {size_mb:.0f} MB — keep Object Store files under "
-            "~45 MB (QC recommends <50 MB per object; free tier totals 50 MB)."
+            "~45 MB (QC recommends <50 MB per object)."
         )
     try:
         runner.object_store_upload(key, path)

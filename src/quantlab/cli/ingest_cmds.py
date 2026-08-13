@@ -77,7 +77,10 @@ def ingest_ohlcv(
         None, "--output", "-o", help="Normalized CSV path (default: <symbol>_normalized.csv)."
     ),
     upload: bool = typer.Option(
-        False, "--upload", help="Upload to the QC Cloud Object Store for cloud backtests."
+        False,
+        "--upload",
+        help="Upload to the paid QC Cloud Object Store for cloud backtests "
+        "(requires CLI/API access).",
     ),
     key: str | None = typer.Option(
         None, "--key", help="Object Store key (default quantlab/<symbol>.csv)."
