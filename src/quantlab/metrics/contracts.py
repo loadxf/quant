@@ -32,11 +32,14 @@ CONTRACTS: dict[str, ContractSpec] = {
     "NQ": ContractSpec("NQ", 0.25, 5.00, 3.00),
 }
 
-_FUTURES_SYMBOL = re.compile(r"^(MES|MNQ|ES|NQ)(?:[FGHJKMNQUVXZ]\d{1,4}|[1-9]\d*!|=F)?$")
+_DELIVERY_DAY = r"(?:0?[1-9]|[12]\d|3[01])"
+_FUTURES_SYMBOL = re.compile(
+    rf"^(MES|MNQ|ES|NQ)(?:(?:{_DELIVERY_DAY})?[FGHJKMNQUVXZ]\d{{1,4}}|[1-9]\d*!|=F)?$"
+)
 
 
 def resolve_contract(symbol: str) -> ContractSpec | None:
-    """Match a trade symbol (MNQ, MNQH26, MES1!, /ES) to a known contract."""
+    """Match standard and QC-dated symbols (ES, ESH26, ES15H24, /ES)."""
     if not isinstance(symbol, str):
         return None
     cleaned = symbol.strip().upper().lstrip("/@")

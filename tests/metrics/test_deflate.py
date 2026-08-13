@@ -144,6 +144,10 @@ class TestContracts:
             ("MES1!", "MES"),
             ("/ES", "ES"),
             ("ESZ5", "ES"),
+            ("ES15H24", "ES"),
+            ("MES19U25", "MES"),
+            ("NQ20M25", "NQ"),
+            ("MNQ31Z26", "MNQ"),
             ("nq", "NQ"),
         ],
     )
@@ -159,6 +163,8 @@ class TestContracts:
         assert resolve_contract("CL") is None
         assert resolve_contract("ESPR") is None
         assert resolve_contract("NQXYZ") is None
+        assert resolve_contract("ES00H24") is None
+        assert resolve_contract("ES32H24") is None
 
     def test_continuous_yahoo_symbol(self) -> None:
         assert resolve_contract("NQ=F").root == "NQ"

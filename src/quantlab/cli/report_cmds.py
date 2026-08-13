@@ -80,6 +80,19 @@ def register_report_commands(app: typer.Typer) -> None:
             100, "--outer", help="Outer resamples for the sampling band (0 to skip)."
         ),
         inner_paths: int = typer.Option(500, "--inner-paths", help="MC paths per outer resample."),
+        tick_value: float | None = typer.Option(
+            None,
+            "--tick-value",
+            min=0.000000001,
+            help="$ per tick per contract. Auto-resolved for ES/MES/NQ/MNQ, "
+            "including dated QC symbols.",
+        ),
+        commission: float | None = typer.Option(
+            None,
+            "--commission",
+            min=0.0,
+            help="All-in round-turn commission $ per contract.",
+        ),
         extra_monthly: float = typer.Option(
             0.0, "--extra-monthly", help="Recurring $/mo overhead (data feed, platform) in the EV."
         ),
@@ -123,6 +136,8 @@ def register_report_commands(app: typer.Typer) -> None:
                 log,
                 firm=firm,
                 trials=trials,
+                tick_value=tick_value,
+                commission_rt=commission,
                 seed=seed,
                 scale=scale,
                 baseline_mc=mc,

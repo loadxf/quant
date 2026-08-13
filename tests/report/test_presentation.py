@@ -203,6 +203,10 @@ class TestCliEndToEnd:
                 "4",
                 "--inner-paths",
                 "40",
+                "--tick-value",
+                "12.5",
+                "--commission",
+                "3.25",
                 "-o",
                 str(html_out),
                 "--json",
@@ -215,6 +219,9 @@ class TestCliEndToEnd:
         assert payload["schema_version"] == 4
         assert pct(payload["prop_simulation"]["economics"]["pass_prob"]) in html
         assert payload["reality_check"]["regime"] is not None
+        assert payload["reality_check"]["costs"]["tick_source"] == "user"
+        assert payload["reality_check"]["costs"]["tick_value"] == 12.5
+        assert payload["reality_check"]["costs"]["commission_rt"] == 3.25
 
     def test_stress_command_table_mode(self, tmp_path) -> None:
         from typer.testing import CliRunner
