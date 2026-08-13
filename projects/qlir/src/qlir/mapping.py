@@ -193,6 +193,64 @@ class ContractMap:
             )
         return next(iter(matches))
 
+    def symbol_for(self, instrument_id: int, event_date: dt.date) -> str:
+        """Requested continuous symbol by (instrument_id, event_date) —
+        the per-record identity binding for multi-symbol files ('<multi>'
+        is not an analyzable identity; round 6, finding 2)."""
+        matches = {
+            interval.symbol
+            for interval in self.intervals
+            if interval.instrument_id == instrument_id
+            and interval.start_date <= event_date < interval.end_date
+        }
+        if not matches:
+            raise QlirError(
+                f"no continuous symbol for instrument_id {instrument_id} on "
+                f"{event_date} — outside the composed mapping's coverage"
+            )
+        if len(matches) > 1:
+            raise QlirError(
+                f"ambiguous continuous symbol for instrument_id {instrument_id} on "
+                f"{event_date}: {sorted(matches)}"
+            )
+        return next(iter(matches))
+
+    def assert_covers(self, symbol: str, start_date: dt.date, end_date_exclusive: dt.date) -> None:
+        """Require gap-free coverage of [start_date, end_date_exclusive)
+        for one requested symbol (round 6, finding 1: a receipt must not
+        attest a request interval its mapping does not cover)."""
+        spans = sorted(
+            (interval.start_date, interval.end_date)
+            for interval in self.intervals
+            if interval.symbol == symbol
+        )
+        if not spans:
+            raise QlirError(f"contract map has no intervals for symbol {symbol!r}")
+        cursor = start_date
+        for span_start, span_end in spans:
+            if span_start > cursor:
+                if cursor >= end_date_exclusive:
+                    break
+                raise QlirError(
+                    f"contract map for {symbol!r} has a coverage gap at "
+                    f"[{cursor} .. {min(span_start, end_date_exclusive)}) inside the "
+                    f"attested range [{start_date} .. {end_date_exclusive})"
+                )
+            cursor = max(cursor, span_end)
+        if cursor < end_date_exclusive:
+            raise QlirError(
+                f"contract map for {symbol!r} ends {cursor}, short of the attested "
+                f"range end {end_date_exclusive}"
+            )
+        if spans[0][0] > start_date:
+            raise QlirError(
+                f"contract map for {symbol!r} starts {spans[0][0]}, after the "
+                f"attested range start {start_date}"
+            )
+
+    def symbols(self) -> set[str]:
+        return {interval.symbol for interval in self.intervals}
+
     def flat_map_for_date(self, event_date: dt.date) -> dict[int, str]:
         """Validated SINGLE-DATE id → raw map (for one per-date raw file)."""
         flat: dict[int, str] = {}

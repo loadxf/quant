@@ -609,3 +609,84 @@ llm_edge     212 passed under WSL2
 
 No amend, no push, no purchase, no QC output. The four adversarial
 reproductions Sol supplied are all named tests now.
+
+---
+
+## 2026-08-13 — Round 6 (Fable): one spec bound across every boundary; receipts disk-verified; appends recoverable; promo caps from the official table
+
+Sol denied Gate I with five findings, all verified/reproduced before repair
+(the XNAS.ITCH/NQ file labeled ESH2, the promo double-double to $8,000, and
+the anchor-failure ledger wedge reproduced verbatim on this machine).
+
+### Finding 1 — the receipt binds, or it refuses
+
+`validate_record` now requires: requested symbols == resolved mapping symbols;
+gap-free ContractMap coverage of every date in [start_utc, end_utc); a typed,
+non-empty `files` list of {relative_path, sha256, size_bytes, record_count}
+(the mutable `file_hashes` pointer field is GONE — a later raw write can no
+longer change what an old receipt references); record_count reconciling with
+the per-file sum; finite non-negative economics. `append_acquisition` verifies
+every attested file ON DISK (existence, exact hash, exact size) inside the
+locked transaction before chaining. Sol's composite reproduction (NQ requested
+/ ES resolved / coverage short / nonexistent hash file / arbitrary counts) is
+a named refusal test, element by element.
+
+### Finding 2 — the spec is the identity, everywhere
+
+New frozen `AcquisitionSpec` (dataset, schema, stypes, symbols, half-open UTC
+range). Symbology envelopes validate against it (status, dataset, stypes,
+symbols, dates when present; bare payloads refused unless explicitly
+allow_unverified). DBN metadata validates against it (dataset — the
+XNAS-through-GLBX reproduction is a named refusal — schema, stypes, symbols ⊆
+spec, interval ⊆ spec). `publisher_id` is now a canonical identity column
+(ids are only unique per publisher/day). `<multi>` is eliminated: multi-symbol
+files are loadable ONLY through `load_acquired_file`, which binds each
+record's requested symbol via `ContractMap.symbol_for(instrument_id,
+event_date)` (tested with a two-symbol file). Receipt fields DERIVE from the
+spec in `build_acquisition_record` — contradictory caller values are
+unrepresentable.
+
+### Finding 3 — promotional caps from the official table, provenance proven
+
+`TOPSTEP_BASELINE_CAPS`/`TOPSTEP_PROMO_CAPS` per size (50K 4000/6000, 100K
+6000/8000, 150K 10000/12000 — article 8284233). `with_promo_payout_caps` sets
+caps TO the table (never ×2 the current config), refuses re-application
+(already-promo and non-baseline custom ladders both raise), and MECHANICALLY
+verifies provenance: 'combine_purchase' requires the exact official fixed DLL
+rule in every phase — a forged provenance field without the rules, or a
+PDLL-sized rule relabeled, is refused. Repeat-application and
+forged-provenance are named tests.
+
+### Finding 4 — the append is a recoverable transaction
+
+Pending-journal protocol under the lock: atomically journal {prev state, line,
+new anchor} → O_APPEND the line → write the anchor → delete the journal.
+Deterministic recovery (`recover_ledger`, also run by the next locked append):
+ledger at prior count → roll BACK; line fully present → roll FORWARD (write
+anchor); TORN last line (the only non-atomic step) → strip the uncommitted
+bytes to the journaled prior state. Unlocked reads refuse while a journal
+exists. Failure-injection tests: anchor-write failure (Sol's wedge — now
+recovers forward), pre-append failure (rolls back), torn line (rolls back),
+and automatic recovery by the next append.
+
+### Finding 5 — exclusive endpoint honored
+
+`SYMBOLOGY_END_EXCLUSIVE = "2025-01-01"` in the cost script (end_date is
+exclusive; 2024-12-31 previously dropped Dec 31 2024 from the mapping); a
+boundary query of an exclusive endpoint acquires nothing from the locked
+period. Stale README reference to the removed parse_two_step corrected;
+README's receipt example and pipeline updated to the spec-bound flow.
+
+### Evidence
+
+```
+root suite   934 passed          ruff/format/mypy clean
+qlir suite   136 passed, 0 skipped
+llm_edge     212 passed in 26.04 s under WSL2
+```
+
+### Standing constraints
+
+No amend, no push, no purchase, no QC output. Macro calendar completion
+remains an acknowledged Gate-II prerequisite. The anchor's local-adversary
+limitation stands as narrowed in round 5 (off-host mirroring is operational).

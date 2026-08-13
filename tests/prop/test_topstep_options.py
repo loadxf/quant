@@ -145,6 +145,51 @@ class TestPromoProvenance:
         assert promo.payout.consistency is not None
         assert promo.payout.consistency.payout_cap_ladder == [6000.0]
 
+    def test_repeat_application_refused(self) -> None:
+        """Round-6 finding 3: the caps came from a x2 multiplier, so a
+        second call produced an impossible $8,000. Caps now come from the
+        official TABLE and a second application raises."""
+        promo = with_promo_payout_caps(with_optional_dll(load_firm("topstep_50k")))
+        with pytest.raises(ConfigError, match="already applied"):
+            with_promo_payout_caps(promo)
+
+    def test_forged_provenance_without_dll_rules_refused(self) -> None:
+        """dll_provenance is mechanically verified: setting the field
+        without the actual fixed DLL rules is refused."""
+        forged = load_firm("topstep_50k").model_copy(update={"dll_provenance": "combine_purchase"})
+        with pytest.raises(ConfigError, match="not mechanically consistent"):
+            with_promo_payout_caps(forged)
+
+    def test_wrong_amount_dll_with_forged_provenance_refused(self) -> None:
+        """A PDLL-sized rule relabeled as combine_purchase still fails
+        the mechanical check (amount != the official fixed value)."""
+        firm = with_personal_dll(load_firm("topstep_50k"), 750.0)
+        forged = firm.model_copy(update={"dll_provenance": "combine_purchase"})
+        with pytest.raises(ConfigError, match="not mechanically consistent"):
+            with_promo_payout_caps(forged)
+
+    def test_custom_ladder_refused(self) -> None:
+        """Promotional caps derive from the official baseline table —
+        never from whatever ladder the configuration currently carries."""
+        firm = with_optional_dll(load_firm("topstep_50k"))
+        custom = firm.model_copy(
+            update={"payout": firm.payout.model_copy(update={"payout_cap_ladder": [2500.0]})}
+        )
+        with pytest.raises(ConfigError, match="official baseline"):
+            with_promo_payout_caps(custom)
+
+    def test_promo_caps_match_official_table_per_size(self) -> None:
+        expectations = {
+            "topstep_50k": ([4000.0], [6000.0]),
+            "topstep_100k": ([6000.0], [8000.0]),
+            "topstep_150k": ([10000.0], [12000.0]),
+        }
+        for preset, (standard, consistency) in expectations.items():
+            promo = with_promo_payout_caps(with_optional_dll(load_firm(preset)))
+            assert promo.payout.payout_cap_ladder == standard
+            assert promo.payout.consistency is not None
+            assert promo.payout.consistency.payout_cap_ladder == consistency
+
 
 class TestPromoCaps:
     def test_promo_requires_purchase_dll(self) -> None:

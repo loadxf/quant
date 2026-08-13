@@ -62,6 +62,12 @@ YEARS: list[tuple[str, str, str]] = [
     ("2024", "2024-01-01", "2025-01-01"),
 ]
 
+# symbology.resolve's end_date is EXCLUSIVE (round 6, finding 5): to
+# cover through 2024-12-31 the endpoint must be 2025-01-01 — matching
+# the pricing interval's exclusive end and acquiring nothing from the
+# locked period (a boundary query is not data acquisition).
+SYMBOLOGY_END_EXCLUSIVE = "2025-01-01"
+
 OUTPUT = Path(__file__).resolve().parent.parent / "output" / "databento_cost_matrix.json"
 
 
@@ -111,7 +117,7 @@ def main() -> int:
         client.metadata.get_dataset_condition,
         dataset=DATASET,
         start_date="2021-01-01",
-        end_date="2024-12-31",
+        end_date=SYMBOLOGY_END_EXCLUSIVE,
     )
     if isinstance(cond, list):
         # DATED conditions are the audit record — retained in full, with
@@ -146,7 +152,7 @@ def main() -> int:
         stype_in="continuous",
         stype_out="instrument_id",
         start_date="2021-01-01",
-        end_date="2024-12-31",
+        end_date=SYMBOLOGY_END_EXCLUSIVE,
     )
     if isinstance(step_one, dict) and "error" not in step_one:
         mappings = step_one.get("result", step_one)
@@ -171,7 +177,7 @@ def main() -> int:
             stype_in="instrument_id",
             stype_out="raw_symbol",
             start_date="2021-01-01",
-            end_date="2024-12-31",
+            end_date=SYMBOLOGY_END_EXCLUSIVE,
         )
         results["symbology"] = {
             "continuous_to_instrument_id": mappings,

@@ -564,31 +564,88 @@ def with_personal_dll(firm: FirmConfig, amount: float) -> FirmConfig:
     return firm.model_copy(update={"dll_provenance": "pdll"})
 
 
+# Official payout-cap tables per account size (help.topstep.com article
+# 8284233, fetched 2026-08-13): baseline (standard, consistency) and the
+# WITH-DLL promotional table. Promotional caps are ABSOLUTE values from
+# this table, never a multiplier on the current configuration (round 6,
+# finding 3: repeated x2 application produced an impossible $8,000).
+TOPSTEP_BASELINE_CAPS: dict[float, tuple[list[float], list[float]]] = {
+    50_000: ([2000.0], [3000.0]),
+    100_000: ([3000.0], [4000.0]),
+    150_000: ([5000.0], [6000.0]),
+}
+TOPSTEP_PROMO_CAPS: dict[float, tuple[list[float], list[float]]] = {
+    50_000: ([4000.0], [6000.0]),
+    100_000: ([6000.0], [8000.0]),
+    150_000: ([10000.0], [12000.0]),
+}
+
+
+def _assert_combine_purchase_dll(firm: FirmConfig) -> None:
+    """Provenance must be MECHANICALLY consistent, not merely a settable
+    field: 'combine_purchase' requires the exact official fixed DLL rule
+    (lockout, official amount) in every phase (round 6, finding 3:
+    forged provenance without the rules must be refused)."""
+    expected = TOPSTEP_DLL_AMOUNTS.get(firm.account_size)
+    if expected is None:
+        raise ConfigError(f"no official purchase-DLL amount for account size {firm.account_size:g}")
+    for phase in [*firm.phases, firm.funded]:
+        dlls = [rule for rule in phase.rules if isinstance(rule, DailyLossLimitSpec)]
+        if (
+            len(dlls) != 1
+            or dlls[0].effect != "lockout"
+            or resolved_amount(dlls[0], firm.account_size) != expected
+        ):
+            raise ConfigError(
+                f"dll_provenance='combine_purchase' is not mechanically consistent: "
+                f"phase {phase.name!r} lacks the official fixed purchase DLL "
+                f"(${expected:g}, lockout) — forged provenance is refused"
+            )
+
+
 def with_promo_payout_caps(firm: FirmConfig) -> FirmConfig:
-    """Copy of `firm` with DOUBLED payout caps on both paths — the
+    """Copy of `firm` with the OFFICIAL promotional payout caps — the
     June-2026 limited promotion, available ONLY when the DLL was
-    selected with a new Combine purchase. This helper CONSUMES the
-    recorded provenance (round 5, defect 4): calling it on a baseline
-    firm, a PDLL firm, or an XFA-activation DLL raises — the promotional
-    invariant holds through the public API, not just the CLI wrapper."""
+    selected with a new Combine purchase.
+
+    Consumes provenance AND verifies it mechanically (the fixed DLL rules
+    must actually be present); sets caps to the official promo TABLE
+    values; refuses re-application (current ladders must equal the
+    official baseline) and refuses non-baseline custom ladders."""
     _require_topstep(firm, "the promotional payout-cap doubling")
     if firm.dll_provenance != "combine_purchase":
         got = firm.dll_provenance or "no DLL"
         raise ConfigError(
-            "promotional doubled caps require the purchase DLL selected with a "
+            "promotional caps require the purchase DLL selected with a "
             f"NEW COMBINE PURCHASE (dll_provenance='combine_purchase'; got {got!r}) "
             "— a PDLL or an XFA-activation DLL does not qualify"
         )
+    _assert_combine_purchase_dll(firm)
+    tables = TOPSTEP_BASELINE_CAPS.get(firm.account_size)
+    promo = TOPSTEP_PROMO_CAPS.get(firm.account_size)
+    if tables is None or promo is None:
+        raise ConfigError(f"no official cap tables for account size {firm.account_size:g}")
+    baseline_standard, baseline_consistency = tables
+    promo_standard, promo_consistency = promo
     payout = firm.payout
-    updates: dict[str, object] = {}
-    if payout.payout_cap_ladder:
-        updates["payout_cap_ladder"] = [2 * cap for cap in payout.payout_cap_ladder]
-    if payout.consistency is not None and payout.consistency.payout_cap_ladder:
-        updates["consistency"] = payout.consistency.model_copy(
-            update={"payout_cap_ladder": [2 * cap for cap in payout.consistency.payout_cap_ladder]}
+    if list(payout.payout_cap_ladder) == promo_standard:
+        raise ConfigError("promotional caps are already applied — refusing a second application")
+    if list(payout.payout_cap_ladder) != baseline_standard:
+        raise ConfigError(
+            f"standard cap ladder {payout.payout_cap_ladder} does not equal the "
+            f"official baseline {baseline_standard} — promotional caps derive from "
+            "the official table and only apply over the official baseline"
         )
-    if not updates:
-        raise ConfigError("promotional caps need a payout_cap_ladder to double")
+    updates: dict[str, object] = {"payout_cap_ladder": promo_standard}
+    if payout.consistency is not None:
+        if list(payout.consistency.payout_cap_ladder) != baseline_consistency:
+            raise ConfigError(
+                f"consistency cap ladder {payout.consistency.payout_cap_ladder} does "
+                f"not equal the official baseline {baseline_consistency}"
+            )
+        updates["consistency"] = payout.consistency.model_copy(
+            update={"payout_cap_ladder": promo_consistency}
+        )
     return firm.model_copy(update={"payout": payout.model_copy(update=updates)})
 
 

@@ -50,8 +50,9 @@ step 1: stype_in=continuous     -> stype_out=instrument_id
 step 2: stype_in=instrument_id  -> stype_out=raw_symbol
 ```
 
-`qlir.mapping.parse_two_step` composes both; losing the raw-contract
-mapping fails closed.
+`qlir.mapping.ContractMap.compose_many` (spec-validated via
+`qlir.acquire.compose_contract_map`) composes both interval-valued
+responses date-aware; losing the raw-contract mapping fails closed.
 
 ## Acquisition ledger (`manifests/acquisition.jsonl`)
 
@@ -71,7 +72,8 @@ Hash-chained JSONL — one line per batch request:
   "record_count": 0,
   "billable_size_bytes": 0,
   "client_version": "",
-  "file_hashes": "manifests/files.sha256",
+  "files": [{"relative_path": "raw/GLBX.MDP3/trades/ES.v.0/2022-03-01.dbn.zst",
+             "sha256": "…", "size_bytes": 123, "record_count": 456}],
   "dataset_conditions": {},
   "derivation_code_commit": "",
   "split": "development | validation"
@@ -94,12 +96,21 @@ classification.
 ## Acquisition pipeline (`qlir.acquire`)
 
 ```
+spec  = AcquisitionSpec(dataset, schema, symbols, start_utc, end_utc)
 step_one = symbology.resolve(continuous -> instrument_id)
 step_two = symbology.resolve(instrument_id -> raw_symbol)   # ALSO interval-valued
-contract_map = compose_contract_map(step_one, step_two)     # date-aware, fail-closed
-frame = load_acquired_file(path, schema, contract_map)      # per-date raw binding
-append_acquisition(ledger, build_acquisition_record(..., contract_map=...))
+contract_map = compose_contract_map(spec, step_one, step_two)  # envelopes bound to spec
+frame = load_acquired_file(path, spec, contract_map)  # DBN metadata + per-record binding
+files = attest_files(data_root, [(relpath, n_records), ...])  # frozen hashes NOW
+append_acquisition(ledger, build_acquisition_record(spec=spec, contract_map=...,
+                   files=files, ...), data_root=data_root)    # disk-verified receipt
 ```
+
+ONE spec binds every boundary: the response envelopes, the DBN metadata
+(dataset/schema/stypes/symbols/interval — an XNAS file can never pass a
+GLBX spec), per-record raw AND continuous-symbol identity, and the
+receipt (symbol sets equal, date coverage complete, per-file hashes
+verified on disk before the append).
 
 Raw identity is a function of (instrument_id, event_date) — some
 publishers remap ids daily. The Gate II stats script excludes release

@@ -51,6 +51,7 @@ import numpy as np
 import pandas as pd
 
 from qlir import QlirError
+from qlir.spec import AcquisitionSpec
 
 SCHEMAS = ("trades", "tbbo", "mbp-1")
 CORE_COLUMNS = (
@@ -64,6 +65,10 @@ CORE_COLUMNS = (
     "symbol",
     "raw_symbol",
     "instrument_id",
+    # Instrument ids are only guaranteed unique per publisher (and per
+    # day for some publishers) — publisher_id is identity, not metadata
+    # (round 6, finding 2).
+    "publisher_id",
 )
 BBO_COLUMNS = ("bid_px", "ask_px", "bid_sz", "ask_sz")
 VALID_SIDES = {"B", "A", "N"}
@@ -161,6 +166,9 @@ def validate_events(df: pd.DataFrame, schema: str, source: str = "<frame>") -> p
     out["sequence"] = out["sequence"].astype("int64")
     out["size"] = out["size"].astype("int64")
     out["instrument_id"] = out["instrument_id"].astype("int64")
+    out["publisher_id"] = out["publisher_id"].astype("int64")
+    if (out["publisher_id"] <= 0).any():
+        raise QlirError(f"{source}: non-positive publisher_id present")
     out["price"] = out["price"].astype("float64")
     # Deterministic research ordering: ts_event, then sequence, then ts_recv.
     out = out.sort_values(["ts_event", "sequence", "ts_recv"], kind="mergesort", ignore_index=True)
@@ -170,9 +178,56 @@ def validate_events(df: pd.DataFrame, schema: str, source: str = "<frame>") -> p
 _DBN_SCHEMA_NAMES = {"trades": "trades", "tbbo": "tbbo", "mbp-1": "mbp-1"}
 
 
+def _validate_dbn_metadata(store: object, spec: AcquisitionSpec, path: Path) -> list[str]:
+    """Bind the self-describing DBN metadata to the acquisition spec
+    (round 6, finding 2: an XNAS.ITCH/NQ file decoded cleanly through a
+    GLBX/ES contract map). Returns the file's requested symbols."""
+    metadata = store.metadata  # type: ignore[attr-defined]
+    meta_dataset = str(getattr(metadata, "dataset", "") or "")
+    if meta_dataset != spec.dataset:
+        raise QlirError(
+            f"{path}: DBN metadata dataset {meta_dataset!r} does not match the "
+            f"acquisition spec dataset {spec.dataset!r} — refusing to bind "
+            "unrelated data"
+        )
+    meta_schema = str(getattr(metadata, "schema", None) or "")
+    if meta_schema and meta_schema.replace("_", "-") != _DBN_SCHEMA_NAMES[spec.schema]:
+        raise QlirError(
+            f"{path}: file metadata declares schema {meta_schema!r}, the spec says "
+            f"{spec.schema!r} — refusing to misinterpret records"
+        )
+    for attr, expected in (("stype_in", spec.stype_in), ("stype_out", spec.stype_out)):
+        got = getattr(metadata, attr, None)
+        if got is None:
+            continue
+        got_name = str(got).split(".")[-1].lower()  # SType enum or plain string
+        if got_name.replace("_", "") != expected.lower().replace("_", ""):
+            raise QlirError(
+                f"{path}: DBN metadata {attr}={got!r} does not match the spec ({expected!r})"
+            )
+    symbols = [str(s) for s in (getattr(metadata, "symbols", []) or [])]
+    if not symbols:
+        raise QlirError(f"{path}: DBN metadata carries no requested symbols")
+    unknown = sorted(set(symbols) - set(spec.symbols))
+    if unknown:
+        raise QlirError(
+            f"{path}: DBN metadata symbols {unknown} are not in the acquisition "
+            f"spec symbols {sorted(spec.symbols)}"
+        )
+    meta_start = getattr(metadata, "start", None)
+    meta_end = getattr(metadata, "end", None)
+    spec_start_ns = int(spec.start_utc.timestamp() * 1_000_000_000)
+    spec_end_ns = int(spec.end_utc.timestamp() * 1_000_000_000)
+    if meta_start is not None and int(meta_start) < spec_start_ns:
+        raise QlirError(f"{path}: DBN metadata start precedes the spec range")
+    if meta_end is not None and int(meta_end) > spec_end_ns:
+        raise QlirError(f"{path}: DBN metadata end exceeds the spec range")
+    return symbols
+
+
 def _load_dbn(
     path: Path,
-    schema: str,
+    spec: AcquisitionSpec,
     id_to_raw: dict[int, str] | None,
     allow_unresolved: bool = False,
 ) -> pd.DataFrame:
@@ -184,12 +239,7 @@ def _load_dbn(
             "pip install databento"
         ) from None
     store = DBNStore.from_file(path)
-    meta_schema = str(getattr(store.metadata, "schema", None) or "")
-    if meta_schema and meta_schema.replace("_", "-") != _DBN_SCHEMA_NAMES[schema]:
-        raise QlirError(
-            f"{path}: file metadata declares schema {meta_schema!r}, caller asked "
-            f"for {schema!r} — refusing to misinterpret records"
-        )
+    file_symbols = _validate_dbn_metadata(store, spec, path)
     frame = store.to_df().reset_index()
     rename = {
         "bid_px_00": "bid_px",
@@ -198,8 +248,18 @@ def _load_dbn(
         "ask_sz_00": "ask_sz",
     }
     frame = frame.rename(columns=rename)
-    requested = list(getattr(store.metadata, "symbols", []) or [])
-    frame["symbol"] = requested[0] if len(requested) == 1 else "<multi>"
+    if len(file_symbols) == 1:
+        frame["symbol"] = file_symbols[0]
+    else:
+        # '<multi>' is not an analyzable identity: multi-symbol files may
+        # only pass through the acquisition path, which re-binds the
+        # requested symbol PER RECORD via ContractMap.symbol_for.
+        if not allow_unresolved:
+            raise QlirError(
+                f"{path}: multi-symbol DBN file needs per-record symbol binding — "
+                "load it through qlir.acquire.load_acquired_file"
+            )
+        frame["symbol"] = "<unbound>"
     # instrument_id is the PRIMARY identity; the dated raw contract comes
     # from the acquisition's second symbology step. Fail closed rather
     # than mislabel (round 4: "losing the actual raw-contract mapping").
@@ -211,23 +271,31 @@ def _load_dbn(
                 "refusing to guess the dated contract"
             )
         frame["raw_symbol"] = "<unresolved>"
-        return validate_events(frame, schema, source=str(path))
+        return validate_events(frame, spec.schema, source=str(path))
     ids = frame["instrument_id"].astype("int64")
     unmapped = sorted(set(ids.unique()) - set(id_to_raw))
     if unmapped:
         raise QlirError(f"{path}: no raw_symbol mapping for instrument_id(s) {unmapped}")
     frame["raw_symbol"] = ids.map(id_to_raw)
-    return validate_events(frame, schema, source=str(path))
+    return validate_events(frame, spec.schema, source=str(path))
 
 
 def load_events(
     path: str | Path,
-    schema: str,
+    schema: str | None = None,
     id_to_raw: dict[int, str] | None = None,
     allow_unresolved: bool = False,
+    spec: AcquisitionSpec | None = None,
 ) -> pd.DataFrame:
-    """Load one canonical event file (.parquet fixture or .dbn[.zst])."""
+    """Load one canonical event file.
+
+    `.parquet` fixtures need `schema` only. `.dbn`/`.dbn.zst` REQUIRE a
+    full AcquisitionSpec — DBN is self-describing, and its dataset,
+    schema, stypes, symbols, and interval must bind to the spec before a
+    single record is interpreted (round 6, finding 2)."""
     path = Path(path)
+    if spec is not None:
+        schema = spec.schema
     if schema not in SCHEMAS:
         raise QlirError(f"unsupported schema {schema!r} (want one of {SCHEMAS})")
     if not path.exists():
@@ -236,5 +304,10 @@ def load_events(
     if suffixes.endswith(".parquet"):
         return validate_events(pd.read_parquet(path), schema, source=str(path))
     if suffixes.endswith((".dbn", ".dbn.zst")):
-        return _load_dbn(path, schema, id_to_raw, allow_unresolved=allow_unresolved)
+        if spec is None:
+            raise QlirError(
+                f"{path}: DBN loading requires an AcquisitionSpec so the file's "
+                "self-described metadata can be bound to the acquisition"
+            )
+        return _load_dbn(path, spec, id_to_raw, allow_unresolved=allow_unresolved)
     raise QlirError(f"unsupported event-file type: {path.name}")

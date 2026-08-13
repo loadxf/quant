@@ -1,10 +1,11 @@
-"""Schema-aware event loading (round-4 redesign): trades/tbbo/mbp-1,
-BBO preservation, action-restricted signed flow, raw-contract identity,
-and a NON-SKIPPED locally encoded DBN round-trip (the databento_dbn
-Metadata/record encoders are real — the round-3 claim they were absent
-was false and is corrected here by test)."""
+"""Schema-aware event loading: trades/tbbo/mbp-1, BBO preservation,
+action-restricted signed flow, raw-contract identity, publisher_id
+preservation (round 6), spec-bound DBN metadata, and NON-SKIPPED locally
+encoded DBN round-trips."""
 
 from __future__ import annotations
+
+import datetime as dt
 
 import numpy as np
 import pandas as pd
@@ -19,8 +20,23 @@ from qlir.loader import (
     unknown_side_fraction,
     validate_events,
 )
+from qlir.spec import AcquisitionSpec
 
 BASE = pd.Timestamp("2022-03-01 14:30:00", tz="UTC")
+SPEC = AcquisitionSpec(
+    dataset="GLBX.MDP3",
+    schema="trades",
+    symbols=("ES.v.0",),
+    start_utc=dt.datetime(2022, 1, 1, tzinfo=dt.UTC),
+    end_utc=dt.datetime(2022, 6, 13, tzinfo=dt.UTC),
+)
+MBP1_SPEC = AcquisitionSpec(
+    dataset="GLBX.MDP3",
+    schema="mbp-1",
+    symbols=("ES.v.0",),
+    start_utc=dt.datetime(2022, 1, 1, tzinfo=dt.UTC),
+    end_utc=dt.datetime(2022, 6, 13, tzinfo=dt.UTC),
+)
 
 
 def trades_frame(sides=("B", "A", "N", "B"), shuffle=False) -> pd.DataFrame:
@@ -37,6 +53,7 @@ def trades_frame(sides=("B", "A", "N", "B"), shuffle=False) -> pd.DataFrame:
             "symbol": ["ES.v.0"] * n,
             "raw_symbol": ["ESH2"] * n,
             "instrument_id": [4916] * n,
+            "publisher_id": [1] * n,
         }
     )
     if shuffle:
@@ -209,7 +226,7 @@ class TestDbnRoundTrip:
         pytest.importorskip("databento")
         path = tmp_path / "2022-03-01.dbn"
         self._write_trades_dbn(path)
-        out = load_events(path, schema="trades", id_to_raw={4916: "ESH2"})
+        out = load_events(path, spec=SPEC, id_to_raw={4916: "ESH2"})
         assert len(out) == 2
         assert list(out["price"]) == [4500.25, 4500.50]
         assert list(out["side"]) == ["B", "A"]
@@ -218,26 +235,40 @@ class TestDbnRoundTrip:
         assert list(out["symbol"].unique()) == ["ES.v.0"]
         assert signed_flow(out) == pytest.approx(2.0 - 3.0)
 
+    def test_dbn_without_spec_fails_closed(self, tmp_path) -> None:
+        pytest.importorskip("databento")
+        path = tmp_path / "2022-03-01.dbn"
+        self._write_trades_dbn(path)
+        with pytest.raises(QlirError, match="requires an AcquisitionSpec"):
+            load_events(path, schema="trades", id_to_raw={4916: "ESH2"})
+
+    def test_publisher_id_preserved_from_dbn(self, tmp_path) -> None:
+        pytest.importorskip("databento")
+        path = tmp_path / "2022-03-01.dbn"
+        self._write_trades_dbn(path)
+        out = load_events(path, spec=SPEC, id_to_raw={4916: "ESH2"})
+        assert list(out["publisher_id"].unique()) == [1]
+
     def test_dbn_without_id_map_fails_closed(self, tmp_path) -> None:
         pytest.importorskip("databento")
         path = tmp_path / "2022-03-01.dbn"
         self._write_trades_dbn(path)
         with pytest.raises(QlirError, match="instrument_id -> raw_symbol"):
-            load_events(path, schema="trades")
+            load_events(path, spec=SPEC)
 
     def test_dbn_with_incomplete_id_map_fails_closed(self, tmp_path) -> None:
         pytest.importorskip("databento")
         path = tmp_path / "2022-03-01.dbn"
         self._write_trades_dbn(path)
         with pytest.raises(QlirError, match="no raw_symbol mapping"):
-            load_events(path, schema="trades", id_to_raw={999: "ESH2"})
+            load_events(path, spec=SPEC, id_to_raw={999: "ESH2"})
 
     def test_dbn_schema_mismatch_refused(self, tmp_path) -> None:
         pytest.importorskip("databento")
         path = tmp_path / "2022-03-01.dbn"
         self._write_trades_dbn(path)
         with pytest.raises(QlirError, match="declares schema"):
-            load_events(path, schema="mbp-1", id_to_raw={4916: "ESH2"})
+            load_events(path, spec=MBP1_SPEC, id_to_raw={4916: "ESH2"})
 
     def test_mbp1_dbn_round_trip_preserves_book_and_actions(self, tmp_path) -> None:
         pytest.importorskip("databento")
@@ -292,7 +323,7 @@ class TestDbnRoundTrip:
         ]
         path = tmp_path / "2022-03-01.mbp1.dbn"
         path.write_bytes(bytes(meta.encode()) + b"".join(bytes(record) for record in records))
-        out = load_events(path, schema="mbp-1", id_to_raw={4916: "ESH2"})
+        out = load_events(path, spec=MBP1_SPEC, id_to_raw={4916: "ESH2"})
         assert list(out["action"]) == ["T", "A"]
         assert out["bid_px"].iloc[0] == pytest.approx(4500.00)
         assert out["ask_sz"].iloc[1] == 7

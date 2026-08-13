@@ -1,33 +1,51 @@
-"""Hash-chained, anchored, append-only acquisition ledger (round 5).
+"""Hash-chained, anchored, RECOVERABLE append-only acquisition ledger
+(round 6).
 
-Structure: `acquisition.jsonl` — one JSON line per record:
+Structure: `acquisition.jsonl` — one JSON line per receipt:
 
     {"prev_hash": <hex>, "record_hash": <hex>, "record": {...}}
 
-with record_hash = sha256(prev_hash + canonical_json(record)), chained
-from GENESIS, written by O_APPEND single-line writes under an exclusive
-lock. A sibling ANCHOR file (`acquisition.jsonl.anchor`) stores the
-expected record count and terminal hash and is updated atomically
-inside the same locked transaction — so removing the tail line(s), or
-the whole ledger, no longer reads back clean (round 5, defect 3: an
-unanchored chain cannot detect tail truncation).
+chained from GENESIS, plus a sibling ANCHOR (`.anchor`: expected count +
+terminal hash) and, transiently, a PENDING journal (`.pending`) that
+makes the two-file append a RECOVERABLE transaction (round 6, finding
+4: an anchor-write failure between the two operations used to wedge the
+ledger permanently).
 
-GUARANTEE, STATED EXACTLY: the ledger+anchor pair is tamper-EVIDENT
-against any edit, reorder, interior deletion, tail truncation, or
-whole-file deletion that does not rewrite BOTH files consistently. It
-is NOT proof against a fully local adversary who rewrites ledger and
-anchor together — that requires mirroring the anchor off-host, which is
-an operational step, not a property this code can provide. Records are
-REVALIDATED on every read: a ledger can never attest to an unsupported
-symbology pairing or an untyped resolved_contracts structure.
+Append protocol (all under one exclusive lock):
+  1. verify current chain+anchor (recovering any pending transaction);
+  2. atomically write `.pending` = {prev_anchor, line, new_anchor};
+  3. O_APPEND the line to the ledger (fsync);
+  4. atomically write the anchor;
+  5. delete `.pending`.
+Recovery is deterministic from the journal: ledger still at the prior
+count → roll BACK (delete pending); line fully present → roll FORWARD
+(write anchor, delete pending); a TORN last line (the only non-atomic
+step) → strip the uncommitted bytes back to the journaled prior state.
+Unlocked reads refuse while a pending journal exists (call
+`recover_ledger`). Failure-injection tests cover every boundary.
 
-Locked-period rule: enforced from PARSED UTC DATES, never the split
-label — any range touching 2025-01-01+ is refused; labels must match
-the date-derived classification; dev/val-spanning ranges are refused.
+RECEIPT BINDING (round 6, finding 1): a receipt is refused unless
+  - set(requested_symbols) == set(resolved_contracts keys);
+  - the contract map covers every date in [start_utc, end_utc);
+  - `files` is an immutable per-acquisition list of
+    {relative_path, sha256, size_bytes, record_count} (never a pointer
+    to a mutable cumulative manifest);
+  - record_count equals the sum of per-file counts; cost/size are
+    finite and non-negative;
+  - at append time, every attested file EXISTS on disk under data_root
+    with the exact hash and size.
+
+GUARANTEE, STATED EXACTLY: ledger+anchor are tamper-EVIDENT against any
+edit, reorder, interior deletion, tail truncation, or file deletion
+that does not rewrite BOTH files consistently; not proof against a
+fully local adversary who rewrites both — mirror the anchor off-host
+for that. Records are REVALIDATED on every read. The locked period is
+enforced from PARSED UTC DATES, never the split label.
 """
 
 from __future__ import annotations
 
+import contextlib
 import datetime as dt
 import hashlib
 import json
@@ -38,15 +56,15 @@ from typing import Any
 from qlir import QlirError
 from qlir.locks import ExclusiveLock
 from qlir.mapping import ContractMap
+from qlir.spec import AcquiredFile
+from qlir.store import sha256_file
 
 GENESIS = "0" * 64
 LOCKED_START_UTC = dt.datetime(2025, 1, 1, tzinfo=dt.UTC)
 VALIDATION_START_UTC = dt.datetime(2024, 1, 1, tzinfo=dt.UTC)
 ANCHOR_SUFFIX = ".anchor"
+PENDING_SUFFIX = ".pending"
 
-# The supported symbology conversions this protocol may record. The
-# invalid direct continuous->raw_symbol pairing is refused here so the
-# ledger can never attest to it (round 5, defect 3).
 SUPPORTED_STYPE_PAIRS: frozenset[tuple[str, str]] = frozenset(
     {
         ("continuous", "instrument_id"),
@@ -69,7 +87,7 @@ REQUIRED_FIELDS: tuple[str, ...] = (
     "record_count",
     "billable_size_bytes",
     "client_version",
-    "file_hashes",
+    "files",
     "dataset_conditions",
     "derivation_code_commit",
     "split",
@@ -115,6 +133,11 @@ def split_for_range(start: dt.datetime, end: dt.datetime) -> str:
     )
 
 
+def _end_date_exclusive(end: dt.datetime) -> dt.date:
+    midnight = end.replace(hour=0, minute=0, second=0, microsecond=0)
+    return end.date() if end == midnight else end.date() + dt.timedelta(days=1)
+
+
 def validate_record(record: dict[str, Any]) -> None:
     missing = [field for field in REQUIRED_FIELDS if field not in record]
     if missing:
@@ -128,9 +151,7 @@ def validate_record(record: dict[str, Any]) -> None:
             f"supported: {sorted(SUPPORTED_STYPE_PAIRS)} — the ledger must never "
             "attest to the invalid direct continuous->raw_symbol contract"
         )
-    # resolved_contracts must round-trip through the TYPED ContractMap
-    # structure — "garbage" or a serialized surrogate shape is refused.
-    ContractMap.from_record(record["resolved_contracts"])
+    contract_map = ContractMap.from_record(record["resolved_contracts"])
     start = _parse_utc(record["start_utc"], "start_utc")
     end = _parse_utc(record["end_utc"], "end_utc")
     derived = split_for_range(start, end)  # raises on any locked-period touch
@@ -139,10 +160,84 @@ def validate_record(record: dict[str, Any]) -> None:
             f"split label {record['split']!r} contradicts the date-derived "
             f"classification {derived!r} — labels never override dates"
         )
+    # --- receipt binding (round 6, finding 1) --------------------------
+    requested = {str(symbol) for symbol in record["requested_symbols"]}
+    resolved = contract_map.symbols()
+    if requested != resolved:
+        raise QlirError(
+            f"requested_symbols {sorted(requested)} do not equal the resolved "
+            f"mapping symbols {sorted(resolved)} — the receipt binds unrelated "
+            "objects"
+        )
+    end_exclusive = _end_date_exclusive(end)
+    for symbol in sorted(requested):
+        contract_map.assert_covers(symbol, start.date(), end_exclusive)
+    files = record["files"]
+    if not isinstance(files, list) or not files:
+        raise QlirError(
+            "files must be a non-empty list of immutable per-acquisition "
+            "attestations {relative_path, sha256, size_bytes, record_count} — "
+            "a pathname to a mutable cumulative manifest is not an attestation"
+        )
+    attested = [AcquiredFile.from_dict(item) for item in files]
+    paths = [entry.relative_path for entry in attested]
+    if len(set(paths)) != len(paths):
+        raise QlirError("files list contains duplicate relative paths")
+    total_count = sum(entry.record_count for entry in attested)
+    if int(record["record_count"]) != total_count:
+        raise QlirError(
+            f"record_count {record['record_count']} does not equal the sum of "
+            f"per-file counts ({total_count})"
+        )
+    for field, minimum in (("request_cost_usd", 0.0), ("billable_size_bytes", 0)):
+        value = record[field]
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            raise QlirError(f"{field} is not numeric: {value!r}") from None
+        if not (number == number and abs(number) != float("inf")) or number < minimum:
+            raise QlirError(f"{field} must be finite and >= {minimum} (got {value!r})")
 
 
+def verify_receipt_files(record: dict[str, Any], data_root: Path) -> None:
+    """Disk verification: every attested file exists under data_root with
+    the exact hash and size (run inside the append transaction)."""
+    for item in record["files"]:
+        entry = AcquiredFile.from_dict(item)
+        full = Path(data_root) / entry.relative_path
+        if not full.exists():
+            raise QlirError(f"attested file missing on disk: {full}")
+        actual_size = full.stat().st_size
+        if actual_size != entry.size_bytes:
+            raise QlirError(
+                f"attested size mismatch for {entry.relative_path}: "
+                f"disk {actual_size} != receipt {entry.size_bytes}"
+            )
+        actual_hash = sha256_file(full)
+        if actual_hash != entry.sha256:
+            raise QlirError(
+                f"attested hash mismatch for {entry.relative_path}: "
+                f"disk {actual_hash[:12]}… != receipt {entry.sha256[:12]}…"
+            )
+
+
+# -- anchor + pending journal ---------------------------------------------
 def _anchor_path(path: Path) -> Path:
     return path.with_suffix(path.suffix + ANCHOR_SUFFIX)
+
+
+def _pending_path(path: Path) -> Path:
+    return path.with_suffix(path.suffix + PENDING_SUFFIX)
+
+
+def _atomic_json(path: Path, payload: dict[str, Any]) -> None:
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    with open(tmp, "w", encoding="utf-8") as handle:
+        json.dump(payload, handle, sort_keys=True)
+        handle.write("\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    os.replace(tmp, path)
 
 
 def _read_anchor(path: Path) -> dict[str, Any] | None:
@@ -159,39 +254,89 @@ def _read_anchor(path: Path) -> dict[str, Any] | None:
 
 
 def _write_anchor(path: Path, count: int, terminal_hash: str) -> None:
-    anchor_path = _anchor_path(path)
-    payload = json.dumps({"count": count, "terminal_hash": terminal_hash}) + "\n"
-    tmp = anchor_path.with_suffix(anchor_path.suffix + ".tmp")
-    tmp.write_text(payload, encoding="utf-8")
-    os.replace(tmp, anchor_path)
+    _atomic_json(_anchor_path(path), {"count": count, "terminal_hash": terminal_hash})
 
 
-def _read_links(path: Path) -> list[dict[str, Any]]:
+def _raw_lines(path: Path) -> list[str]:
     if not Path(path).exists():
         return []
-    links: list[dict[str, Any]] = []
-    for i, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines()):
-        if not line.strip():
-            continue
-        try:
-            link = json.loads(line)
-        except json.JSONDecodeError as exc:
-            raise QlirError(f"ledger line {i} is not valid JSON: {exc}") from exc
-        if not isinstance(link, dict) or {"prev_hash", "record_hash", "record"} - set(link):
-            raise QlirError(f"ledger line {i} lacks the chain envelope")
-        links.append(link)
-    return links
+    return [line for line in Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def _parse_link(line: str, index: int) -> dict[str, Any]:
+    try:
+        link = json.loads(line)
+    except json.JSONDecodeError as exc:
+        raise QlirError(f"ledger line {index} is not valid JSON: {exc}") from exc
+    if not isinstance(link, dict) or {"prev_hash", "record_hash", "record"} - set(link):
+        raise QlirError(f"ledger line {index} lacks the chain envelope")
+    return link
+
+
+def _recover(path: Path) -> None:
+    """Deterministically complete or roll back an interrupted append.
+    MUST be called under the exclusive lock."""
+    pending_path = _pending_path(path)
+    if not pending_path.exists():
+        return
+    try:
+        pending = json.loads(pending_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        # The pending journal is written atomically — a torn journal
+        # means something beyond an interrupted append happened.
+        raise QlirError(f"pending journal is corrupt ({exc}) — manual audit required") from exc
+    required = {"prev_count", "prev_terminal", "line", "new_count", "new_terminal"}
+    if not isinstance(pending, dict) or required - set(pending):
+        raise QlirError("pending journal lacks required fields — manual audit required")
+    lines = _raw_lines(path)
+    prev_count = int(pending["prev_count"])
+    if len(lines) == prev_count:
+        # The append never reached the ledger: roll back.
+        pending_path.unlink()
+        return
+    if len(lines) == prev_count + 1:
+        if lines[-1] == pending["line"]:
+            # Ledger append landed; the anchor write was interrupted:
+            # roll forward.
+            _write_anchor(path, int(pending["new_count"]), str(pending["new_terminal"]))
+            pending_path.unlink()
+            return
+        # TORN final line — the only non-atomic step. The journal proves
+        # the committed prior state; strip the uncommitted bytes.
+        committed = lines[:prev_count]
+        tmp = path.with_suffix(path.suffix + ".tmp")
+        tmp.write_text(("\n".join(committed) + "\n") if committed else "", encoding="utf-8")
+        os.replace(tmp, path)
+        pending_path.unlink()
+        return
+    raise QlirError(
+        f"pending journal expects {prev_count}(+1) ledger line(s), found "
+        f"{len(lines)} — manual audit required"
+    )
+
+
+def recover_ledger(path: Path) -> None:
+    """Public recovery entry point (takes the lock itself)."""
+    path = Path(path)
+    with ExclusiveLock(path):
+        _recover(path)
 
 
 def verify_ledger(path: Path) -> list[dict[str, Any]]:
     """Verify chain integrity AND the anchor AND record validity.
 
-    Fails closed on: broken links, modified records, tail truncation
-    (anchor count/terminal mismatch), a deleted ledger with a surviving
-    anchor, a populated ledger with no anchor, and any record that no
-    longer passes validate_record (read-time revalidation)."""
+    Refuses while a pending journal exists (run recover_ledger); fails
+    closed on broken links, modified records, tail truncation, ledger or
+    anchor deletion, and any record failing read-time revalidation."""
     path = Path(path)
-    links = _read_links(path)
+    if _pending_path(path).exists():
+        raise QlirError(
+            f"ledger {path} has an unresolved pending transaction — run "
+            "qlir.manifest.recover_ledger(path) (or the next locked append "
+            "will recover it) before reading"
+        )
+    lines = _raw_lines(path)
+    links = [_parse_link(line, i) for i, line in enumerate(lines)]
     anchor = _read_anchor(path)
     if anchor is None:
         if links:
@@ -231,13 +376,21 @@ def load_ledger(path: Path) -> list[dict[str, Any]]:
     return [link["record"] for link in verify_ledger(path)]
 
 
-def append_acquisition(path: Path, record: dict[str, Any]) -> list[dict[str, Any]]:
-    """Validate and append one record under the exclusive lock: verify
-    the existing chain+anchor, O_APPEND the new line, update the anchor
-    atomically inside the same transaction."""
+def append_acquisition(
+    path: Path, record: dict[str, Any], data_root: Path | None = None
+) -> list[dict[str, Any]]:
+    """Validate, DISK-VERIFY the attested files, and append one receipt
+    via the recoverable pending-journal transaction.
+
+    `data_root` is the q_lir data root the receipt's relative paths
+    resolve against; defaults to the ledger's grandparent (the standard
+    `<root>/manifests/acquisition.jsonl` layout)."""
     validate_record(record)
     path = Path(path)
+    root = Path(data_root) if data_root is not None else path.parent.parent
     with ExclusiveLock(path):
+        _recover(path)
+        verify_receipt_files(record, root)
         links = verify_ledger(path)  # refuses corrupt or truncated state
         prev = links[-1]["record_hash"] if links else GENESIS
         link = {
@@ -245,13 +398,25 @@ def append_acquisition(path: Path, record: dict[str, Any]) -> list[dict[str, Any
             "record_hash": _link_hash(prev, record),
             "record": record,
         }
+        line = json.dumps(link, sort_keys=True, separators=(",", ":"), default=str)
         path.parent.mkdir(parents=True, exist_ok=True)
-        line = json.dumps(link, sort_keys=True, separators=(",", ":"), default=str) + "\n"
+        _atomic_json(
+            _pending_path(path),
+            {
+                "prev_count": len(links),
+                "prev_terminal": prev,
+                "line": line,
+                "new_count": len(links) + 1,
+                "new_terminal": link["record_hash"],
+            },
+        )
         fd = os.open(path, os.O_CREAT | os.O_WRONLY | os.O_APPEND)
         try:
-            os.write(fd, line.encode("utf-8"))
+            os.write(fd, (line + "\n").encode("utf-8"))
             os.fsync(fd)
         finally:
             os.close(fd)
         _write_anchor(path, len(links) + 1, link["record_hash"])
+        with contextlib.suppress(OSError):
+            _pending_path(path).unlink()
     return [*(link_["record"] for link_ in links), record]
