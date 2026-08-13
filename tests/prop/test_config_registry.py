@@ -23,7 +23,11 @@ class TestRegistry:
         assert len(names) == 18
         for name in names:
             firm = load_firm(name)
-            assert firm.verified_as_of == "2026-07-19"
+            # Topstep presets re-verified 2026-08-13 (payout paths, MLL
+            # reset event, session close, TopstepX fees); the rest stand
+            # at the 2026-07-19 verification.
+            expected = "2026-08-13" if name.startswith("topstep") else "2026-07-19"
+            assert firm.verified_as_of == expected
             assert firm.sources
 
     def test_unknown_name(self) -> None:

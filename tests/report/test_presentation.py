@@ -82,9 +82,11 @@ class TestCrossSurfaceAgreement:
 
     def test_expected_net_identical_everywhere(self, bundle) -> None:
         eco = bundle["mc"].economics
-        shown = money(eco.expected_net, decimals=0)
-        assert shown in bundle["terminal"]
-        assert shown in bundle["html"]
+        # Each surface formats the SAME number at its own precision
+        # (terminal 0 decimals, HTML 2) — asserting the terminal string
+        # inside the HTML only worked when rounding happened to prefix.
+        assert money(eco.expected_net, decimals=0) in bundle["terminal"]
+        assert money(eco.expected_net) in bundle["html"]
         assert bundle["json"]["prop_simulation"]["economics"]["expected_net"] == eco.expected_net
 
     def test_grade_identical_everywhere(self, bundle) -> None:

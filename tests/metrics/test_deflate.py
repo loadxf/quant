@@ -160,7 +160,7 @@ class TestContracts:
         assert resolve_contract("ES").tick_value == 12.50
 
     def test_unknown_is_none(self) -> None:
-        assert resolve_contract("CL") is None
+        assert resolve_contract("6E") is None  # FX roots are not modeled
         assert resolve_contract("ESPR") is None
         assert resolve_contract("NQXYZ") is None
         assert resolve_contract("ES00H24") is None

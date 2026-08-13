@@ -32,6 +32,7 @@ import numpy as np
 from quantlab.errors import QuantLabError
 from quantlab.metrics.contracts import resolve_contract
 from quantlab.metrics.core import profit_factor
+from quantlab.metrics.fee_profiles import FeeProfile, get_fee_profile
 from quantlab.prop.config import FirmConfig
 from quantlab.prop.montecarlo import MCConfig, run_monte_carlo
 from quantlab.schema.trade import FUTURES_DAY, DayBoundary, TradeLog
@@ -225,7 +226,10 @@ def resolve_cost_basis(
 
 
 def _trade_cost_arrays(
-    log: TradeLog, tick_value: float | None, commission_rt: float | None
+    log: TradeLog,
+    tick_value: float | None,
+    commission_rt: float | None,
+    fee_profile: FeeProfile | None = None,
 ) -> tuple[np.ndarray, str, np.ndarray, list[str]]:
     """Resolve costs per trade so mixed-symbol logs are not mispriced."""
     if not log.trades:
@@ -257,6 +261,16 @@ def _trade_cost_arrays(
         if not math.isfinite(commission_rt) or commission_rt < 0:
             raise QuantLabError("commission_rt must be finite and non-negative")
         commissions = np.full(len(log.trades), commission_rt)
+    elif fee_profile is not None:
+        # Platform profile: exact published fees, loud failure for any
+        # symbol the profile does not price — never the generic defaults.
+        commissions = np.array(
+            [fee_profile.commission_for(trade.symbol) for trade in log.trades], dtype=float
+        )
+        warnings.append(
+            f"commissions priced from fee profile {fee_profile.name} "
+            f"(as of {fee_profile.as_of}); --commission overrides"
+        )
     else:
         commissions = np.array(
             [spec.commission_rt if spec is not None else 0.0 for spec in specs], dtype=float
@@ -283,8 +297,11 @@ def run_cost_sweep(
     survival test — to keep runtime sane."""
     if not math.isfinite(stop_slip_ticks) or stop_slip_ticks < 0:
         raise QuantLabError("stop_slip_ticks must be finite and non-negative")
+    fee_profile: FeeProfile | None = None
+    if commission_rt is None and firm is not None and firm.fee_profile:
+        fee_profile = get_fee_profile(firm.fee_profile)
     tick_values, tick_source, commissions, warnings = _trade_cost_arrays(
-        log, tick_value, commission_rt
+        log, tick_value, commission_rt, fee_profile
     )
     pnls = np.array([t.pnl for t in log.trades], dtype=float)
     quantities = np.array([t.quantity for t in log.trades], dtype=float)

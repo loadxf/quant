@@ -204,6 +204,12 @@ def simulate_cmd(
     payout_policy: str = typer.Option(
         "asap", "--payout-policy", help="asap | keep_buffer (leave --keep-buffer $ working)."
     ),
+    payout_path: str | None = typer.Option(
+        None,
+        "--payout-path",
+        help="Payout PATH override: standard | consistency (Topstep XFA; "
+        "default: the firm YAML's payout.path).",
+    ),
     keep_buffer: float = typer.Option(
         0.0, "--keep-buffer", help="$ cushion left above the payout floor (keep_buffer policy)."
     ),
@@ -252,6 +258,7 @@ def simulate_cmd(
         cushion_clip=(cushion_clip_lo, cushion_clip_hi),
         base_contracts=base_contracts,
         payout_policy=payout_policy,
+        payout_path=payout_path,
         keep_buffer=keep_buffer,
         extract_weight=extract_weight,
     )

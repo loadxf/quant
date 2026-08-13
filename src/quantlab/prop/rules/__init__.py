@@ -9,6 +9,7 @@ from quantlab.prop.rules.base import BreachEvent
 from quantlab.prop.rules.consistency import ConsistencyGate
 from quantlab.prop.rules.daily_loss import DailyLossRule
 from quantlab.prop.rules.min_days import MinTradingDaysGate
+from quantlab.prop.rules.session_close import SessionCloseRule, count_session_close_violations
 from quantlab.prop.rules.static_loss import StaticMaxLossRule
 from quantlab.prop.rules.time_limit import TimeLimitGate
 from quantlab.prop.rules.trailing_dd import TrailingDrawdownRule
@@ -18,7 +19,9 @@ __all__ = [
     "ConsistencyGate",
     "DailyLossRule",
     "MinTradingDaysGate",
+    "SessionCloseRule",
     "StaticMaxLossRule",
     "TimeLimitGate",
     "TrailingDrawdownRule",
+    "count_session_close_violations",
 ]

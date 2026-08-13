@@ -14,6 +14,7 @@ Firms change rules constantly — re-verify before trusting EV outputs.
 from __future__ import annotations
 
 import math
+from datetime import time as dt_time
 from typing import Annotated, Literal
 from urllib.parse import urlparse
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
@@ -114,6 +115,53 @@ class MinTradingDaysSpec(_RuleBase):
     days: NonNegativeInt = 1
 
 
+class SessionCloseSpec(_RuleBase):
+    """Hard daily flatten deadline (Topstep: flat by 15:10 America/Chicago).
+
+    A position still open AT or AFTER `hard_close` local wall time of its
+    ENTRY's trading session violates the rule. Entry-session anchoring
+    matters: a trade opened 18:00 CT belongs to the NEXT session (17:00
+    roll), so holding it to the next morning is legal; holding any
+    position through 15:10 of its own session is not.
+
+    Enforced by the deterministic evaluator (which sees timestamps). The
+    day-granular Monte Carlo cannot see clock times; run_monte_carlo
+    instead counts source-log violations and warns loudly. A product
+    with an earlier exchange close needs an earlier `hard_close` — no
+    per-product exchange calendar is modeled.
+    """
+
+    type: Literal["session_close"] = "session_close"
+    tz: str = "America/Chicago"
+    hard_close: str = "15:10:00"  # HH:MM[:SS] local wall time
+
+    @model_validator(mode="after")
+    def _valid(self) -> SessionCloseSpec:
+        try:
+            ZoneInfo(self.tz)
+        except (KeyError, ValueError, TypeError, ZoneInfoNotFoundError):
+            raise ConfigError(f"session_close.tz {self.tz!r} is not a known IANA zone") from None
+        parts = self.hard_close.split(":")
+        if len(parts) not in (2, 3):
+            raise ConfigError(
+                f"session_close.hard_close must be HH:MM[:SS] (got {self.hard_close!r})"
+            )
+        try:
+            hh, mm = int(parts[0]), int(parts[1])
+            ss = int(parts[2]) if len(parts) == 3 else 0
+        except ValueError:
+            raise ConfigError(
+                f"session_close.hard_close must be numeric HH:MM[:SS] (got {self.hard_close!r})"
+            ) from None
+        if not (0 <= hh <= 23 and 0 <= mm <= 59 and 0 <= ss <= 59):
+            raise ConfigError(f"session_close.hard_close out of range (got {self.hard_close!r})")
+        return self
+
+    def close_time(self) -> dt_time:
+        parts = self.hard_close.split(":")
+        return dt_time(int(parts[0]), int(parts[1]), int(parts[2]) if len(parts) == 3 else 0)
+
+
 class TimeLimitSpec(_RuleBase):
     """Hard calendar-day expiry for a phase (Apex 4.0: 30-day evals)."""
 
@@ -178,6 +226,7 @@ RuleSpec = Annotated[
     | DailyLossLimitSpec
     | ConsistencySpec
     | MinTradingDaysSpec
+    | SessionCloseSpec
     | TimeLimitSpec
     | ContractLimitSpec
     | ScalingPlanSpec,
@@ -283,6 +332,20 @@ class FeeSchedule(_RuleBase):
         return self
 
 
+class ConsistencyPathSpec(_RuleBase):
+    """Topstep XFA Consistency payout path (chosen at activation, mutually
+    exclusive with the Standard path): at least `min_days` active trading
+    days in the payout window, positive window profit, and the largest
+    positive day at MOST `max_best_day_pct` of the window total
+    (INCLUSIVE — exactly 40% still qualifies). The window resets to $0
+    after each payout request."""
+
+    min_days: PositiveInt = 3
+    min_trades_per_day: PositiveInt = 1  # a session counts once it has >= this many trades
+    max_best_day_pct: Annotated[float, Field(gt=0, le=100)] = 40.0
+    payout_cap_ladder: list[PositiveFloat] = Field(default_factory=list)
+
+
 class PayoutPolicy(_RuleBase):
     profit_split: Annotated[float, Field(gt=0, le=1)] = 1.0  # trader's share
     min_payout: NonNegativeFloat = 0.0
@@ -297,6 +360,19 @@ class PayoutPolicy(_RuleBase):
     safety_net_floor: NonNegativeFloat | None = None
     buffer_above_initial: NonNegativeFloat | None = None
     reactivations: Reactivations = Field(default_factory=Reactivations)
+    # Payout path selected at activation: "standard" (qualifying days) or
+    # "consistency" (window ratio). `consistency` holds the alternative
+    # path's parameters; simulation can flip paths without editing YAML.
+    path: Literal["standard", "consistency"] = "standard"
+    consistency: ConsistencyPathSpec | None = None
+    # Standard path: payouts after the first need positive profit since
+    # the prior payout (Topstep XFA; the first payout is exempt).
+    require_profit_since_prior_payout: bool = False
+    # "Your Maximum Loss Limit (MLL) resets to $0 permanently" at each
+    # payout approval (Topstep payout policy, verified 2026-08-13): the
+    # trailing floor snaps to its threshold_cap as an EVENT, even when
+    # ordinary trailing would leave it lower.
+    mll_reset_on_payout: bool = False
 
     @model_validator(mode="after")
     def _split_fraction(self) -> PayoutPolicy:
@@ -305,6 +381,11 @@ class PayoutPolicy(_RuleBase):
         if not 0.0 < self.profit_split <= 1.0:
             raise ConfigError(
                 f"payout.profit_split must be a FRACTION in (0, 1] (got {self.profit_split})"
+            )
+        if self.path == "consistency" and self.consistency is None:
+            raise ConfigError(
+                "payout.path 'consistency' needs a payout.consistency block "
+                "(min_days, max_best_day_pct, payout_cap_ladder)"
             )
         return self
 
@@ -319,6 +400,11 @@ class FirmConfig(_RuleBase):
     funded: PhaseConfig
     fees: FeeSchedule = Field(default_factory=FeeSchedule)
     payout: PayoutPolicy = Field(default_factory=PayoutPolicy)
+    # Named platform commission profile (metrics.fee_profiles). When set,
+    # cost analyses labeled with this firm use the platform's published
+    # round-turn fees instead of the generic retail contract defaults —
+    # and fail loudly for symbols the profile does not price.
+    fee_profile: str = ""
     verified_as_of: str = ""
     sources: list[str] = Field(default_factory=list)
     notes: str = ""
@@ -346,11 +432,16 @@ class FirmConfig(_RuleBase):
             raise ConfigError("evaluation phase names must be unique")
         if self.funded.name in names:
             raise ConfigError("funded phase name must differ from evaluation phase names")
+        if self.fee_profile:
+            from quantlab.metrics.fee_profiles import get_fee_profile
+
+            get_fee_profile(self.fee_profile)  # unknown profile fails at load time
         singleton_rules = (
             ScalingPlanSpec,
             ContractLimitSpec,
             TimeLimitSpec,
             MinTradingDaysSpec,
+            SessionCloseSpec,
         )
         for phase in [*self.phases, self.funded]:
             for rule_type in singleton_rules:

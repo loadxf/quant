@@ -28,6 +28,7 @@ from quantlab.prop.config import (
     MinTradingDaysSpec,
     PhaseConfig,
     ScalingPlanSpec,
+    SessionCloseSpec,
     StaticMaxLossSpec,
     TimeLimitSpec,
     TrailingDrawdownSpec,
@@ -38,11 +39,13 @@ from quantlab.prop.exposure import (
     scaling_base_contracts,
     scaling_contract_limit,
 )
+from quantlab.prop.payout import PAYOUT_FLOOR_MARGIN, PayoutParams, resolve_payout
 from quantlab.prop.rules import (
     BreachEvent,
     ConsistencyGate,
     DailyLossRule,
     MinTradingDaysGate,
+    SessionCloseRule,
     StaticMaxLossRule,
     TimeLimitGate,
     TrailingDrawdownRule,
@@ -72,6 +75,10 @@ class EvaluationResult:
     timeline: pd.DataFrame
     advisories: list[str] = field(default_factory=list)
     days_consumed: int = 0  # trading days used from the log (for phase chaining)
+    # Funded-phase payout replay (evaluate(..., with_payouts=True)):
+    total_withdrawn: float = 0.0
+    payout_count: int = 0
+    first_payout_date: dt.date | None = None
 
 
 def evaluate(
@@ -80,6 +87,8 @@ def evaluate(
     phase: str = "challenge",
     sizing: VolSizingParams | None = None,
     cushion_clip: tuple[float, float] | None = None,
+    with_payouts: bool = False,
+    payout_path: str | None = None,
 ) -> EvaluationResult:
     """Replay the full `log` against one phase.
 
@@ -87,9 +96,15 @@ def evaluate(
     recursion the Monte Carlo uses (golden equivalence by construction).
     `cushion_clip`: optional buffer-aware sizing — the same cushion_weight
     kernel the Monte Carlo uses. Phase chaining (each phase consuming
-    days) lives in evaluate_sequence."""
+    days) lives in evaluate_sequence.
+
+    `with_payouts`: replay the FUNDED phase with the firm's payout
+    machinery (same PayoutParams the Monte Carlo resolves — payout-day
+    windows, MLL reset events, cap ladders). `payout_path` overrides the
+    YAML's payout.path ("standard" | "consistency")."""
     phase_cfg = _find_phase(firm, phase)
     days = log.daily_groups(firm.day_boundary.to_boundary())
+    payout = _payout_for(log, firm, phase_cfg, days, payout_path) if with_payouts else None
     return _evaluate_days(
         days,
         firm,
@@ -100,6 +115,35 @@ def evaluate(
         sizing=sizing,
         cushion_clip=cushion_clip,
         base_contracts=scaling_base_contracts(log, scaling_contract_limit(phase_cfg)),
+        payout=payout,
+    )
+
+
+def _payout_for(
+    log: TradeLog,
+    firm: FirmConfig,
+    phase_cfg: PhaseConfig,
+    days: list[tuple[dt.date, list[Trade]]],
+    payout_path: str | None,
+) -> PayoutParams:
+    """Resolve payout parameters exactly as the Monte Carlo does."""
+    from quantlab.metrics.core import observed_sessions_per_week
+
+    if phase_cfg.profit_target is not None:
+        raise ConfigError("payout replay applies to the funded phase only")
+    boundary = firm.day_boundary.to_boundary()
+    gate_pcts = [
+        spec.max_best_day_pct / 100.0
+        for spec in phase_cfg.rules
+        if isinstance(spec, ConsistencySpec) and spec.effect == "gate_payout"
+    ]
+    sessions_per_week = observed_sessions_per_week(log, boundary, days=days)
+    return resolve_payout(
+        firm,
+        phase_cfg.resolved_initial(firm.account_size),
+        gate_pcts,
+        sessions_per_week,
+        path_override=payout_path,
     )
 
 
@@ -108,6 +152,8 @@ def evaluate_sequence(
     firm: FirmConfig,
     sizing: VolSizingParams | None = None,
     cushion_clip: tuple[float, float] | None = None,
+    with_payouts: bool = False,
+    payout_path: str | None = None,
 ) -> list[EvaluationResult]:
     """Chain phases over the log: each eval phase consumes trading days until
     it resolves; the funded phase replays whatever remains.
@@ -146,6 +192,11 @@ def evaluate_sequence(
             sizing=sizing,
             cushion_clip=cushion_clip,
             base_contracts=scaling_base_contracts(log, scaling_contract_limit(firm.funded)),
+            payout=(
+                _payout_for(log, firm, firm.funded, all_days[cursor:], payout_path)
+                if with_payouts
+                else None
+            ),
         )
     )
     return results
@@ -181,6 +232,7 @@ def _evaluate_days(
     sizing: VolSizingParams | None = None,
     cushion_clip: tuple[float, float] | None = None,
     base_contracts: float | None = None,
+    payout: PayoutParams | None = None,
 ) -> EvaluationResult:
     initial = phase_cfg.resolved_initial(firm.account_size)
     account = firm.account_size
@@ -192,6 +244,7 @@ def _evaluate_days(
     daily_fail: list[DailyLossRule] = []
     daily_lockout: list[DailyLossRule] = []
     raise_gates: list[ConsistencyGate] = []
+    session_rules: list[SessionCloseRule] = []
     min_days = MinTradingDaysGate(MinTradingDaysSpec(days=0))
     time_limit: TimeLimitGate | None = None
     advisories: list[str] = []
@@ -224,6 +277,8 @@ def _evaluate_days(
             # gate_payout consistency is applied by the economics layer.
         elif isinstance(spec, MinTradingDaysSpec):
             min_days = MinTradingDaysGate(spec)
+        elif isinstance(spec, SessionCloseSpec):
+            session_rules.append(SessionCloseRule(spec, firm.day_boundary.to_boundary()))
         elif isinstance(spec, TimeLimitSpec):
             time_limit = TimeLimitGate(spec)
         elif isinstance(spec, ContractLimitSpec):
@@ -285,6 +340,15 @@ def _evaluate_days(
     lockout_days = 0
     source_trades = [trade for _, trades in days for trade in trades]
     rows: list[dict[str, object]] = []
+
+    # Funded-phase payout replay state (mirrors the Monte Carlo exactly).
+    qual_days = 0
+    days_since_payout = 0
+    best_day_since = 0.0
+    profit_anchor = initial
+    payout_count = 0
+    total_withdrawn = 0.0
+    first_payout_date: dt.date | None = None
 
     outcome: Outcome = "incomplete" if not is_funded else "survived"
     breach: BreachEvent | None = None
@@ -405,6 +469,21 @@ def _evaluate_days(
             if day_resolved:
                 break
 
+            # Session-close check: only for trades that survived the equity
+            # rules, and BEFORE the pass check — a position open at/after
+            # the hard close can never deliver the pass (its recorded exit
+            # could not have happened on a compliant account).
+            if session_rules and not locked:
+                sc_event = None
+                for sc_rule in session_rules:
+                    sc_event = sc_rule.violation(trade, date, day_index, trade_index, balance)
+                    if sc_event is not None:
+                        break
+                if sc_event is not None:
+                    outcome, breach = "breached", sc_event
+                    day_resolved = True
+                    break
+
             if not locked and not is_funded and target is not None:
                 best_day_running = max(best_day_completed, day_cum)
                 effective_target = target
@@ -442,17 +521,87 @@ def _evaluate_days(
         for tr_rule in trailing:
             tr_rule.day_close(balance)
 
-        rows.append(
-            {
-                "date": date,
-                "day_pnl": day_cum,
-                "balance": balance,
-                "hwm": max((r.hwm for r in trailing), default=float("nan")),
-                "trailing_floor": max((r.threshold for r in trailing), default=float("nan")),
-                "locked": locked,
-                "trades": len(trades),
-            }
-        )
+        # Payout replay AFTER the EOD ratchet (matching the Monte Carlo:
+        # the floor advances from the pre-withdrawal closing balance).
+        payout_amount = 0.0
+        if payout is not None and not day_resolved:
+            if day_cum >= payout.q_min_profit:
+                qual_days += 1
+            days_since_payout += 1
+            best_day_since = max(best_day_since, day_cum)
+            profit_since = balance - profit_anchor
+            if payout.path == "consistency":
+                # Active days == sessions (daily_groups never yields an
+                # empty day); best positive day at MOST c_frac of the
+                # window total — INCLUSIVE (exactly 40% still qualifies).
+                eligible = (
+                    days_since_payout >= max(payout.c_min_days, payout.period_td, 1)
+                    and profit_since > 0
+                    and best_day_since <= payout.c_frac * profit_since
+                )
+            else:
+                eligible = qual_days >= payout.q_count and days_since_payout >= max(
+                    payout.period_td, 1
+                )
+                if payout.require_profit_since and payout_count > 0:
+                    eligible = eligible and profit_since > 0
+            for frac in payout.gate_pcts:
+                # Apex wording: a best day at "50% or more" blocks — strict.
+                eligible = eligible and profit_since > 0 and best_day_since < frac * profit_since
+            if eligible:
+                cap = float(payout.ladder[min(payout_count, len(payout.ladder) - 1)])
+                floor_eff = payout.floor
+                for tr_rule in trailing:
+                    cap_level = tr_rule.spec.threshold_cap
+                    if cap_level is None:
+                        floor_eff = max(floor_eff, initial - tr_rule.amount + PAYOUT_FLOOR_MARGIN)
+                    else:
+                        floor_eff = max(floor_eff, tr_rule.threshold + PAYOUT_FLOOR_MARGIN)
+                        if payout.mll_reset_on_payout:
+                            floor_eff = max(floor_eff, cap_level + PAYOUT_FLOOR_MARGIN)
+                amount = min(balance - floor_eff - payout.keep_buffer, cap)
+                if payout.share_of_balance is not None:
+                    amount = min(amount, payout.share_of_balance * balance)
+                if amount >= payout.min_payout:
+                    payout_amount = amount
+                    total_withdrawn += amount
+                    balance -= amount
+                    for tr_rule in trailing:
+                        cap_level = tr_rule.spec.threshold_cap
+                        if cap_level is None:
+                            # Rebasing trail (FTMO 1-Step): hwm drops with
+                            # the withdrawal, floored at initial.
+                            tr_rule.hwm = max(tr_rule.hwm - amount, initial)
+                        elif payout.mll_reset_on_payout:
+                            # "Your Maximum Loss Limit (MLL) resets to $0
+                            # permanently" — the floor snaps to its cap as
+                            # an EVENT at payout approval.
+                            tr_rule.hwm = max(tr_rule.hwm, cap_level + tr_rule.amount)
+                    if first_payout_date is None:
+                        first_payout_date = date
+                    payout_count += 1
+                    qual_days = 0
+                    days_since_payout = 0
+                    best_day_since = 0.0
+                    profit_anchor = balance
+                    if payout.max_lifetime is not None and payout_count >= payout.max_lifetime:
+                        advisories.append(
+                            f"retired after {payout_count} payouts (lifetime cap); replay stopped"
+                        )
+                        day_resolved = True
+
+        row: dict[str, object] = {
+            "date": date,
+            "day_pnl": day_cum,
+            "balance": balance,
+            "hwm": max((r.hwm for r in trailing), default=float("nan")),
+            "trailing_floor": max((r.threshold for r in trailing), default=float("nan")),
+            "locked": locked,
+            "trades": len(trades),
+        }
+        if payout is not None:
+            row["payout"] = payout_amount
+        rows.append(row)
         if day_resolved:
             break
 
@@ -495,4 +644,7 @@ def _evaluate_days(
         timeline=pd.DataFrame(rows),
         advisories=advisories,
         days_consumed=days_consumed,
+        total_withdrawn=total_withdrawn,
+        payout_count=payout_count,
+        first_payout_date=first_payout_date,
     )

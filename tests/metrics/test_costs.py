@@ -143,7 +143,7 @@ class TestCostSweep:
 
         ct = ZoneInfo("America/Chicago")
         entry = dt.datetime(2026, 1, 5, 9, 0, tzinfo=ct)
-        trades = [Trade(entry, entry, "CL", Side.LONG, 1, 100.0)]
+        trades = [Trade(entry, entry, "6E", Side.LONG, 1, 100.0)]  # FX root: unmodeled
         unknown = TradeLog(trades=trades, source="csv")
         with pytest.raises(QuantLabError, match="tick value"):
             run_cost_sweep(unknown)

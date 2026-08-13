@@ -41,6 +41,7 @@ from quantlab.prop.config import (
     MinTradingDaysSpec,
     PhaseConfig,
     ScalingPlanSpec,
+    SessionCloseSpec,
     StaticMaxLossSpec,
     TimeLimitSpec,
     TrailingDrawdownSpec,
@@ -58,7 +59,14 @@ from quantlab.prop.outcomes import (
     MonteCarloReport,
     PhaseOutcome,
 )
+from quantlab.prop.payout import (
+    PAYOUT_FLOOR_MARGIN,
+    PayoutParams,
+    calendar_to_trading_days,
+    resolve_payout,
+)
 from quantlab.prop.rules.base import breached
+from quantlab.prop.rules.session_close import count_session_close_violations
 from quantlab.prop.voltarget import (
     CushionParams,
     EwmaSizer,
@@ -86,17 +94,11 @@ def ensure_crn_seed(cfg: MCConfig) -> MCConfig:
     return _dc.replace(cfg, seed=int(np.random.default_rng().integers(0, 2**31 - 1)))
 
 
-# Keep withdrawn balances strictly above trailing floors so a payout can
-# never itself trigger an inclusive-touch breach on the next bar.
-PAYOUT_FLOOR_MARGIN = 0.01
-
-
-def calendar_to_trading_days(
-    calendar_days: int, sessions_per_week: float = DEFAULT_SESSIONS_PER_WEEK
-) -> int:
-    if calendar_days < 1 or not math.isfinite(sessions_per_week) or sessions_per_week <= 0:
-        raise QuantLabError("calendar_days and sessions_per_week must be positive")
-    return max(1, math.ceil(calendar_days * sessions_per_week / 7))
+# Backward-compatible aliases: PAYOUT_FLOOR_MARGIN, calendar_to_trading_days,
+# _PayoutParams and _resolve_payout now live in quantlab.prop.payout (shared
+# with the deterministic evaluator so the two engines cannot drift).
+_PayoutParams = PayoutParams
+_resolve_payout = resolve_payout
 
 
 @dataclass
@@ -134,6 +136,10 @@ class MCConfig:
     # first payout lands later, so ruin-before-any-payout can RISE.
     payout_policy: str = "asap"  # "asap" | "keep_buffer"
     keep_buffer: float = 0.0
+    # Payout PATH override (Topstep XFA: "standard" qualifying days vs
+    # "consistency" window ratio — chosen at activation). None = the
+    # firm YAML's payout.path.
+    payout_path: str | None = None
     # Extraction mode: once a path has banked its qualifying days for the
     # current payout cycle, multiply the day weight by this (0 < w <= 1)
     # until the payout lands — protect the banked cycle, then re-risk.
@@ -195,6 +201,10 @@ class MCConfig:
                 raise QuantLabError(f"{name} must satisfy finite 0 < low <= high")
         if self.payout_policy not in ("asap", "keep_buffer"):
             raise QuantLabError(f"unknown payout policy {self.payout_policy!r}")
+        if self.payout_path is not None and self.payout_path not in ("standard", "consistency"):
+            raise QuantLabError(
+                f"unknown payout path {self.payout_path!r} (standard | consistency)"
+            )
         if not _finite_number(self.keep_buffer) or self.keep_buffer < 0:
             raise QuantLabError("keep-buffer must be finite and non-negative")
         if self.extract_weight is not None and (
@@ -296,6 +306,11 @@ def _resolve_rules(
             time_limit_td = calendar_to_trading_days(spec.max_calendar_days, sessions_per_week)
         elif isinstance(spec, ContractLimitSpec):
             contract_limit = spec.max_contracts  # full allowance; advisory sizing check
+        elif isinstance(spec, SessionCloseSpec):
+            # Clock-time rule: invisible at day-profile granularity. The
+            # deterministic evaluator enforces it; run_monte_carlo screens
+            # the source log and warns on violations.
+            pass
         elif isinstance(spec, ScalingPlanSpec):
             if spec.tiers:
                 scaling_tiers = [(t.min_balance, t.max_contracts) for t in spec.tiers]
@@ -325,56 +340,12 @@ def _resolve_rules(
     )
 
 
-@dataclass
-class _PayoutParams:
-    floor: float  # withdrawals never take balance below this
-    share_of_balance: float | None
-    ladder: np.ndarray  # per-payout caps; last entry repeats
-    max_lifetime: int | None
-    min_payout: float
-    q_count: int
-    q_min_profit: float
-    period_td: int
-    gate_pcts: list[float]
-    keep_buffer: float = 0.0  # cushion left working above the payout floor
-
-
-def _resolve_payout(
-    firm: FirmConfig,
-    initial: float,
-    gate_pcts: list[float],
-    sessions_per_week: float = DEFAULT_SESSIONS_PER_WEEK,
-    keep_buffer: float = 0.0,
-) -> _PayoutParams:
-    p = firm.payout
-    floor_candidates = [initial]
-    if p.safety_net_floor is not None:
-        floor_candidates.append(p.safety_net_floor)
-    if p.buffer_above_initial is not None:
-        floor_candidates.append(initial + p.buffer_above_initial)
-    ladder = np.array(p.payout_cap_ladder or [np.inf], dtype=float)
-    return _PayoutParams(
-        floor=max(floor_candidates),
-        share_of_balance=p.payout_share_of_balance,
-        ladder=ladder,
-        max_lifetime=p.max_lifetime_payouts,
-        min_payout=max(p.min_payout, 1e-9),
-        q_count=p.qualifying_days.count,
-        q_min_profit=p.qualifying_days.min_daily_profit,
-        period_td=(
-            calendar_to_trading_days(p.period_days, sessions_per_week) if p.period_days else 0
-        ),
-        gate_pcts=gate_pcts,
-        keep_buffer=keep_buffer,
-    )
-
-
 def _simulate_phase(
     profile: DayProfile,
     idx: np.ndarray,
     phase: PhaseConfig,
     firm: FirmConfig,
-    payout: _PayoutParams | None,
+    payout: PayoutParams | None,
     sample_paths: int,
     sessions_per_week: float = DEFAULT_SESSIONS_PER_WEEK,
     sizing: VolSizingParams | None = None,
@@ -671,11 +642,28 @@ def _simulate_phase(
             days_since_payout = np.where(alive, days_since_payout + 1, days_since_payout)
             best_day_since = np.where(alive, np.maximum(best_day_since, day_pnl), best_day_since)
             profit_since = balance - profit_anchor
-            eligible = (
-                alive
-                & (qual_days >= payout.q_count)
-                & (days_since_payout >= max(payout.period_td, 1))
-            )
+            if payout.path == "consistency":
+                # Topstep XFA Consistency path: >= c_min_days active days
+                # in the window, positive window profit, best positive day
+                # at MOST c_frac of the total — INCLUSIVE (exactly 40%
+                # still qualifies). Every simulated day has >= 1 trade, so
+                # active days == days since the window began.
+                eligible = (
+                    alive
+                    & (days_since_payout >= max(payout.c_min_days, payout.period_td, 1))
+                    & (profit_since > 0)
+                    & (best_day_since <= payout.c_frac * profit_since)
+                )
+            else:
+                eligible = (
+                    alive
+                    & (qual_days >= payout.q_count)
+                    & (days_since_payout >= max(payout.period_td, 1))
+                )
+                if payout.require_profit_since:
+                    # Subsequent payouts need positive profit since the
+                    # prior one; the first payout is exempt.
+                    eligible &= (payout_count == 0) | (profit_since > 0)
             for frac in payout.gate_pcts:
                 # Apex wording: a best day at "50% or more" blocks — strict.
                 eligible &= (profit_since > 0) & (best_day_since < frac * profit_since)
@@ -697,6 +685,10 @@ def _simulate_phase(
                 else:
                     thr = np.minimum(hwms[r] - tr.amount, tr.cap)
                     floor_eff = np.maximum(floor_eff, thr + PAYOUT_FLOOR_MARGIN)
+                    if payout.mll_reset_on_payout:
+                        # The payout approval snaps this floor to its cap,
+                        # so the withdrawal must clear the POST-reset floor.
+                        floor_eff = np.maximum(floor_eff, tr.cap + PAYOUT_FLOOR_MARGIN)
             # keep_buffer policy: leave that much cushion WORKING above
             # the effective floor instead of withdrawing it.
             amount = np.minimum(balance - floor_eff - payout.keep_buffer, cap)
@@ -710,12 +702,18 @@ def _simulate_phase(
                 peak = np.where(paying, peak - amount, peak)
                 # Uncapped trails (FTMO 1-Step) reset on reward withdrawal —
                 # approximate by lowering the hwm with the withdrawn amount.
-                # Capped/locked floors (Topstep/Apex) never move down.
+                # Capped/locked floors (Topstep/Apex) never move down; with
+                # mll_reset_on_payout they snap UP to the cap as an event:
+                # "Your Maximum Loss Limit (MLL) resets to $0 permanently"
+                # (Topstep payout policy) — even when ordinary trailing
+                # would leave the floor below.
                 for r, tr in enumerate(rules.trailing):
                     if np.isinf(tr.cap):
                         hwms[r] = np.where(
                             paying, np.maximum(hwms[r] - amount, float(initial)), hwms[r]
                         )
+                    elif payout.mll_reset_on_payout:
+                        hwms[r] = np.where(paying, np.maximum(hwms[r], tr.cap + tr.amount), hwms[r])
                 first_payout_day = np.where(paying & (first_payout_day < 0), t, first_payout_day)
                 payout_count = np.where(paying, payout_count + 1, payout_count)
                 qual_days = np.where(paying, 0, qual_days)
@@ -799,6 +797,24 @@ def run_monte_carlo(
             "excursions are assigned to the exit session, so resampled daily-rule results "
             "are approximate; verify against mark-to-market equity data"
         )
+    # session_close is a clock-time rule the day-granular engine cannot
+    # replay — screen the SOURCE log and warn loudly: resampled days that
+    # violated the hard close would have been force-flattened (or failed)
+    # in reality, so simulated results overstate what the account allows.
+    for phase_cfg in [*firm.phases, firm.funded]:
+        for spec in phase_cfg.rules:
+            if isinstance(spec, SessionCloseSpec):
+                violations = count_session_close_violations(log, spec, boundary)
+                if violations:
+                    warnings.append(
+                        f"{violations} trade(s) in the source log violate the "
+                        f"{spec.hard_close} {spec.tz} session close "
+                        f"(phase {phase_cfg.name!r}): the Monte Carlo resamples those "
+                        "days as if allowed — run `quant prop evaluate` for the "
+                        "deterministic verdict and fix the strategy before trusting "
+                        "these results"
+                    )
+                break
 
     bootstrap_name: BootstrapName = cfg.bootstrap
     block_len_used = cfg.block_len  # resolved below only for the stationary scheme
@@ -971,12 +987,13 @@ def _run_from_profile(
     funded_gates = _resolve_rules(
         firm.funded, firm, firm.funded.resolved_initial(firm.account_size)
     ).payout_gate_pcts
-    payout_params = _resolve_payout(
+    payout_params = resolve_payout(
         firm,
         firm.funded.resolved_initial(firm.account_size),
         funded_gates,
         sessions_per_week,
         keep_buffer=keep_buffer,
+        path_override=cfg.payout_path,
     )
     idx = sampler.sample(profile.n_days, cfg.n_paths, cfg.funded_horizon_days, rng)
     funded_outcome = _simulate_phase(
