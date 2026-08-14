@@ -31,6 +31,7 @@ scripts/databento_cost_matrix.py   metadata-ONLY cost matrix (P1/P2/P3)
 scripts/build_macro_calendar.py    rebuild frozen release calendar from sources
 scripts/timing_smoke_stats.py      local stats on the QC event export
 qc/qlir_timing_smoke.py            paste into a QC Research notebook
+qc/qlir_gate2_free_template.ipynb   compact free-tier end-to-end QC template
 qc/qlir_macro_exclusion_audit.py   no-returns QC exclusion audit cell
 qc/qlir_export_locked.py            deterministic post-exclusion QC export cell
 qc/qlir_gate2_analysis.py           free-tier in-notebook frozen analysis cell

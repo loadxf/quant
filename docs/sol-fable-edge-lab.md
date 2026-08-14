@@ -766,3 +766,76 @@ capped amount on a QUARANTINED calibration batch" (whose receipts, being the
 first real server artifacts, finish the binding work no fixture can), with
 the calibration batch excluded from research by construction. The two human
 actions stand ready; neither Fable nor Sol can perform them.
+
+---
+
+## 2026-08-13 — Round 8 (Fable): GATE II PASSED (qualified); Gate I passes for bounded calibration; first real observations exist
+
+Sol's round-8 ruling, recorded verbatim in substance:
+1. Gate I PASSES for free metadata work and a separately authorized,
+   quarantined calibration acquisition (no open-ended budget; the sequence is
+   cost matrix → package/price decision → explicit user authorization →
+   bounded calibration → real-artifact verification → development acquisition).
+2. GATE II PASSES, QUALIFIED. 3. Gate III not started; Q-LIR is NOT an edge.
+4. No purchase, billable request, strategy backtest, or Topstep simulation
+   authorized.
+
+### Gate II evidence (frozen; Justin completed the QC workflow)
+
+Instrument: macro_events_v2.csv — 1,482 sourced rows, 1,156 unique release
+timestamps, 2021–2024 only, inclusive ±10-minute exclusion (calendar counts
+independently verified locally). Locked QC sample: 998 sessions, 145,708
+events, 10,456 excluded (7.176%), 135,252 retained; exclusions identical for
+ES and NQ per year and class; mask applied before outcome analysis. Analysis:
+dev 2021–2023 (749 sessions), validation 2024 (249 sessions), 100% minute
+resolution, 2,000 day-clustered replications, seed 20260813.
+
+Quarter-minus-placebo |return| contrasts, 2024 VALIDATION:
+```
+              ES                             NQ
+60s    +0.206 bp [0.150, 0.264]      +0.273 bp [0.190, 0.351]
+120s   +0.281 bp [0.203, 0.354]      +0.300 bp [0.195, 0.400]
+300s   +0.176 bp [0.057, 0.291]      +0.156 bp [-0.013, 0.322]
+```
+Volume contrast +0.133 log (≈14.2%) both instruments; volatility +0.060 ES /
++0.064 NQ (≈6.2%/6.6%). A(:00/:30) − B(:15/:45) positive at all horizons for
+ES (dev+val) and at 60/120s for NQ (300s interval includes zero) — mechanism
+inference leans HALF-HOUR execution scheduling over uniform quarter-hour
+synchronization.
+
+What it does NOT prove (Sol's quals, adopted): no trading rule from the 2024
+signed-return decomposition (the negative :00/:30 signed returns are
+descriptive, not the preregistered flow-conditioned prediction — a "short the
+half-hour" rule is REJECTED as post-hoc); every dev-minus-val contrast was
+positive → DECAY IS LIVE; intervals unadjusted across endpoints; minute bars
+coarse; no aggressor side, no executable quote, no costs; the raw 135,252-row
+frame could not be transferred (frozen code + count fingerprints + exclusion
+audit + copied report stand in). Mechanism screen only.
+
+### Round-8 actions taken
+
+- Gate II state FROZEN verbatim in `b4e57b0` (calendar v2 + sources, QC
+  locked-export/analysis/audit code, builder + tests, stats-script v2
+  default); style-only pass in `f896dd0` (1 import fix + 6 reformats; qlir
+  157/157 and root 934/934 identical before/after — zero semantic change).
+- Quarantined calibration request PREPARED, NOT EXECUTED
+  (`scripts/calibration_request.py`): frozen five-session 2021 ES trades
+  request (2021-03-01→03-06, pre-roll); dry-run by default; execution needs
+  DATABENTO_API_KEY + --authorized-by + --i-understand-this-is-billable +
+  --max-cost-usd ceiling (aborts if the estimate exceeds it); one batch job,
+  never streaming; data → data/q_lir/calibration/ (separate root + ledger);
+  receipts marked calibration-excluded-from-research; full request/response
+  audit persisted.
+- DATABENTO_API_KEY: still absent — cost matrix (work-order items 2–3)
+  remains blocked on Justin.
+- Gates: root 934, qlir 157, llm_edge 212 (WSL, rerun this round), ruff/
+  format/mypy clean. The five CRLF artifacts and the untracked transcript
+  remain untouched per ownership boundaries.
+
+### Standing
+
+Gate II frozen — no boundary/horizon/exclusion/A-B/taxonomy changes in
+response to results. 2024 preserved for the frozen flow-conditioned
+validation; 2025–2026 locked. Next decision point: Justin supplies the key →
+free cost matrix → P2-vs-P3 decision with real prices → explicit calibration
+authorization.
