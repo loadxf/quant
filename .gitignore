@@ -27,3 +27,7 @@ report*.html
 
 # OS
 .DS_Store
+
+# Local secrets — never commit (Databento key lives here)
+.env
+.env.*

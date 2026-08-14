@@ -884,3 +884,74 @@ Critical path unchanged: Justin supplies DATABENTO_API_KEY → free
 metadata-only P1/P2/P3 matrix → Sol's package/price ruling → separate
 explicit calibration authorization. Nothing in this round altered any frozen
 Gate II component.
+
+---
+
+## 2026-08-14 — Round 10 (Fable): grep-claim corrected; THE COST MATRIX RAN — first real server contact validates the instrument
+
+### Corrections log (continued)
+
+- Fable's round-9 claim "zero `__file__`/ObjectStore references" in the paste
+  file over-reached the measurement: the grep tested `__file__|object_store|
+  ObjectStore` and never the spaced form or "download". Sol's counts stand:
+  0 × __file__, 3 × "Object Store" mentions, 1 × "download" mention — all
+  explanatory comments. Accurate record: ZERO runtime dependencies or calls;
+  four textual mentions. The original failure cannot recur through the paste
+  artifact.
+
+### The unblock
+
+Justin provisioned `DATABENTO_API_KEY` via a local `.env` (value never posted
+or printed). `.env` was NOT gitignored — fixed before anything else
+(.gitignore now excludes `.env`/`.env.*`). The authorized metadata-only
+matrix then ran: metadata.* + symbology.resolve calls only; zero billable
+actions.
+
+### Cost matrix (GLBX.MDP3, 2021–2024; artifact:
+projects/qlir/artifacts/databento_cost_matrix_2026-08-14.json)
+
+```
+package               2021      2022      2023      2024     TOTAL     size
+P1 flow discovery   316.10    441.84    362.44    347.29  1,467.67   60.5 GB
+P2 tbbo executable  404.30    599.68    482.82    461.17  1,947.97   74.7 GB
+P3 mbp-1 definitive 413.43    573.02    479.95    471.17  1,937.56  1012.4 GB
+```
+
+Notables: **P3 is $10.41 CHEAPER than P2** while strictly richer (every
+top-of-book update vs BBO-at-trades only) — its true price is storage and
+compute (1.01 TB, 12.74 B records vs 74.7 GB, 1.02 B). Dataset conditions
+2021–2024: 1,249 available days, **3 degraded: 2021-12-05 and 2022-01-02
+(Sundays) and 2024-09-18 — an FOMC day in the sealed validation year**
+(flagged for the frozen-validation protocol; the macro mask already excludes
+its 13:00 window, but "degraded" spans the day). Symbology: 17 mapping
+intervals per symbol (quarterly rolls ✓), 68 instrument ids, zero unresolved.
+
+### First-contact validation of the instrument
+
+A one-week probe captured the exact live envelope:
+keys = {result, symbols, stype_in, stype_out, start_date, end_date, partial,
+not_found, message, status}; status=0 int, message="OK"; result exactly the
+documented interval shape with the instrument id as a string in `s`
+("ES.v.0" → [{"d0","d1","s":"5482"}]). **All eight fields our round-7 strict
+validator requires are present in the real response** — the envelope
+contract holds on first live contact, and the fixture-vs-reality risk logged
+since round 5 is retired for symbology.
+
+### Fable's package recommendation (decision is Sol's; authorization Justin's)
+
+P3, staged: (1) the frozen quarantined calibration slice first (five 2021 ES
+sessions; estimate at authorization time, order ~$5–10 by pro-rata); (2)
+development years 2021–2023 only (~$1,466 at these prices); (3) 2024 sealed
+until the validation protocol fires. Rationale: P3 ≦ P2 in dollars while
+giving the TRUE BBO at arbitrary instants — Layer B's entry at b+5s needs a
+quote AT that instant, which TBBO only approximates by the nearest trade's
+BBO; P3 also enables queue/imbalance controls later without re-purchase. The
+1 TB burden is manageable staged per-year with derived event-window parquets
+and archived raw. If local storage rules this out, P2 is the fallback with
+the b+5s quote-approximation caveat recorded.
+
+### Standing
+
+No billable action occurred or is authorized. Next: Sol's package/price
+ruling → Justin's separate explicit calibration authorization → the
+calibration script (already prepared, guarded, dry-run verified).
