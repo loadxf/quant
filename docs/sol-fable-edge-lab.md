@@ -955,3 +955,63 @@ the b+5s quote-approximation caveat recorded.
 No billable action occurred or is authorized. Next: Sol's package/price
 ruling → Justin's separate explicit calibration authorization → the
 calibration script (already prepared, guarded, dry-run verified).
+
+---
+
+## 2026-08-14 — Round 11 (Fable): ZERO-BUDGET ruling supersedes acquisition; QC entitlement probe prepared
+
+### Ruling recorded (Justin's controlling decision, via Sol)
+
+NO market-data spending. Superseded: the P3 recommendation, the calibration
+request (est. $4.11 trades / $7.07 mbp-1), and all P1/P2/P3 acquisition. No
+further Databento calls unless Justin explicitly requests free metadata work.
+`1e30070` and its artifact preserved as historical decision evidence. The
+.env containment fix stands; the key is off the critical path and Justin may
+revoke it. P3 remains the technically correct schema for arbitrary-instant
+BBO — a conclusion, no longer a recommendation.
+
+### Corrections log (continued)
+
+- The 1.012 TB P3 figure is BILLABLE UNCOMPRESSED size, not demonstrated
+  compressed disk usage (Fable's "one terabyte of raw" framing overstated the
+  storage claim as if measured).
+- MBP-1 yields aggregate BBO sizes/order counts: imbalance and
+  queue-PRESSURE proxies, not true queue-position reconstruction (that needs
+  order-level MBO).
+
+### Zero-cost path: QC only — two branches, probe first
+
+- **Entitlement probe PREPARED** (`qc/qlir_entitlement_probe.py`, one paste
+  cell, $0, dev-only, read-only): one 2021 ES session (2021-03-02), tests
+  tick/second/minute × trades/quotes on tiny windows (25 min ticks, 1 h
+  seconds, session minute), reports nonemptiness, columns, timestamp
+  precision, bid/ask sizes, prevailing-BBO reconstruction at exactly b+5s
+  from each available layer with staleness, and the VERBATIM error/empty
+  shape per unavailable resolution. No 2024, no Object Store, no downloads,
+  no __file__. Verdict block states which branch exists.
+- **Branch A** (quote ticks or second QuoteBars available): frozen Gate III
+  inside QC — dev 2021–2023 only, BBO at b+5s, PREREGISTERED quote-rule
+  aggressor inference with tick-rule fallback (inferred, never claimed
+  native), all frozen decile/placebo/monotonicity/separate-instrument/
+  day-concentration/spread/fee/stress tests, streaming backtest with
+  event-level summaries only, model frozen before 2024.
+- **Branch B** (minute only): original Gate III BLOCKED — not weakened. A
+  separately named **Gate III-M** minute proxy under NEW preregistration
+  (minute QuoteBars conservative execution, next-minute entry, frozen
+  bar-level pressure proxy, no parameter search). Asymmetric interpretation:
+  III-M fails → reject Q-LIR and stop; III-M passes → promising proxy only;
+  no Topstep simulation, no "edge".
+- Vendor-quality boundary: Databento's degraded 2024-09-18 flag does NOT
+  transfer to QC/AlgoSeek; QC needs its own completeness/timestamp audits,
+  and any full-day QC exclusion must be declared before validation.
+
+### Standing scientific state (Sol's table, adopted)
+
+Gate II passed (qualified); original Gate III not started; QC entitlement
+unknown pending probe; profitable execution unproven; Topstep simulation not
+authorized; Databento spending prohibited. Honest fallbacks if QC denies
+resolution: minute proxy, or forward collection from a feed Justin already
+receives.
+
+Next human action: Justin pastes and runs the probe; the verdict block comes
+back verbatim; the branch is then a fact, not a guess.
