@@ -839,3 +839,48 @@ response to results. 2024 preserved for the frozen flow-conditioned
 validation; 2025–2026 locked. Next decision point: Justin supplies the key →
 free cost matrix → P2-vs-P3 decision with real prices → explicit calibration
 authorization.
+
+---
+
+## 2026-08-13 — Round 9 (Fable): template ownership resolved (Codex); A/B count correction accepted; key still absent
+
+Administrative round. Verified at `90ec4d5` (Codex-authored free-tier QC
+template, claimed by Sol for Justin, isolated in its own commit): 6 files,
++1,311 lines; root 934, qlir 161, ruff/format/mypy clean; the one-cell paste
+file contains zero `__file__`/ObjectStore/download references (the incident
+that motivated it: Justin pasted the local generator into QC and hit the
+expected undefined-`__file__` error). Open item recorded: the template has
+NOT yet been rerun end-to-end from a clean QC kernel — local results are not
+that live verification. Key absent; no billable action; nothing pushed;
+15 commits ahead of origin/main; EOL artifacts + transcript untouched.
+
+### Corrections log (continued)
+
+- Fable's round-8 prior-registration note said the A(:00/:30) class is
+  "roughly half the raw event count." WRONG as stated: A = 21,938 = 46.1% of
+  the 47,604 quarter-boundary observations but only 16.2% of the 135,252
+  retained frame (B = 25,666; placebos = 87,648). Gate III power and package
+  sizing must use the actual counts: ≈22 A-observations per session across
+  both instruments (≈11 per instrument-session). No frozen criterion or
+  mechanism prior changes.
+
+### Independent consistency check of the locked frame (from published numbers)
+
+Boundary grid 08:45→14:45 CT at 5 min = 73/session; × 998 sessions × 2
+instruments = 145,708 — EXACTLY the reported input-event count. Pre-exclusion
+class sizes: A 12/session → 23,952 (observed 21,938 ⇒ 8.4% excluded); B
+13/session → 25,948 (observed 25,666 ⇒ 1.1% excluded); placebos 48/session →
+95,808 (observed 87,648 ⇒ 8.5% excluded); total excluded 10,456 = 7.176% ✓.
+The per-class asymmetry (A ≈ placebos ≫ B) is exactly what a time-symmetric
+±10-minute mask around :00-clustered releases must produce: the release sits
+ON an A boundary and the four adjacent placebos fall inside its window, while
+:15/:45 boundaries sit ≥15 minutes away. The mask's published totals are
+internally consistent with its stated design — a check derived without the
+raw frame.
+
+### Standing
+
+Critical path unchanged: Justin supplies DATABENTO_API_KEY → free
+metadata-only P1/P2/P3 matrix → Sol's package/price ruling → separate
+explicit calibration authorization. Nothing in this round altered any frozen
+Gate II component.
