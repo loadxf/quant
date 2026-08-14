@@ -10,8 +10,7 @@ import pandas as pd
 import pytest
 from qlir import QlirError
 from qlir.acquire import (
-    attest_files,
-    build_acquisition_record,
+    build_verified_receipt,
     compose_contract_map,
     load_acquired_file,
 )
@@ -51,11 +50,11 @@ STEP_TWO_RESPONSE = {
         "4916": [{"d0": "2022-01-01", "d1": "2022-03-14", "s": "ESH2"}],
         "5203": [{"d0": "2022-03-14", "d1": "2022-06-13", "s": "ESM2"}],
     },
+    "symbols": ["4916", "5203"],
     "stype_in": "instrument_id",
     "stype_out": "raw_symbol",
     "start_date": "2022-01-01",
     "end_date": "2022-06-13",
-    "dataset": "GLBX.MDP3",
     "partial": [],
     "not_found": [],
 }
@@ -115,7 +114,7 @@ class TestEnvelopeBinding:
         assert cmap.raw_for(5203, dt.date(2022, 4, 1)) == "ESM2"
 
     def test_bare_payload_refused_without_flag(self) -> None:
-        with pytest.raises(QlirError, match="bare mapping payload"):
+        with pytest.raises(QlirError, match="missing required fields"):
             compose_contract_map(SPEC, STEP_ONE_RESPONSE["result"], STEP_TWO_RESPONSE["result"])
 
     def test_bare_payload_allowed_only_explicitly(self) -> None:
@@ -127,10 +126,20 @@ class TestEnvelopeBinding:
         )
         assert cmap.raw_for(4916, dt.date(2022, 2, 1)) == "ESH2"
 
-    def test_envelope_dataset_mismatch_refused(self) -> None:
-        response = dict(STEP_ONE_RESPONSE, dataset="XNAS.ITCH")
-        with pytest.raises(QlirError, match="dataset"):
-            compose_contract_map(SPEC, response, STEP_TWO_RESPONSE)
+    def test_result_only_wrapper_refused(self) -> None:
+        """Round-7 finding 4: {'result': ...} alone bypassed the
+        unverified gate. Every documented envelope field is required."""
+        with pytest.raises(QlirError, match="missing required fields"):
+            compose_contract_map(
+                SPEC,
+                {"result": STEP_ONE_RESPONSE["result"]},
+                {"result": STEP_TWO_RESPONSE["result"]},
+            )
+
+    def test_step_two_symbols_must_equal_step_one_ids(self) -> None:
+        response = dict(STEP_TWO_RESPONSE, symbols=["4916"])  # missing 5203
+        with pytest.raises(QlirError, match="expected set"):
+            compose_contract_map(SPEC, STEP_ONE_RESPONSE, response)
 
     def test_envelope_symbol_mismatch_refused(self) -> None:
         response = dict(STEP_ONE_RESPONSE, symbols=["NQ.v.0"])
@@ -244,6 +253,7 @@ class TestDbnSpecBinding:
                 "4916": [{"d0": "2022-01-01", "d1": "2022-06-13", "s": "ESH2"}],
                 "7777": [{"d0": "2022-01-01", "d1": "2022-06-13", "s": "NQH2"}],
             },
+            symbols=["4916", "7777"],
         )
         cmap = compose_contract_map(spec, step_one, step_two)
         fixed = dbn.FIXED_PRICE_SCALE
@@ -282,54 +292,151 @@ class TestDbnSpecBinding:
         assert "<multi>" not in set(frame["symbol"])
 
 
-class TestReceiptEndToEnd:
-    def test_full_pipeline_attests_and_reloads(self, tmp_path) -> None:
-        pytest.importorskip("databento")
+class TestVerifiedReceipt:
+    """Round-7 findings 1-2: receipts are DERIVED from decoded bytes and
+    the server batch manifest — never asserted."""
+
+    def _stored(self, tmp_path, payload_writer, date="2022-03-01"):
         root = tmp_path / "q_lir"
         store = RawStore(root)
-        scratch = tmp_path / "2022-03-01.dbn"
-        write_dbn(scratch, n_records=3)
-        stored = store.write_raw(
-            "GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", scratch.read_bytes()
-        )
-        relpath = stored.relative_to(root).as_posix()
-        cmap = contract_map()
-        frame = load_acquired_file(stored, SPEC, cmap)
-        files = attest_files(root, [(relpath, len(frame))])
-        record = build_acquisition_record(
-            spec=SPEC,
+        scratch = tmp_path / f"{date}.dbn"
+        payload_writer(scratch)
+        stored = store.write_raw("GLBX.MDP3", "trades", "ES.v.0", date, scratch.read_bytes())
+        return root, stored.relative_to(root).as_posix(), stored
+
+    def _receipt(self, root, relpath, server_name, server_size, cmap, spec=SPEC):
+        return build_verified_receipt(
+            spec=spec,
             contract_map=cmap,
-            files=files,
+            data_root=root,
+            stored_files=[(relpath, server_name)],
+            server_manifest=[{"filename": server_name, "size_bytes": server_size}],
             request_cost_usd=12.34,
             billable_size_bytes=1024,
             client_version="databento 0.83.0",
             dataset_conditions={"2022-03-01": "available"},
-            derivation_code_commit="60f574e",
+            derivation_code_commit="57ba2c6",
             split="development",
         )
+
+    def test_full_pipeline_derives_counts_and_reloads(self, tmp_path) -> None:
+        pytest.importorskip("databento")
+        root, relpath, stored = self._stored(tmp_path, lambda p: write_dbn(p, n_records=3))
+        cmap = contract_map()
+        record = self._receipt(
+            root, relpath, "glbx-mdp3-20220301.trades.dbn.zst", stored.stat().st_size, cmap
+        )
+        assert record["record_count"] == 3  # DERIVED by decoding
         ledger = root / "manifests" / "acquisition.jsonl"
         append_acquisition(ledger, record, data_root=root)
         loaded = load_ledger(ledger)[0]
-        assert loaded["files"][0]["relative_path"] == relpath
-        assert loaded["record_count"] == 3
-        assert loaded["resolved_contracts"]["ES.v.0"][0]["raw_symbol"] == "ESH2"
+        assert loaded["files"][0]["record_count"] == 3
+        assert loaded["server_manifest"][0]["filename"] == "glbx-mdp3-20220301.trades.dbn.zst"
 
-    def test_attest_files_requires_existing_file(self, tmp_path) -> None:
-        with pytest.raises(QlirError, match="does not exist"):
-            attest_files(tmp_path, [("raw/missing.dbn.zst", 1)])
-
-    def test_receipt_fields_derive_from_spec(self) -> None:
-        record = build_acquisition_record(
-            spec=SPEC,
-            contract_map=contract_map(),
-            files=[],
-            request_cost_usd=1.0,
-            billable_size_bytes=1,
-            client_version="x",
-            dataset_conditions={},
-            derivation_code_commit="x",
-            split="development",
+    def test_sols_arbitrary_bytes_refused(self, tmp_path) -> None:
+        """Round-7 finding 1: b'not dbn market data' with a claimed 777
+        records was receipted. Counts now come from decoding — bytes
+        that cannot decode cannot be attested."""
+        pytest.importorskip("databento")
+        root, relpath, stored = self._stored(
+            tmp_path, lambda p: p.write_bytes(b"not dbn market data")
         )
-        assert record["dataset"] == SPEC.dataset
-        assert record["requested_symbols"] == ["ES.v.0"]
-        assert record["start_utc"] == "2022-01-01T00:00:00Z"
+        with pytest.raises(QlirError, match="not decodable as DBN"):
+            self._receipt(root, relpath, "bogus.dbn.zst", stored.stat().st_size, contract_map())
+
+    def test_sols_incomplete_acquisition_refused(self, tmp_path) -> None:
+        """Round-7 finding 2: one ES file receipted as an ES+NQ
+        acquisition. Derived symbol coverage refuses it."""
+        pytest.importorskip("databento")
+        spec = AcquisitionSpec(
+            dataset="GLBX.MDP3",
+            schema="trades",
+            symbols=("ES.v.0", "NQ.v.0"),
+            start_utc=SPEC.start_utc,
+            end_utc=SPEC.end_utc,
+        )
+        step_one = dict(
+            STEP_ONE_RESPONSE,
+            symbols=["ES.v.0", "NQ.v.0"],
+            result={
+                "ES.v.0": [{"d0": "2022-01-01", "d1": "2022-06-13", "s": "4916"}],
+                "NQ.v.0": [{"d0": "2022-01-01", "d1": "2022-06-13", "s": "7777"}],
+            },
+        )
+        step_two = dict(
+            STEP_TWO_RESPONSE,
+            result={
+                "4916": [{"d0": "2022-01-01", "d1": "2022-06-13", "s": "ESH2"}],
+                "7777": [{"d0": "2022-01-01", "d1": "2022-06-13", "s": "NQH2"}],
+            },
+            symbols=["4916", "7777"],
+        )
+        cmap = compose_contract_map(spec, step_one, step_two)
+        root = tmp_path / "q_lir"
+        store = RawStore(root)
+        scratch = tmp_path / "es-only.dbn"
+        write_dbn(scratch, symbols=["ES.v.0", "NQ.v.0"], instrument_id=4916, n_records=1)
+        stored = store.write_raw(
+            "GLBX.MDP3", "trades", "ES.v.0", "2022-03-01", scratch.read_bytes()
+        )
+        with pytest.raises(QlirError, match="no records for spec symbol"):
+            build_verified_receipt(
+                spec=spec,
+                contract_map=cmap,
+                data_root=root,
+                stored_files=[(stored.relative_to(root).as_posix(), "batch-file-1.dbn.zst")],
+                server_manifest=[
+                    {"filename": "batch-file-1.dbn.zst", "size_bytes": stored.stat().st_size}
+                ],
+                request_cost_usd=1.0,
+                billable_size_bytes=1,
+                client_version="x",
+                dataset_conditions={},
+                derivation_code_commit="x",
+                split="development",
+            )
+
+    def test_server_manifest_mismatch_refused(self, tmp_path) -> None:
+        pytest.importorskip("databento")
+        root, relpath, stored = self._stored(tmp_path, lambda p: write_dbn(p, n_records=3))
+        with pytest.raises(QlirError, match="complete batch"):
+            build_verified_receipt(
+                spec=SPEC,
+                contract_map=contract_map(),
+                data_root=root,
+                stored_files=[(relpath, "file-a.dbn.zst")],
+                server_manifest=[
+                    {"filename": "file-a.dbn.zst", "size_bytes": stored.stat().st_size},
+                    {"filename": "file-b.dbn.zst", "size_bytes": 10},
+                ],
+                request_cost_usd=1.0,
+                billable_size_bytes=1,
+                client_version="x",
+                dataset_conditions={},
+                derivation_code_commit="x",
+                split="development",
+            )
+
+    def test_server_size_mismatch_refused(self, tmp_path) -> None:
+        pytest.importorskip("databento")
+        root, relpath, stored = self._stored(tmp_path, lambda p: write_dbn(p, n_records=3))
+        with pytest.raises(QlirError, match="does not match the server"):
+            self._receipt(root, relpath, "f.dbn.zst", stored.stat().st_size + 1, contract_map())
+
+    def test_out_of_range_record_refused(self, tmp_path) -> None:
+        """Round-7 finding 5: metadata declaring [15:00, 16:00) with a
+        record at 14:30 was accepted. The loader now enforces the
+        half-open bound on ts_recv."""
+        pytest.importorskip("databento")
+        ts_1500 = int(pd.Timestamp("2022-03-01 15:00:00", tz="UTC").value)
+        ts_1430 = int(pd.Timestamp("2022-03-01 14:30:00", tz="UTC").value)
+        path = tmp_path / "2022-03-01.dbn"
+        write_dbn(
+            path,
+            ts_base=ts_1430 - NS,  # record lands at 14:30
+            n_records=1,
+            start=ts_1500,
+            end=ts_1500 + 3600 * NS,
+        )
+        with pytest.raises(QlirError, match="outside the DBN metadata"):
+            load_acquired_file(path, SPEC, contract_map())

@@ -67,6 +67,10 @@ YEARS: list[tuple[str, str, str]] = [
 # the pricing interval's exclusive end and acquiring nothing from the
 # locked period (a boundary query is not data acquisition).
 SYMBOLOGY_END_EXCLUSIVE = "2025-01-01"
+# metadata.get_dataset_condition's end_date is INCLUSIVE (round 7,
+# finding 7): 2025-01-01 there would leak a locked-period date into
+# output labeled 2021-2024.
+CONDITION_END_INCLUSIVE = "2024-12-31"
 
 OUTPUT = Path(__file__).resolve().parent.parent / "output" / "databento_cost_matrix.json"
 
@@ -117,7 +121,7 @@ def main() -> int:
         client.metadata.get_dataset_condition,
         dataset=DATASET,
         start_date="2021-01-01",
-        end_date=SYMBOLOGY_END_EXCLUSIVE,
+        end_date=CONDITION_END_INCLUSIVE,
     )
     if isinstance(cond, list):
         # DATED conditions are the audit record — retained in full, with

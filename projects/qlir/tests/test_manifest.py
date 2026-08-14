@@ -53,7 +53,11 @@ def valid_record(**overrides):
                 "sha256": PAYLOAD_SHA,
                 "size_bytes": len(PAYLOAD),
                 "record_count": 456,
+                "server_filename": "glbx-mdp3-20220301.trades.dbn.zst",
             }
+        ],
+        "server_manifest": [
+            {"filename": "glbx-mdp3-20220301.trades.dbn.zst", "size_bytes": len(PAYLOAD)}
         ],
         "dataset_conditions": {"2022-01-03": "available"},
         "derivation_code_commit": "60f574e",
@@ -137,11 +141,50 @@ class TestReceiptBinding:
             append_acquisition(ledger, record, data_root=root)
 
     def test_size_mismatch_refused_at_append(self, env) -> None:
+        """Consistent receipt (file+manifest agree) whose size disagrees
+        with the DISK — caught by the append-time verification."""
         root, ledger = env
         record = valid_record()
         record["files"][0]["size_bytes"] = len(PAYLOAD) + 1
+        record["server_manifest"][0]["size_bytes"] = len(PAYLOAD) + 1
         with pytest.raises(QlirError, match="size mismatch"):
             append_acquisition(ledger, record, data_root=root)
+
+    def test_sols_absolute_path_refused(self) -> None:
+        """Round-7 finding 3: an absolute Windows path masqueraded as a
+        relative attestation and escaped data_root."""
+        record = valid_record()
+        record["files"][0]["relative_path"] = "C:/Users/justi/outside.dbn"
+        with pytest.raises(QlirError, match="data_root-relative"):
+            validate_record(record)
+
+    @pytest.mark.parametrize(
+        "path",
+        ["/abs/posix.dbn", "\\\\server\\share\\f.dbn", "D:evil.dbn", "//srv/f.dbn"],
+    )
+    def test_escaping_path_forms_refused(self, path: str) -> None:
+        record = valid_record()
+        record["files"][0]["relative_path"] = path
+        with pytest.raises(QlirError, match=r"data_root-relative|unsafe"):
+            validate_record(record)
+
+    def test_server_manifest_must_reconcile(self) -> None:
+        record = valid_record()
+        record["server_manifest"] = [{"filename": "other.dbn.zst", "size_bytes": 5}]
+        with pytest.raises(QlirError, match="do not equal the server manifest"):
+            validate_record(record)
+
+    def test_server_manifest_size_must_match(self) -> None:
+        record = valid_record()
+        record["server_manifest"][0]["size_bytes"] = 999
+        with pytest.raises(QlirError, match="does not match the server manifest"):
+            validate_record(record)
+
+    def test_missing_server_binding_refused(self) -> None:
+        record = valid_record()
+        record["files"][0]["server_filename"] = ""
+        with pytest.raises(QlirError, match="server_filename"):
+            validate_record(record)
 
     def test_bound_receipt_appends_and_reloads(self, env) -> None:
         root, ledger = env
@@ -413,13 +456,15 @@ class TestWriterLock:
         path = tmp_path / "acquisition.jsonl"
         with (
             ExclusiveLock(path),
-            pytest.raises(QlirError, match="locked by another writer"),
+            pytest.raises(QlirError, match="locked by another LIVE writer"),
             ExclusiveLock(path, timeout_s=0.2),
         ):
             pass  # pragma: no cover
 
     def test_lock_released_after_append(self, env) -> None:
+        """The lock FILE persists by design (only the OS lock matters);
+        release is proven by immediate re-acquisition."""
         root, ledger = env
         append_acquisition(ledger, valid_record(), data_root=root)
-        assert not (ledger.parent / (ledger.name + ".lock")).exists()
         append_acquisition(ledger, valid_record(schema="tbbo"), data_root=root)
+        assert len(load_ledger(ledger)) == 2

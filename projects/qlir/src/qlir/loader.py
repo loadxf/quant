@@ -238,9 +238,32 @@ def _load_dbn(
             f"{path} is a DBN file but the databento package is not installed — "
             "pip install databento"
         ) from None
-    store = DBNStore.from_file(path)
-    file_symbols = _validate_dbn_metadata(store, spec, path)
-    frame = store.to_df().reset_index()
+    try:
+        store = DBNStore.from_file(path)
+        file_symbols = _validate_dbn_metadata(store, spec, path)
+        frame = store.to_df().reset_index()
+    except QlirError:
+        raise
+    except Exception as exc:
+        # Round-7 finding 1: bytes that cannot decode cannot be counted,
+        # so they cannot be attested — surface every decode failure as a
+        # uniform refusal.
+        raise QlirError(f"{path}: not decodable as DBN ({type(exc).__name__}: {exc})") from exc
+    # Round-7 finding 5: metadata bounds alone do not bind the RECORDS.
+    # Databento's historical range filters on ts_recv when available
+    # (ts_event otherwise); ts_recv is canonical here, so every record
+    # must sit inside the metadata's half-open [start, end).
+    meta_start = getattr(store.metadata, "start", None)
+    meta_end = getattr(store.metadata, "end", None)
+    if meta_start is not None and meta_end is not None and len(frame):
+        ts_ns = pd.to_datetime(frame["ts_recv"], utc=True).astype("int64")
+        outside = int(((ts_ns < int(meta_start)) | (ts_ns >= int(meta_end))).sum())
+        if outside:
+            raise QlirError(
+                f"{path}: {outside} record(s) fall outside the DBN metadata's "
+                f"declared half-open range on ts_recv — the bytes do not match "
+                "their own self-description"
+            )
     rename = {
         "bid_px_00": "bid_px",
         "ask_px_00": "ask_px",

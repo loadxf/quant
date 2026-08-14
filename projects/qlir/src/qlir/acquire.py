@@ -1,25 +1,30 @@
-"""Acquisition integration: ONE spec bound across every boundary
-(round 6: independently valid but mutually contradictory objects must be
-unrepresentable as a single acquisition).
+"""The acquisition COORDINATOR (round 7): the receipt is DERIVED from
+the decoded bytes and the server batch manifest — never asserted.
 
-    spec = AcquisitionSpec(dataset="GLBX.MDP3", schema="trades",
-                           symbols=("ES.v.0",), start_utc=…, end_utc=…)
-    step_one = client.symbology.resolve(...)   # continuous -> instrument_id
-    step_two = client.symbology.resolve(...)   # instrument_id -> raw_symbol
-    contract_map = compose_contract_map(spec, step_one, step_two)
-    frame = load_acquired_file(path, spec, contract_map)
-    files = attest_files(data_root, [(relpath, record_count), ...])
-    record = build_acquisition_record(spec=spec, contract_map=contract_map,
-                                      files=files, ...)
-    append_acquisition(ledger_path, record, data_root=data_root)
+    spec → exact API responses (strict envelopes; step-two symbols must
+    equal the instrument ids step one produced) → server file manifest →
+    contained immutable files → DBN decoding with derived per-file
+    counts → aggregate symbol/range coverage from the bytes → ledger
+    append (disk-verified, recoverable transaction).
 
-Every arrow validates against the SAME spec: the symbology envelopes
-(dataset/stypes/symbols/dates when present; bare payloads need an
-explicit allow_unverified), the DBN metadata (dataset/schema/stypes/
-symbols/interval), the per-record identity (raw_symbol AND requested
-symbol by instrument_id + event date), and the ledger receipt (symbol
-sets equal, coverage complete, immutable per-file hash list verified on
-disk before the append).
+What `build_verified_receipt` refuses, each a round-7 reproduction:
+  - arbitrary non-DBN bytes (they cannot decode, so they cannot be
+    counted, so they cannot be attested);
+  - caller-claimed record counts (counts come from decoding);
+  - files that do not exactly match the server batch manifest (names
+    and sizes; hashes too when the server provides them);
+  - receipts whose spec symbols have no decoded records (an ES-only
+    file cannot receipt an ES+NQ acquisition);
+  - records outside the spec's half-open interval on ts_recv;
+  - a single instrument_id appearing under multiple publisher_ids in
+    one acquisition (ids are only unique per publisher/day).
+
+HONEST LIMIT, stated plainly: local code can prove the download matches
+the server's own manifest and that the decoded bytes cover every
+requested symbol inside the requested range. Whether the SERVER's batch
+was itself complete for the request is attested by that manifest plus
+the dataset-condition record — the first real batch is additionally
+quarantined as calibration, not research data.
 """
 
 from __future__ import annotations
@@ -43,7 +48,8 @@ def compose_contract_map(
     step_two_response: object,
     allow_unverified: bool = False,
 ) -> ContractMap:
-    """Spec-validated composition of the two symbology.resolve responses."""
+    """Spec-validated composition. Step two's envelope symbols must equal
+    the instrument ids derived from step one (round 7, finding 4)."""
     step_one = validate_envelope(
         step_one_response,
         spec,
@@ -51,11 +57,25 @@ def compose_contract_map(
         "step one (continuous→instrument_id)",
         allow_unverified=allow_unverified,
     )
+    step_one_ids = tuple(
+        sorted(
+            {
+                str(interval["s"])
+                for intervals in step_one.values()
+                if isinstance(intervals, list)
+                for interval in intervals
+                if isinstance(interval, dict) and "s" in interval
+            }
+        )
+    )
     step_two = validate_envelope(
         step_two_response,
         spec,
-        # Step two's input symbols are instrument ids — not spec.symbols.
-        EnvelopeCheck(stype_in="instrument_id", stype_out="raw_symbol", symbols=None),
+        EnvelopeCheck(
+            stype_in="instrument_id",
+            stype_out="raw_symbol",
+            symbols=step_one_ids if not allow_unverified else None,
+        ),
         "step two (instrument_id→raw_symbol)",
         allow_unverified=allow_unverified,
     )
@@ -75,8 +95,9 @@ def load_acquired_file(
     path: str | Path, spec: AcquisitionSpec, contract_map: ContractMap
 ) -> pd.DataFrame:
     """Load one per-date raw file with the full identity binding: DBN
-    metadata vs spec, per-record raw_symbol AND requested symbol by
-    (instrument_id, event_date)."""
+    metadata vs spec, records inside the SPEC interval on ts_recv,
+    unambiguous publisher identity, and per-record raw_symbol AND
+    requested-symbol binding by (instrument_id, event_date)."""
     path = Path(path)
     if set(contract_map.symbols()) != set(spec.symbols):
         raise QlirError(
@@ -84,6 +105,25 @@ def load_acquired_file(
             f"the spec symbols {sorted(spec.symbols)}"
         )
     probe = load_events(path, spec=spec, id_to_raw=None, allow_unresolved=True)
+    # Round-7 finding 5: exact half-open containment on ts_recv (the
+    # historical filter timestamp), not merely the calendar date.
+    ts_ns = pd.to_datetime(probe["ts_recv"], utc=True).astype("int64")
+    spec_start_ns = int(spec.start_utc.timestamp() * 1_000_000_000)
+    spec_end_ns = int(spec.end_utc.timestamp() * 1_000_000_000)
+    outside = int(((ts_ns < spec_start_ns) | (ts_ns >= spec_end_ns)).sum())
+    if outside:
+        raise QlirError(
+            f"{path}: {outside} record(s) fall outside the spec's half-open interval on ts_recv"
+        )
+    # Ids are only unique per publisher (and per day for some
+    # publishers): one id under two publishers in one file is ambiguous.
+    per_id_publishers = probe.groupby("instrument_id")["publisher_id"].nunique()
+    ambiguous = per_id_publishers[per_id_publishers > 1]
+    if len(ambiguous):
+        raise QlirError(
+            f"{path}: instrument_id(s) {sorted(ambiguous.index.tolist())} appear "
+            "under multiple publisher_ids — identity is ambiguous"
+        )
     event_dates = sorted({ts.date() for ts in probe["ts_event"]})
     if len(event_dates) != 1:
         raise QlirError(
@@ -98,7 +138,6 @@ def load_acquired_file(
         )
     flat = contract_map.flat_map_for_date(event_date)
     frame = load_events(path, spec=spec, id_to_raw=flat, allow_unresolved=True)
-    # Per-record identity binding — raw contract AND requested symbol.
     for instrument_id in frame["instrument_id"].unique():
         expected_raw = contract_map.raw_for(int(instrument_id), event_date)
         expected_symbol = contract_map.symbol_for(int(instrument_id), event_date)
@@ -113,34 +152,13 @@ def load_acquired_file(
     return frame
 
 
-def attest_files(data_root: str | Path, entries: list[tuple[str, int]]) -> list[AcquiredFile]:
-    """Hash each acquired file NOW and freeze the attestation — the
-    receipt carries {relative_path, sha256, size, record_count}, never a
-    pointer to a mutable cumulative manifest (round 6, finding 1)."""
-    data_root = Path(data_root)
-    if not entries:
-        raise QlirError("an acquisition must attest at least one file")
-    attested: list[AcquiredFile] = []
-    for relative_path, record_count in entries:
-        full = data_root / relative_path
-        if not full.exists():
-            raise QlirError(f"acquired file does not exist: {full}")
-        attested.append(
-            AcquiredFile(
-                relative_path=str(Path(relative_path).as_posix()),
-                sha256=sha256_file(full),
-                size_bytes=full.stat().st_size,
-                record_count=int(record_count),
-            )
-        )
-    return attested
-
-
-def build_acquisition_record(
+def build_verified_receipt(
     *,
     spec: AcquisitionSpec,
     contract_map: ContractMap,
-    files: list[AcquiredFile],
+    data_root: str | Path,
+    stored_files: list[tuple[str, str]],  # (relative_path, server_filename)
+    server_manifest: list[dict[str, Any]],  # server batch manifest entries
     request_cost_usd: float,
     billable_size_bytes: int,
     client_version: str,
@@ -148,8 +166,74 @@ def build_acquisition_record(
     derivation_code_commit: str,
     split: str,
 ) -> dict[str, Any]:
-    """The ledger receipt: every identity field DERIVES from the spec and
-    the composed map — callers cannot supply contradictory values."""
+    """DERIVE the receipt from the bytes and the server manifest.
+
+    Per-file record counts come from DECODING each file through the
+    full identity binding — arbitrary bytes and caller-claimed counts
+    are unrepresentable. The attested files must exactly match the
+    server batch manifest (names, sizes, hashes when provided), and the
+    decoded bytes must cover every spec symbol inside the spec range.
+    """
+    data_root = Path(data_root)
+    if not stored_files:
+        raise QlirError("an acquisition must contain at least one stored file")
+    if not isinstance(server_manifest, list) or not server_manifest:
+        raise QlirError("server_manifest must be the server's non-empty batch file list")
+    manifest_by_name: dict[str, dict[str, Any]] = {}
+    for entry in server_manifest:
+        if not isinstance(entry, dict) or "filename" not in entry or "size_bytes" not in entry:
+            raise QlirError(f"server_manifest entry malformed: {entry!r}")
+        name = str(entry["filename"])
+        if name in manifest_by_name:
+            raise QlirError(f"server_manifest lists {name!r} twice")
+        manifest_by_name[name] = entry
+    stored_names = [server_filename for _, server_filename in stored_files]
+    if len(set(stored_names)) != len(stored_names):
+        raise QlirError("stored_files bind one server filename twice")
+    if set(stored_names) != set(manifest_by_name):
+        raise QlirError(
+            f"stored files {sorted(set(stored_names))} do not exactly match the "
+            f"server manifest {sorted(manifest_by_name)} — the download is not "
+            "the complete batch"
+        )
+
+    attested: list[AcquiredFile] = []
+    seen_symbols: set[str] = set()
+    for relative_path, server_filename in stored_files:
+        full = data_root / relative_path
+        if not full.exists():
+            raise QlirError(f"stored file does not exist: {full}")
+        manifest_entry = manifest_by_name[server_filename]
+        actual_size = full.stat().st_size
+        if int(manifest_entry["size_bytes"]) != actual_size:
+            raise QlirError(
+                f"{relative_path}: size {actual_size} does not match the server "
+                f"manifest ({manifest_entry['size_bytes']}) for {server_filename}"
+            )
+        actual_hash = sha256_file(full)
+        server_hash = manifest_entry.get("hash")
+        if server_hash and str(server_hash).lower().removeprefix("sha256:") != actual_hash:
+            raise QlirError(
+                f"{relative_path}: hash does not match the server manifest for {server_filename}"
+            )
+        # DERIVED count: the bytes must decode through the full binding.
+        frame = load_acquired_file(full, spec, contract_map)
+        seen_symbols.update(frame["symbol"].unique())
+        attested.append(
+            AcquiredFile(
+                relative_path=str(Path(relative_path).as_posix()),
+                sha256=actual_hash,
+                size_bytes=actual_size,
+                record_count=len(frame),
+                server_filename=server_filename,
+            )
+        )
+    uncovered = sorted(set(spec.symbols) - seen_symbols)
+    if uncovered:
+        raise QlirError(
+            f"decoded bytes contain no records for spec symbol(s) {uncovered} — "
+            "mapping coverage is not file coverage; the acquisition is incomplete"
+        )
     return {
         "dataset": spec.dataset,
         "schema": spec.schema,
@@ -160,10 +244,14 @@ def build_acquisition_record(
         "start_utc": spec.start_utc.astimezone(dt.UTC).isoformat().replace("+00:00", "Z"),
         "end_utc": spec.end_utc.astimezone(dt.UTC).isoformat().replace("+00:00", "Z"),
         "request_cost_usd": request_cost_usd,
-        "record_count": sum(entry.record_count for entry in files),
+        "record_count": sum(entry.record_count for entry in attested),
         "billable_size_bytes": billable_size_bytes,
         "client_version": client_version,
-        "files": [entry.to_dict() for entry in files],
+        "files": [entry.to_dict() for entry in attested],
+        "server_manifest": [
+            {"filename": name, "size_bytes": int(entry["size_bytes"])}
+            for name, entry in sorted(manifest_by_name.items())
+        ],
         "dataset_conditions": dataset_conditions,
         "derivation_code_commit": derivation_code_commit,
         "split": split,

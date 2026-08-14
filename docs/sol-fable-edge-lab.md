@@ -690,3 +690,79 @@ llm_edge     212 passed in 26.04 s under WSL2
 No amend, no push, no purchase, no QC output. Macro calendar completion
 remains an acknowledged Gate-II prerequisite. The anchor's local-adversary
 limitation stands as narrowed in round 5 (off-host mirroring is operational).
+
+---
+
+## 2026-08-13 — Round 7 (Fable): the receipt is now DERIVED, not asserted; and the stuck-on-data question answered
+
+Sol denied Gate I with six findings plus the condition-endpoint boundary. All
+reproduced before repair (arbitrary bytes receipted with a claimed 777 records;
+a one-hour ES file receipted as a two-day ES+NQ acquisition; an absolute path
+escaping data_root; a result-only wrapper passing as verified; an out-of-range
+record accepted; an orphaned lock blocking recovery forever).
+
+### The coordinator (findings 1–2)
+
+`build_verified_receipt` DERIVES the receipt: per-file record counts come from
+DECODING each stored file through the full identity binding (garbage bytes now
+fail with a uniform "not decodable as DBN" refusal — Sol's 777-record
+reproduction is a named test); attested files must exactly match the SERVER
+batch manifest (names, sizes, hashes when provided; `server_manifest` is now a
+REQUIRED receipt field reconciled at validation and re-checked at read); and
+the decoded bytes must cover every spec symbol inside the spec range — the
+ES-only-as-ES+NQ reproduction refuses with "mapping coverage is not file
+coverage". Honest limit stated in the module: local code proves the download
+matches the server's own manifest and the bytes cover the request; whether the
+server's batch was complete is attested by that manifest + dataset conditions,
+and the first real batch is additionally quarantined as calibration.
+
+### Findings 3–7
+
+- **Paths:** absolute, drive-qualified, UNC, and device forms are refused at
+  `AcquiredFile` construction (four forms parameterized), and append-time
+  verification requires resolved containment under data_root (symlink escapes
+  die at resolve).
+- **Envelopes:** `result` alone is not an envelope — all documented fields
+  (result, symbols, stypes, dates, partial, not_found) are REQUIRED and typed;
+  the invented `dataset` check is deleted (the response has no such field —
+  dataset binding lives in DBN metadata + the spec); step-two envelope symbols
+  must equal the instrument ids step one produced; `allow_unverified` remains
+  the explicit fixture-only escape.
+- **Records:** per-record ts_recv (the documented historical filter timestamp)
+  must sit inside the DBN metadata's half-open range AND the spec interval —
+  the 14:30-record-in-[15:00,16:00) reproduction is a named refusal; one
+  instrument_id under multiple publisher_ids in a file is refused (ids unique
+  only per publisher/day); publisher binding beyond that is documented as
+  dataset-level, not per-interval (symbology carries no publisher).
+- **Locks:** rewritten onto the OS lock table (msvcrt.locking / fcntl.flock on
+  a persistent lock file) — released automatically on process death. Proven by
+  an ACTUAL killed subprocess: live holder blocks, killed holder releases,
+  recovery callable afterwards. The pending-journal unlink failure is no
+  longer suppressed (append fails loudly instead of succeeding while reads
+  block).
+- **Condition endpoint:** `CONDITION_END_INCLUSIVE = 2024-12-31` (inclusive
+  endpoint) vs `SYMBOLOGY_END_EXCLUSIVE = 2025-01-01` (exclusive) — the
+  2025-01-01 leak into 2021–2024-labeled output is closed.
+
+### Evidence
+
+```
+root suite   934 passed          ruff/format/mypy clean
+qlir suite   152 passed, 0 skipped (incl. killed-subprocess lock tests)
+llm_edge     212 passed under WSL2
+```
+
+### Are we stuck on market data? — answered on the record
+
+Functionally yes, and not because of Gate I: every byte of market data has
+been one HUMAN action away since Round 2 — either `DATABENTO_API_KEY` in the
+environment (free metadata costing, then a small purchase decision) or a
+paste-and-run of the QC notebook. Seven rounds of instrument hardening have
+produced zero data points because zero of those actions occurred. The
+hardening was real (every round's defects were genuine), but marginal risk
+closed per round is now far below the risk of never testing the hypothesis.
+Proposal logged for Sol: re-scope Gate I to "sufficient to safely spend a
+capped amount on a QUARANTINED calibration batch" (whose receipts, being the
+first real server artifacts, finish the binding work no fixture can), with
+the calibration batch excluded from research by construction. The two human
+actions stand ready; neither Fable nor Sol can perform them.

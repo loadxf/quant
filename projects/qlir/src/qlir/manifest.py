@@ -45,7 +45,6 @@ enforced from PARSED UTC DATES, never the split label.
 
 from __future__ import annotations
 
-import contextlib
 import datetime as dt
 import hashlib
 import json
@@ -88,6 +87,7 @@ REQUIRED_FIELDS: tuple[str, ...] = (
     "billable_size_bytes",
     "client_version",
     "files",
+    "server_manifest",
     "dataset_conditions",
     "derivation_code_commit",
     "split",
@@ -183,6 +183,35 @@ def validate_record(record: dict[str, Any]) -> None:
     paths = [entry.relative_path for entry in attested]
     if len(set(paths)) != len(paths):
         raise QlirError("files list contains duplicate relative paths")
+    # Round-7 finding 2: the receipt must bind to the server's own batch
+    # manifest — names and sizes must reconcile exactly.
+    manifest = record["server_manifest"]
+    if not isinstance(manifest, list) or not manifest:
+        raise QlirError("server_manifest must be the server's non-empty batch file list")
+    manifest_sizes: dict[str, int] = {}
+    for item in manifest:
+        if not isinstance(item, dict) or "filename" not in item or "size_bytes" not in item:
+            raise QlirError(f"server_manifest entry malformed: {item!r}")
+        name = str(item["filename"])
+        if name in manifest_sizes:
+            raise QlirError(f"server_manifest lists {name!r} twice")
+        manifest_sizes[name] = int(item["size_bytes"])
+    bound_names = [entry.server_filename for entry in attested]
+    if "" in bound_names:
+        raise QlirError("every attested file must carry its server_filename binding")
+    if len(set(bound_names)) != len(bound_names):
+        raise QlirError("files bind one server filename twice")
+    if set(bound_names) != set(manifest_sizes):
+        raise QlirError(
+            f"attested server filenames {sorted(set(bound_names))} do not equal "
+            f"the server manifest {sorted(manifest_sizes)}"
+        )
+    for entry in attested:
+        if entry.size_bytes != manifest_sizes[entry.server_filename]:
+            raise QlirError(
+                f"{entry.relative_path}: attested size {entry.size_bytes} does not "
+                f"match the server manifest for {entry.server_filename}"
+            )
     total_count = sum(entry.record_count for entry in attested)
     if int(record["record_count"]) != total_count:
         raise QlirError(
@@ -202,9 +231,18 @@ def validate_record(record: dict[str, Any]) -> None:
 def verify_receipt_files(record: dict[str, Any], data_root: Path) -> None:
     """Disk verification: every attested file exists under data_root with
     the exact hash and size (run inside the append transaction)."""
+    root = Path(data_root).resolve()
     for item in record["files"]:
         entry = AcquiredFile.from_dict(item)
-        full = Path(data_root) / entry.relative_path
+        full = (Path(data_root) / entry.relative_path).resolve()
+        # Round-7 finding 3: resolved containment — the joined path (after
+        # any symlink/junction resolution) must remain under data_root.
+        try:
+            full.relative_to(root)
+        except ValueError:
+            raise QlirError(
+                f"attested path {entry.relative_path!r} escapes data_root after resolution ({full})"
+            ) from None
         if not full.exists():
             raise QlirError(f"attested file missing on disk: {full}")
         actual_size = full.stat().st_size
@@ -417,6 +455,14 @@ def append_acquisition(
         finally:
             os.close(fd)
         _write_anchor(path, len(links) + 1, link["record_hash"])
-        with contextlib.suppress(OSError):
+        # Round-7 finding 6b: a suppressed unlink failure let append
+        # report success while every ordinary read stayed blocked on the
+        # pending journal. Fail loudly instead — recovery clears it.
+        try:
             _pending_path(path).unlink()
+        except OSError as exc:
+            raise QlirError(
+                f"append committed but the pending journal could not be removed "
+                f"({exc}) — run recover_ledger before reading"
+            ) from exc
     return [*(link_["record"] for link_ in links), record]
