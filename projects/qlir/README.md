@@ -28,8 +28,13 @@ src/qlir/                          data-integrity package (tested)
   mapping.py    two-step symbology composition + roll validation
   windows.py    half-open event windows (canonical; notebook mirrors)
 scripts/databento_cost_matrix.py   metadata-ONLY cost matrix (P1/P2/P3)
+scripts/build_macro_calendar.py    rebuild frozen release calendar from sources
 scripts/timing_smoke_stats.py      local stats on the QC event export
 qc/qlir_timing_smoke.py            paste into a QC Research notebook
+qc/qlir_macro_exclusion_audit.py   no-returns QC exclusion audit cell
+qc/qlir_export_locked.py            deterministic post-exclusion QC export cell
+qc/qlir_gate2_analysis.py           free-tier in-notebook frozen analysis cell
+calendars/macro_events_v2.csv      frozen dated release calendar (complete v2)
 data/q_lir/raw/<dataset>/<schema>/<symbol>/<date>.dbn.zst   (immutable)
 data/q_lir/derived/<version>/*.parquet                      (regenerable)
 data/q_lir/manifests/acquisition.jsonl
@@ -115,8 +120,22 @@ verified on disk before the append).
 Raw identity is a function of (instrument_id, event_date) — some
 publishers remap ids daily. The Gate II stats script excludes release
 windows from a DATED, versioned macro-event calendar
-(`calendars/macro_events_v1.csv`, currently FOMC-only and marked
-incomplete — Gate II results are provisional until it is completed).
+(`calendars/macro_events_v2.csv`). V2 contains 1,482 source rows and
+1,156 unique timestamps for the frozen 2021-2024 taxonomy. Coincident
+release rows remain in the source artifact; the mask deduplicates only
+`(date, time_ct)` and applies the same inclusive ±10-minute rule to both
+instruments and every boundary class. Source definitions and pinned URLs
+are recorded in `calendars/macro_events_v2_sources.md`.
+
+Before any effect calculation in QuantConnect, paste and run
+`qc/macro_events_v2_embedded.py` as a notebook cell. This compressed Python
+representation works on free accounts and requires neither the Object Store
+nor a Research-node restart. Then paste and run
+`qc/qlir_macro_exclusion_audit.py`. The audit verifies the embedded calendar
+checksum and reads only `date`,
+`boundary_ct`, `instrument`, and `boundary_class`; it prints the before,
+excluded, and retained counts without touching return, price, volume, or
+volatility columns.
 
 ## Rules of engagement
 

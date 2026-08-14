@@ -13,10 +13,11 @@ DAY-CLUSTERED bootstrap confidence intervals:
   5. development (2021-2023) minus validation (2024) two-sample contrast.
 
 Exclusions are SYMMETRIC across classes: every boundary (quarter AND
-placebo) within ±10 minutes of the 09:00 and 13:00 CT scheduled-release
-slots is dropped, so the quarter-vs-placebo comparison is not biased by
-removing only quarter-hour observations. One common construction for
-every class — no class-specific tuning.
+placebo) within ±10 minutes of a dated release in the frozen v2 calendar
+is dropped, so the quarter-vs-placebo comparison is not biased by
+removing only quarter-hour observations. Coincident source rows are
+preserved in the calendar but collapse to one mask timestamp. One common
+construction for every class — no class-specific tuning.
 
 This is a MECHANISM SCREEN on trade-bar data with no aggressor side: no
 strategy Sharpe is computed here, and a null does not falsify the
@@ -39,7 +40,11 @@ N_BOOT = 2000
 SEED = 20260813
 HORIZONS = (60, 120, 300)
 EXCLUDE_MINUTES = 10  # ±minutes around each DATED calendar event
-DEFAULT_CALENDAR = Path(__file__).resolve().parent.parent / "calendars" / "macro_events_v1.csv"
+DEFAULT_CALENDAR = (
+    Path(__file__).resolve().parent.parent
+    / "calendars"
+    / "macro_events_v2.csv"
+)
 
 
 def load_calendar(path: Path) -> tuple[pd.DataFrame, list[str]]:
@@ -60,11 +65,47 @@ def load_calendar(path: Path) -> tuple[pd.DataFrame, list[str]]:
         else:
             break
     calendar = pd.read_csv(path, comment="#")
-    required = {"date", "time_ct", "event", "source"}
+    required = {
+        "date",
+        "time_ct",
+        "event",
+        "source",
+        "source_url",
+        "source_asof_utc",
+    }
     if required - set(calendar.columns):
         raise SystemExit(
             f"BLOCKED: calendar lacks columns {sorted(required - set(calendar.columns))}"
         )
+    if "coverage: complete" not in " ".join(header).lower():
+        raise SystemExit(
+            "BLOCKED: calendar does not declare complete frozen-taxonomy "
+            "coverage. Gate II statistics may not run with an incomplete calendar."
+        )
+    if calendar.empty:
+        raise SystemExit("BLOCKED: macro-event calendar is empty")
+    try:
+        dates = pd.to_datetime(calendar["date"], format="%Y-%m-%d", errors="raise")
+    except (TypeError, ValueError) as exc:
+        raise SystemExit(f"BLOCKED: invalid calendar date: {exc}") from exc
+    if set(dates.dt.year) != {2021, 2022, 2023, 2024}:
+        raise SystemExit(
+            "BLOCKED: calendar must contain only and all frozen years 2021-2024"
+        )
+    if not calendar["time_ct"].astype(str).str.fullmatch(r"\d{2}:\d{2}").all():
+        raise SystemExit("BLOCKED: calendar time_ct values must use HH:MM")
+    event_minutes = (
+        calendar["time_ct"].str[:2].astype(int) * 60
+        + calendar["time_ct"].str[3:5].astype(int)
+    )
+    if not event_minutes.between(8 * 60 + 45, 14 * 60 + 45).all():
+        raise SystemExit("BLOCKED: calendar contains an out-of-window CT time")
+    if not calendar["source_url"].astype(str).str.startswith("https://").all():
+        raise SystemExit("BLOCKED: calendar contains a non-HTTPS source URL")
+    if calendar[list(required)].isna().any().any():
+        raise SystemExit("BLOCKED: calendar contains missing provenance fields")
+    if calendar.duplicated(list(required)).any():
+        raise SystemExit("BLOCKED: calendar contains exact duplicate source rows")
     return calendar, header
 
 
@@ -75,7 +116,8 @@ def release_excluded(df: pd.DataFrame, calendar: pd.DataFrame) -> pd.Series:
     boundary_minutes = df["boundary_ct"].str.slice(0, 2).astype(int) * 60 + df[
         "boundary_ct"
     ].str.slice(3, 5).astype(int)
-    for _, event in calendar.iterrows():
+    timestamps = calendar[["date", "time_ct"]].drop_duplicates()
+    for _, event in timestamps.iterrows():
         event_time = str(event["time_ct"])
         event_minutes = int(event_time[:2]) * 60 + int(event_time[3:5])
         on_date = df["date"] == str(event["date"])
@@ -267,15 +309,13 @@ def main(paths: list[str]) -> int:
             "sub-minute offsets are coarse there; interpret accordingly."
         )
     calendar, cal_header = load_calendar(DEFAULT_CALENDAR)
-    print(f"macro-event calendar: {DEFAULT_CALENDAR.name} — {len(calendar)} dated event(s)")
+    unique_timestamps = len(calendar[["date", "time_ct"]].drop_duplicates())
+    print(
+        f"macro-event calendar: {DEFAULT_CALENDAR.name} — "
+        f"{len(calendar)} source row(s), {unique_timestamps} unique timestamp(s)"
+    )
     for line in cal_header:
         print(f"  calendar: {line}")
-    if "NOT YET POPULATED" in " ".join(cal_header):
-        print(
-            "WARNING: the calendar declares incomplete coverage — Gate II "
-            "results computed with it are PROVISIONAL and must not be "
-            "interpreted until the calendar is completed and re-approved."
-        )
     excluded = release_excluded(df, calendar)
     print(
         f"dated release-window exclusion (±{EXCLUDE_MINUTES} min, event dates only, "
