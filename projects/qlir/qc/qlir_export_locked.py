@@ -72,14 +72,10 @@ export_frame["_year"] = pd.to_datetime(
 ).dt.year
 if set(export_frame["_year"]) != {2021, 2022, 2023, 2024}:
     raise RuntimeError("Export contains a year outside the locked 2021-2024 sample")
-if export_frame.duplicated(
-    ["date", "instrument", "boundary_ct", "boundary_class"]
-).any():
+if export_frame.duplicated(["date", "instrument", "boundary_ct", "boundary_class"]).any():
     raise RuntimeError("Export contains duplicate instrument-boundary identities")
 
-actual_retained = export_frame.groupby(
-    ["_year", "instrument", "boundary_class"]
-).size().to_dict()
+actual_retained = export_frame.groupby(["_year", "instrument", "boundary_class"]).size().to_dict()
 if actual_retained != EXPECTED_RETAINED:
     raise RuntimeError(
         "Retained-count fingerprint changed. Refusing export.\n"
@@ -93,9 +89,9 @@ if not np.isfinite(numeric.to_numpy(dtype="float64")).all():
 export_frame = export_frame.drop(columns="_year").sort_values(
     ["date", "instrument", "boundary_ct"], kind="mergesort"
 )
-csv_bytes = export_frame.to_csv(
-    index=False, lineterminator="\n", float_format="%.17g"
-).encode("utf-8")
+csv_bytes = export_frame.to_csv(index=False, lineterminator="\n", float_format="%.17g").encode(
+    "utf-8"
+)
 compressed = gzip.compress(csv_bytes, compresslevel=9, mtime=0)
 EXPORT_FILE.write_bytes(compressed)
 

@@ -56,16 +56,12 @@ REQUIRED = {
 }
 
 
-def boot_ci(
-    days: np.ndarray, rng: np.random.Generator
-) -> tuple[float, float, float]:
+def boot_ci(days: np.ndarray, rng: np.random.Generator) -> tuple[float, float, float]:
     """Mean and bootstrap 95% CI over per-day values."""
     days = days[np.isfinite(days)]
     if len(days) < 5:
         return float("nan"), float("nan"), float("nan")
-    means = np.array(
-        [days[rng.integers(0, len(days), len(days))].mean() for _ in range(N_BOOT)]
-    )
+    means = np.array([days[rng.integers(0, len(days), len(days))].mean() for _ in range(N_BOOT)])
     return (
         float(days.mean()),
         float(np.quantile(means, 0.025)),
@@ -82,8 +78,7 @@ def two_sample_ci(
         return float("nan"), float("nan"), float("nan")
     diffs = np.array(
         [
-            a[rng.integers(0, len(a), len(a))].mean()
-            - b[rng.integers(0, len(b), len(b))].mean()
+            a[rng.integers(0, len(a), len(a))].mean() - b[rng.integers(0, len(b), len(b))].mean()
             for _ in range(N_BOOT)
         ]
     )
@@ -109,31 +104,26 @@ def with_derived(frame: pd.DataFrame) -> pd.DataFrame:
     for seconds in HORIZONS:
         out[f"absr_{seconds}"] = out[f"ret_fwd_{seconds}s"].abs() * 1e4
     with np.errstate(divide="ignore", invalid="ignore"):
-        out["volume_change"] = np.log(
-            out["vol_fwd_60s"].where(out["vol_fwd_60s"] > 0)
-        ) - np.log(out["vol_pre_60s"].where(out["vol_pre_60s"] > 0))
-        out["vol_change"] = np.log(
-            out["postvol_5m"].where(out["postvol_5m"] > 0)
-        ) - np.log(out["prevol_5m"].where(out["prevol_5m"] > 0))
+        out["volume_change"] = np.log(out["vol_fwd_60s"].where(out["vol_fwd_60s"] > 0)) - np.log(
+            out["vol_pre_60s"].where(out["vol_pre_60s"] > 0)
+        )
+        out["vol_change"] = np.log(out["postvol_5m"].where(out["postvol_5m"] > 0)) - np.log(
+            out["prevol_5m"].where(out["prevol_5m"] > 0)
+        )
     return out
 
 
-def class_table(
-    frame: pd.DataFrame, label: str, rng: np.random.Generator
-) -> None:
+def class_table(frame: pd.DataFrame, label: str, rng: np.random.Generator) -> None:
     print(f"\n### {label} (events={len(frame)}, days={frame['date'].nunique()})")
     header = (
-        f"{'class':<9} {'metric':<16} {'mean':>10} "
-        f"{'95% CI (day-clustered)':>24} {'events':>7}"
+        f"{'class':<9} {'metric':<16} {'mean':>10} {'95% CI (day-clustered)':>24} {'events':>7}"
     )
     print(header)
     print("-" * len(header))
     for boundary_class in ("A_00_30", "B_15_45", "placebo"):
         sub = frame[frame["boundary_class"] == boundary_class]
         for seconds in HORIZONS:
-            mean, low, high = boot_ci(
-                daily_mean(sub, f"absr_{seconds}").to_numpy(), rng
-            )
+            mean, low, high = boot_ci(daily_mean(sub, f"absr_{seconds}").to_numpy(), rng)
             print(
                 f"{boundary_class:<9} {f'|r| {seconds}s bp':<16} "
                 f"{fmt(mean, low, high):>36} {len(sub):>7}"
@@ -151,10 +141,7 @@ def class_table(
         ):
             usable = sub.dropna(subset=[column])
             mean, low, high = boot_ci(daily_mean(usable, column).to_numpy(), rng)
-            print(
-                f"{boundary_class:<9} {metric:<16} "
-                f"{fmt(mean, low, high):>36} {len(sub):>7}"
-            )
+            print(f"{boundary_class:<9} {metric:<16} {fmt(mean, low, high):>36} {len(sub):>7}")
 
 
 def paired_daily_contrast(
@@ -165,9 +152,7 @@ def paired_daily_contrast(
     negative: object,
     rng: np.random.Generator,
 ) -> tuple[float, float, float, int]:
-    per_day = frame.pivot_table(
-        index="date", columns=split_column, values=column, aggfunc="mean"
-    )
+    per_day = frame.pivot_table(index="date", columns=split_column, values=column, aggfunc="mean")
     if positive not in per_day or negative not in per_day:
         return float("nan"), float("nan"), float("nan"), 0
     difference = (per_day[positive] - per_day[negative]).dropna().to_numpy()
@@ -176,9 +161,7 @@ def paired_daily_contrast(
 
 
 def quarter_effect_by_day(frame: pd.DataFrame, column: str) -> pd.Series:
-    per_day = frame.pivot_table(
-        index="date", columns="is_quarter", values=column, aggfunc="mean"
-    )
+    per_day = frame.pivot_table(index="date", columns="is_quarter", values=column, aggfunc="mean")
     if True not in per_day or False not in per_day:
         return pd.Series(dtype=float)
     return (per_day[True] - per_day[False]).dropna()
@@ -190,10 +173,7 @@ def contrasts(frame: pd.DataFrame, label: str, rng: np.random.Generator) -> None
         mean, low, high, count = paired_daily_contrast(
             frame, f"absr_{seconds}", "is_quarter", True, False, rng
         )
-        print(
-            f"quarter - placebo |r| {seconds}s bp: "
-            f"{fmt(mean, low, high)} ({count} days)"
-        )
+        print(f"quarter - placebo |r| {seconds}s bp: {fmt(mean, low, high)} ({count} days)")
     for column, name in (
         ("volume_change", "volume chg"),
         ("vol_change", "vol chg"),
@@ -201,10 +181,7 @@ def contrasts(frame: pd.DataFrame, label: str, rng: np.random.Generator) -> None
         mean, low, high, count = paired_daily_contrast(
             frame.dropna(subset=[column]), column, "is_quarter", True, False, rng
         )
-        print(
-            f"quarter - placebo {name:<10}: "
-            f"{fmt(mean, low, high)} ({count} days)"
-        )
+        print(f"quarter - placebo {name:<10}: {fmt(mean, low, high)} ({count} days)")
     quarters = frame[frame["is_quarter"]]
     for seconds in HORIZONS:
         mean, low, high, count = paired_daily_contrast(
@@ -215,47 +192,29 @@ def contrasts(frame: pd.DataFrame, label: str, rng: np.random.Generator) -> None
             "B_15_45",
             rng,
         )
-        print(
-            f"A(:00/:30) - B(:15/:45) |r| {seconds}s bp: "
-            f"{fmt(mean, low, high)} ({count} days)"
-        )
+        print(f"A(:00/:30) - B(:15/:45) |r| {seconds}s bp: {fmt(mean, low, high)} ({count} days)")
 
 
-def cross_instrument_contrast(
-    frame: pd.DataFrame, rng: np.random.Generator
-) -> None:
+def cross_instrument_contrast(frame: pd.DataFrame, rng: np.random.Generator) -> None:
     print("\n### ES - NQ contrast of the quarter effect (paired by day)")
     for seconds in HORIZONS:
-        es = quarter_effect_by_day(
-            frame[frame["instrument"] == "ES"], f"absr_{seconds}"
-        )
-        nq = quarter_effect_by_day(
-            frame[frame["instrument"] == "NQ"], f"absr_{seconds}"
-        )
+        es = quarter_effect_by_day(frame[frame["instrument"] == "ES"], f"absr_{seconds}")
+        nq = quarter_effect_by_day(frame[frame["instrument"] == "NQ"], f"absr_{seconds}")
         joined = pd.concat([es, nq], axis=1, join="inner").dropna()
         difference = (joined.iloc[:, 0] - joined.iloc[:, 1]).to_numpy()
         mean, low, high = boot_ci(difference, rng)
-        print(
-            f"|r| {seconds}s bp: {fmt(mean, low, high)} "
-            f"({len(difference)} common days)"
-        )
+        print(f"|r| {seconds}s bp: {fmt(mean, low, high)} ({len(difference)} common days)")
 
 
-def development_validation_contrast(
-    frame: pd.DataFrame, rng: np.random.Generator
-) -> None:
+def development_validation_contrast(frame: pd.DataFrame, rng: np.random.Generator) -> None:
     print("\n### development (2021-2023) - validation (2024) quarter effect")
     for instrument in ("ES", "NQ"):
         sub = frame[frame["instrument"] == instrument]
         development = sub[sub["year"] <= 2023]
         validation = sub[sub["year"] == 2024]
         for seconds in HORIZONS:
-            dev_effect = quarter_effect_by_day(
-                development, f"absr_{seconds}"
-            ).to_numpy()
-            val_effect = quarter_effect_by_day(
-                validation, f"absr_{seconds}"
-            ).to_numpy()
+            dev_effect = quarter_effect_by_day(development, f"absr_{seconds}").to_numpy()
+            val_effect = quarter_effect_by_day(validation, f"absr_{seconds}").to_numpy()
             mean, low, high = two_sample_ci(dev_effect, val_effect, rng)
             print(
                 f"{instrument} |r| {seconds}s bp (dev - val): "
@@ -272,29 +231,31 @@ missing = REQUIRED - set(analysis_frame.columns)
 if missing:
     raise RuntimeError(f"Filtered frame lacks columns: {sorted(missing)}")
 if len(analysis_frame) != EXPECTED_ROWS:
-    raise RuntimeError(
-        f"Expected {EXPECTED_ROWS:,} retained rows, found {len(analysis_frame):,}"
-    )
+    raise RuntimeError(f"Expected {EXPECTED_ROWS:,} retained rows, found {len(analysis_frame):,}")
 
 analysis_frame["date"] = analysis_frame["date"].astype(str)
 analysis_frame["year"] = pd.to_datetime(
     analysis_frame["date"], format="%Y-%m-%d", errors="raise"
 ).dt.year
-fingerprint = analysis_frame.groupby(
-    ["year", "instrument", "boundary_class"]
-).size().to_dict()
+fingerprint = analysis_frame.groupby(["year", "instrument", "boundary_class"]).size().to_dict()
 if fingerprint != EXPECTED_RETAINED:
     raise RuntimeError("Retained-count fingerprint changed; analysis refused")
 if set(analysis_frame["resolution_used"]) - {"minute", "second"}:
     raise RuntimeError("Unexpected resolution label")
-if not analysis_frame.loc[
-    analysis_frame["boundary_class"].isin(["A_00_30", "B_15_45"]),
-    "is_quarter",
-].eq(True).all():
+if (
+    not analysis_frame.loc[
+        analysis_frame["boundary_class"].isin(["A_00_30", "B_15_45"]),
+        "is_quarter",
+    ]
+    .eq(True)
+    .all()
+):
     raise RuntimeError("Quarter-class identity mismatch")
-if not analysis_frame.loc[
-    analysis_frame["boundary_class"] == "placebo", "is_quarter"
-].eq(False).all():
+if (
+    not analysis_frame.loc[analysis_frame["boundary_class"] == "placebo", "is_quarter"]
+    .eq(False)
+    .all()
+):
     raise RuntimeError("Placebo identity mismatch")
 
 analysis_frame = with_derived(analysis_frame)
@@ -314,9 +275,7 @@ with redirect_stdout(report_buffer):
             "this is a mechanism screen only."
         )
     for instrument in ("ES", "NQ"):
-        instrument_frame = analysis_frame[
-            analysis_frame["instrument"] == instrument
-        ]
+        instrument_frame = analysis_frame[analysis_frame["instrument"] == instrument]
         development = instrument_frame[instrument_frame["year"] <= 2023]
         validation = instrument_frame[instrument_frame["year"] == 2024]
         class_table(development, f"{instrument} - development 2021-2023", rng)

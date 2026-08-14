@@ -40,11 +40,7 @@ N_BOOT = 2000
 SEED = 20260813
 HORIZONS = (60, 120, 300)
 EXCLUDE_MINUTES = 10  # ±minutes around each DATED calendar event
-DEFAULT_CALENDAR = (
-    Path(__file__).resolve().parent.parent
-    / "calendars"
-    / "macro_events_v2.csv"
-)
+DEFAULT_CALENDAR = Path(__file__).resolve().parent.parent / "calendars" / "macro_events_v2.csv"
 
 
 def load_calendar(path: Path) -> tuple[pd.DataFrame, list[str]]:
@@ -89,15 +85,12 @@ def load_calendar(path: Path) -> tuple[pd.DataFrame, list[str]]:
     except (TypeError, ValueError) as exc:
         raise SystemExit(f"BLOCKED: invalid calendar date: {exc}") from exc
     if set(dates.dt.year) != {2021, 2022, 2023, 2024}:
-        raise SystemExit(
-            "BLOCKED: calendar must contain only and all frozen years 2021-2024"
-        )
+        raise SystemExit("BLOCKED: calendar must contain only and all frozen years 2021-2024")
     if not calendar["time_ct"].astype(str).str.fullmatch(r"\d{2}:\d{2}").all():
         raise SystemExit("BLOCKED: calendar time_ct values must use HH:MM")
-    event_minutes = (
-        calendar["time_ct"].str[:2].astype(int) * 60
-        + calendar["time_ct"].str[3:5].astype(int)
-    )
+    event_minutes = calendar["time_ct"].str[:2].astype(int) * 60 + calendar["time_ct"].str[
+        3:5
+    ].astype(int)
     if not event_minutes.between(8 * 60 + 45, 14 * 60 + 45).all():
         raise SystemExit("BLOCKED: calendar contains an out-of-window CT time")
     if not calendar["source_url"].astype(str).str.startswith("https://").all():

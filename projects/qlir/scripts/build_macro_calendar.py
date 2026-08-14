@@ -91,9 +91,7 @@ def archive_asof(url: str) -> str:
     match = re.search(r"/web/(\d{14})id_/", url)
     if not match:
         return SOURCE_ASOF_UTC
-    stamp = dt.datetime.strptime(match.group(1), "%Y%m%d%H%M%S").replace(
-        tzinfo=dt.UTC
-    )
+    stamp = dt.datetime.strptime(match.group(1), "%Y%m%d%H%M%S").replace(tzinfo=dt.UTC)
     return stamp.isoformat().replace("+00:00", "Z")
 
 
@@ -141,9 +139,7 @@ def add_usda_pfei(year: int, pdf: pdfplumber.PDF, source_url: str) -> None:
 
 
 def add_census_pfei(year: int) -> None:
-    source_url = (
-        f"https://www.census.gov/economic-indicators/calendar-listview-{year}.html"
-    )
+    source_url = f"https://www.census.gov/economic-indicators/calendar-listview-{year}.html"
     tables = pd.read_html(io.StringIO(get(source_url).text))
     frame = tables[0].copy()
     frame.columns = [compact(value) for value in frame.iloc[0]]
@@ -247,8 +243,7 @@ def eia_dates(page: pdfplumber.page.Page, year: int) -> list[dt.date]:
     footnote_tops = [
         float(word["top"])
         for word in words
-        if str(word["text"]).lower() in {"when", "week"}
-        and float(word["top"]) > max_header_bottom
+        if str(word["text"]).lower() in {"when", "week"} and float(word["top"]) > max_header_bottom
     ]
     data_bottom = min(footnote_tops) if footnote_tops else bottom
 
@@ -356,20 +351,60 @@ def add_fomc() -> None:
 
 JOLTS_RELEASES = {
     2021: (
-        "01-12", "02-09", "03-11", "04-06", "05-11", "06-08",
-        "07-07", "08-09", "09-08", "10-12", "11-12", "12-08",
+        "01-12",
+        "02-09",
+        "03-11",
+        "04-06",
+        "05-11",
+        "06-08",
+        "07-07",
+        "08-09",
+        "09-08",
+        "10-12",
+        "11-12",
+        "12-08",
     ),
     2022: (
-        "01-04", "02-01", "03-09", "03-29", "05-03", "06-01",
-        "07-06", "08-02", "08-30", "10-04", "11-01", "11-30",
+        "01-04",
+        "02-01",
+        "03-09",
+        "03-29",
+        "05-03",
+        "06-01",
+        "07-06",
+        "08-02",
+        "08-30",
+        "10-04",
+        "11-01",
+        "11-30",
     ),
     2023: (
-        "01-04", "02-01", "03-08", "04-04", "05-02", "05-31",
-        "07-06", "08-01", "08-29", "10-03", "11-01", "12-05",
+        "01-04",
+        "02-01",
+        "03-08",
+        "04-04",
+        "05-02",
+        "05-31",
+        "07-06",
+        "08-01",
+        "08-29",
+        "10-03",
+        "11-01",
+        "12-05",
     ),
     2024: (
-        "01-03", "01-30", "03-06", "04-02", "05-01", "06-04",
-        "07-02", "07-30", "09-04", "10-01", "10-29", "12-03",
+        "01-03",
+        "01-30",
+        "03-06",
+        "04-02",
+        "05-01",
+        "06-04",
+        "07-02",
+        "07-30",
+        "09-04",
+        "10-01",
+        "10-29",
+        "12-03",
     ),
 }
 
@@ -378,10 +413,7 @@ def add_jolts() -> None:
     for year, values in JOLTS_RELEASES.items():
         for value in values:
             date = dt.date.fromisoformat(f"{year}-{value}")
-            source_url = (
-                "https://www.bls.gov/news.release/archives/"
-                f"jolts_{date:%m%d%Y}.htm"
-            )
+            source_url = f"https://www.bls.gov/news.release/archives/jolts_{date:%m%d%Y}.htm"
             add(date, "09:00", "BLS_JOLTS", "BLS", source_url)
 
 
@@ -410,9 +442,7 @@ ISM_SOURCES = {
 
 
 def add_ism() -> None:
-    month_by_name = {
-        name: number for number, name in enumerate(month_calendar.month_name) if name
-    }
+    month_by_name = {name: number for number, name in enumerate(month_calendar.month_name) if name}
     for year, (source_url, table_index) in ISM_SOURCES.items():
         tables = pd.read_html(io.StringIO(get(source_url).text))
         frame = tables[table_index]
@@ -459,9 +489,7 @@ def sp_rows(source_url: str) -> dict[str, list[tuple[int, int]]]:
         r"US PMI\US\SER\HE": "services",
     }
     output: dict[str, list[tuple[int, int]]] = {}
-    month_numbers = {
-        name: number for number, name in enumerate(month_calendar.month_abbr) if name
-    }
+    month_numbers = {name: number for number, name in enumerate(month_calendar.month_abbr) if name}
     for line in text.splitlines():
         for prefix, key in prefixes.items():
             if not line.startswith(prefix):
@@ -543,9 +571,9 @@ def add_conference_board() -> None:
                 event = "Conference_Board_LEI"
             else:
                 continue
-            instant = dt.datetime.fromtimestamp(
-                int(record["start"]) / 1000, tz=dt.UTC
-            ).astimezone(eastern)
+            instant = dt.datetime.fromtimestamp(int(record["start"]) / 1000, tz=dt.UTC).astimezone(
+                eastern
+            )
             if instant.hour != 10 or instant.minute != 0:
                 raise RuntimeError(f"Unexpected Conference Board time: {instant}")
             add(
@@ -587,20 +615,60 @@ def add_michigan() -> None:
 
 NAR_RELEASES = {
     2021: (
-        "01-22", "02-19", "03-22", "04-22", "05-21", "06-22",
-        "07-22", "08-23", "09-22", "10-21", "11-22", "12-22",
+        "01-22",
+        "02-19",
+        "03-22",
+        "04-22",
+        "05-21",
+        "06-22",
+        "07-22",
+        "08-23",
+        "09-22",
+        "10-21",
+        "11-22",
+        "12-22",
     ),
     2022: (
-        "01-20", "02-18", "03-18", "04-20", "05-19", "06-21",
-        "07-20", "08-18", "09-21", "10-20", "11-18", "12-21",
+        "01-20",
+        "02-18",
+        "03-18",
+        "04-20",
+        "05-19",
+        "06-21",
+        "07-20",
+        "08-18",
+        "09-21",
+        "10-20",
+        "11-18",
+        "12-21",
     ),
     2023: (
-        "01-20", "02-21", "03-21", "04-20", "05-18", "06-22",
-        "07-20", "08-22", "09-21", "10-19", "11-21", "12-20",
+        "01-20",
+        "02-21",
+        "03-21",
+        "04-20",
+        "05-18",
+        "06-22",
+        "07-20",
+        "08-22",
+        "09-21",
+        "10-19",
+        "11-21",
+        "12-20",
     ),
     2024: (
-        "01-19", "02-22", "03-21", "04-18", "05-22", "06-21",
-        "07-23", "08-22", "09-19", "10-23", "11-21", "12-19",
+        "01-19",
+        "02-22",
+        "03-21",
+        "04-18",
+        "05-22",
+        "06-21",
+        "07-23",
+        "08-22",
+        "09-19",
+        "10-23",
+        "11-21",
+        "12-19",
     ),
 }
 NAR_SOURCES = {

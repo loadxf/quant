@@ -16,9 +16,7 @@ assert SPEC is not None and SPEC.loader is not None
 STATS = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(STATS)
 
-EMBEDDED_SPEC = importlib.util.spec_from_file_location(
-    "macro_events_v2_embedded", EMBEDDED_PATH
-)
+EMBEDDED_SPEC = importlib.util.spec_from_file_location("macro_events_v2_embedded", EMBEDDED_PATH)
 assert EMBEDDED_SPEC is not None and EMBEDDED_SPEC.loader is not None
 EMBEDDED = importlib.util.module_from_spec(EMBEDDED_SPEC)
 EMBEDDED_SPEC.loader.exec_module(EMBEDDED)

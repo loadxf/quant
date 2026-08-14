@@ -9,16 +9,14 @@
 # This cell deliberately selects only date/time/class/identity columns. It
 # does not read price, return, volume, or volatility values.
 
-from io import StringIO
 from hashlib import sha256
+from io import StringIO
 from pathlib import Path
 
 import pandas as pd
 
 CALENDAR_FILE = "macro_events_v2.csv"
-EXPECTED_CALENDAR_SHA256 = (
-    "db16c107e06903e4731323a3ed71256d1314fa96275a8197349aac5d5a1c3c37"
-)
+EXPECTED_CALENDAR_SHA256 = "db16c107e06903e4731323a3ed71256d1314fa96275a8197349aac5d5a1c3c37"
 EXCLUDE_MINUTES = 10
 ALLOWED_YEARS = {2021, 2022, 2023, 2024}
 
@@ -97,18 +95,16 @@ if len(unique_releases) != 1_156:
     raise RuntimeError(
         f"Expected 1,156 unique v2 release timestamps, found {len(unique_releases):,}"
     )
-unique_releases["event_minute"] = (
-    unique_releases["time_ct"].str[:2].astype(int) * 60
-    + unique_releases["time_ct"].str[3:5].astype(int)
-)
-release_minutes_by_date = (
-    unique_releases.groupby("date")["event_minute"].apply(lambda values: tuple(values))
+unique_releases["event_minute"] = unique_releases["time_ct"].str[:2].astype(
+    int
+) * 60 + unique_releases["time_ct"].str[3:5].astype(int)
+release_minutes_by_date = unique_releases.groupby("date")["event_minute"].apply(
+    lambda values: tuple(values)
 )
 
-boundary_minutes = (
-    audit["boundary_ct"].str[:2].astype(int) * 60
-    + audit["boundary_ct"].str[3:5].astype(int)
-)
+boundary_minutes = audit["boundary_ct"].str[:2].astype(int) * 60 + audit["boundary_ct"].str[
+    3:5
+].astype(int)
 audit["release_excluded"] = [
     any(
         abs(int(boundary) - int(event)) <= EXCLUDE_MINUTES
@@ -119,33 +115,16 @@ audit["release_excluded"] = [
 
 # The same date/boundary must always receive the same decision, independent of
 # instrument and treatment class.
-decisions_per_timestamp = audit.groupby(["date", "boundary_ct"])[
-    "release_excluded"
-].nunique()
+decisions_per_timestamp = audit.groupby(["date", "boundary_ct"])["release_excluded"].nunique()
 if not decisions_per_timestamp.eq(1).all():
     raise RuntimeError("Exclusion decision varies by instrument or boundary class")
 
 group_columns = ["year", "instrument", "boundary_class"]
 before = audit.groupby(group_columns).size().rename("before")
-excluded = (
-    audit[audit["release_excluded"]]
-    .groupby(group_columns)
-    .size()
-    .rename("excluded")
-)
-retained = (
-    audit[~audit["release_excluded"]]
-    .groupby(group_columns)
-    .size()
-    .rename("retained")
-)
-exclusion_audit = (
-    pd.concat([before, excluded, retained], axis=1).fillna(0).astype(int)
-)
-reconciled = (
-    exclusion_audit["before"]
-    == exclusion_audit["excluded"] + exclusion_audit["retained"]
-)
+excluded = audit[audit["release_excluded"]].groupby(group_columns).size().rename("excluded")
+retained = audit[~audit["release_excluded"]].groupby(group_columns).size().rename("retained")
+exclusion_audit = pd.concat([before, excluded, retained], axis=1).fillna(0).astype(int)
+reconciled = exclusion_audit["before"] == exclusion_audit["excluded"] + exclusion_audit["retained"]
 if not reconciled.all():
     raise RuntimeError("Before != excluded + retained")
 
