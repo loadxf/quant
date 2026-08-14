@@ -32,6 +32,7 @@ scripts/build_macro_calendar.py    rebuild frozen release calendar from sources
 scripts/timing_smoke_stats.py      local stats on the QC event export
 qc/qlir_timing_smoke.py            paste into a QC Research notebook
 qc/qlir_gate2_free_template.ipynb   compact free-tier end-to-end QC template
+qc/qlir_gate2_free_paste.py         one-cell free-tier QC template
 qc/qlir_macro_exclusion_audit.py   no-returns QC exclusion audit cell
 qc/qlir_export_locked.py            deterministic post-exclusion QC export cell
 qc/qlir_gate2_analysis.py           free-tier in-notebook frozen analysis cell
@@ -45,6 +46,26 @@ data/q_lir/manifests/files.sha256
 `data/` is gitignored. Raw identities are immutable even across file
 deletion (the hash manifest is the record); derived Parquet may be
 regenerated, never silently amended.
+
+## Free-tier QuantConnect notebook template
+
+`qc/qlir_gate2_free_template.ipynb` is the compact, output-free notebook to
+reuse for the complete Gate II workflow. It contains setup, timezone probing,
+2021-2024 extraction, full-cash-session filtering, integrity checks, the
+embedded macro calendar, symmetric exclusions, and the frozen analysis. Failed
+download experiments and duplicated recovery cells are intentionally absent.
+
+For the simplest browser-only workflow, open `qc/qlir_gate2_free_paste.py`,
+copy the entire file, paste it into one fresh QuantConnect Research code cell,
+and run that cell. Never paste `scripts/build_qc_free_template.py` into
+QuantConnect; the builder is local repository tooling and uses `__file__`,
+which a notebook cell does not define.
+The generated notebook is tested to remain below QC's observed 64,000-character
+limit. Rebuild it after changing a component with:
+
+```text
+python projects/qlir/scripts/build_qc_free_template.py
+```
 
 ## Symbology contract (round 4)
 
