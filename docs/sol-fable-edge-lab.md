@@ -1015,3 +1015,66 @@ receives.
 
 Next human action: Justin pastes and runs the probe; the verdict block comes
 back verbatim; the branch is then a fact, not a guess.
+
+---
+
+## 2026-08-14 — Round 12 (Fable): probe DENIED and corrected — three material defects fixed before Justin ran it
+
+Sol denied the round-11 probe (`12947ee`) before execution. All three
+findings REPRODUCED against the committed file before repair; each fix is
+policed by a named test in `tests/test_entitlement_probe.py` (12 tests).
+
+### Findings verified and fixed
+
+1. **`.notna()` tick classification** (lines 84/87 as committed): QC
+   represents unused tick fields as ZERO, not NaN — trade rows with zero
+   bid/ask would have counted as quotes, inflating "quote ticks nonempty"
+   into a false Branch A. Fixed: TickType column used when exposed
+   (census printed); otherwise positive-field masks
+   (`fillna(0).gt(0)`) — trades need positive price AND quantity, quotes
+   a positive bid OR ask; ambiguous both-mask rows counted and printed.
+2. **Single-row BBO with one `quote_age`**: a quote tick may update ONE
+   side; taking the last row before b+5s could pair a fresh bid with an
+   empty/stale ask. Fixed: `bbo_state_at` carries bid and ask state
+   INDEPENDENTLY (each side updates only on its own positive price),
+   reports per-side `bid_age_s`/`ask_age_s`, and validity requires both
+   sides positive and uncrossed (`crossed` printed).
+3. **Permissive verdict** ("quote ticks OR second QuoteBars" for Branch
+   A): the frozen Gate III needs trade-level inferred flow AND prevailing
+   quotes — bars aggregate away the trade sequence. Fixed four-way
+   verdict: **A** = trade ticks + quote ticks + valid two-sided BBO;
+   **S** = second TradeBars + second QuoteBars (one-second proxy only);
+   **M** = minute TradeBars + minute QuoteBars (minute proxy only);
+   **NONE** = insufficient quote data. Quote-bar layers additionally
+   require USABLE positive two-sided closes, not merely column names,
+   and bar closes are labeled interval-close approximations — never the
+   exact b+5s BBO.
+
+### Hardening applied (Sol's items 1–7)
+
+QuantBook clock set explicitly (`set_time_zone(TimeZones.NEW_YORK)`);
+QuantBook and exchange time zones printed; per-layer bid/ask/sizes and
+side-specific staleness printed; local test asserts compilation,
+2021-only date constructors, no 2024–2026 integer literals, zero
+ObjectStore/download/file-IO runtime calls, no `__file__` reference, no
+runtime `.notna()` calls, declared timezone, four-way verdict arms, and
+usable-observation checks. Gates: qlir suite 154 passed / 19 skipped
+(pre-existing platform skips), ruff + format + AST compile clean.
+
+### Corrections log (continued)
+
+- Round-11 reply said 19 commits ahead of origin/main; the count was 18.
+- Round-11 header claimed the probe contains "no __file__" — the file
+  carried textual mentions in comments. Accurate claim (same class as
+  the round-10 grep correction, now recurring — noted): zero RUNTIME
+  dependencies or calls; the local test now polices the runtime property
+  by AST, not by grep.
+
+### Standing
+
+Zero-budget ruling unchanged; no Databento call this round; no branch
+implementation begun (S is a new outcome — implementation criteria for a
+one-second proxy would be set by Sol AFTER the verdict, not presumed).
+Next human action unchanged: Justin pastes the corrected
+`qc/qlir_entitlement_probe.py` into a QC Research notebook, runs it, and
+returns the verdict block verbatim.
