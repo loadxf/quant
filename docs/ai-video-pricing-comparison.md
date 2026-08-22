@@ -8,7 +8,7 @@
 - **Images:** 200/day split between GPT Image 2 and Seedream 5.0 (~100 each) → **6,000 images/month (3,000 + 3,000)**
 - **Constraint:** monthly subscription only (no pay-as-you-go API billing)
 
-Note on model versions: "Seedance 2.5" is the current ByteDance flagship (released ~Aug 2026) and is offered under that exact name on most platforms. "GPT Image 2.0" corresponds to OpenAI's **GPT Image 2**. "Seedream 5.0" ships as **Seedream 5.0 / 5.0 Pro / 5.0 Lite**. All three requested models exist — no platform offers anything newer.
+Note on model versions: "Seedance 2.5" is the current ByteDance flagship (released ~Aug 2026) and is offered under that exact name on most platforms. The requested "GPT Image 2.0" is sold by every provider as **GPT Image 2** (the name used throughout this document). "Seedream 5.0" ships as **Seedream 5.0 / 5.0 Pro / 5.0 Lite**. All three requested models exist, and as of the 2026-08-22 verification none of the providers compared here offered a newer version of any of them.
 
 ---
 
