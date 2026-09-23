@@ -31,3 +31,9 @@ report*.html
 # Local secrets — never commit (Databento key lives here)
 .env
 .env.*
+
+# Local brainstorm runner state, agent config and scratch files — never commit
+/projects/brainstorm*/
+/projects/.brainstorm-*/
+/.claude/
+/sample_variants.csv
